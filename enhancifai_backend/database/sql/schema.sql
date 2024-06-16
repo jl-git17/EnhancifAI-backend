@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS enhancifai.users (
 );
 
 CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage (
-    user_id SERIAL PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES enhancifai.users(user_id),
     model VARCHAR,
     tokens INT,
     created_at TIMESTAMP DEFAULT now()
