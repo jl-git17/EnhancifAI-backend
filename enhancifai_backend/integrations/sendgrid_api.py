@@ -70,4 +70,3 @@ class SendGrid:
             print("Dynamic Messages Sent!")
         except Exception as e:
             print("Error: {0}".format(e))
-
