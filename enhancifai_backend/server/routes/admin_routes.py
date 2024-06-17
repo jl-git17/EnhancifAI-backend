@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from enhancifai_backend.database.handlers.run_logs import RunLogsDbCore
+from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.server.models.admin import AdminAISettings, RunLogsRequest
 from enhancifai_backend.server.utils import STATIC_PAGES_DIRECTORY, get_current_user_id, verify_secret_key, AdminSettings
 
@@ -27,7 +28,7 @@ def seconds_to_hms(seconds):
 
 
 async def is_user_admin(user_id):
-    return True # TODO
+    return UsersDbCore.is_user_admin(user_id)
 
 @router.post("/admin/ai-settings", tags=["Admin"])
 async def set_admin_settings_ai(settings:AdminAISettings, _: str = Depends(verify_secret_key),

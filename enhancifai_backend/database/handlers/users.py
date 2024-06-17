@@ -334,6 +334,11 @@ class UsersDbCore:
         """
         sql = schemafy("UPDATE enhancifai.users SET current_tier_id = %s WHERE user_id = %s;")
         write_db.do('execute', sql=sql, data=(tier_id, user_id))
+    
+    @classmethod
+    def is_user_admin(cls, user_id) -> bool:
+        sql = schemafy("SELECT * FROM enhancifai.users WHERE is_admin IS TRUE AND user_id = %s")
+        return write_db.do('select_exists', sql=sql, data=(user_id,))
 
 class UsersDbRegisterTokens:
     """

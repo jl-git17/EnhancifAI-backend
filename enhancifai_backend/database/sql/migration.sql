@@ -11,6 +11,9 @@ CREATE INDEX IF NOT EXISTS idx_run_details ON enhancifai.runs USING GIN (run_det
 ALTER TABLE enhancifai.run_logs
 ADD COLUMN IF NOT EXISTS batched BOOLEAN;
 
+ALTER TABLE enhancifai.users
+ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT FALSE;
+
 -- Table to store different account tiers
 CREATE TABLE IF NOT EXISTS enhancifai.account_tiers (
     tier_id SERIAL PRIMARY KEY,
