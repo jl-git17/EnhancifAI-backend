@@ -32,14 +32,26 @@ CREATE TABLE IF NOT EXISTS enhancifai.user_account_tiers (
     PRIMARY KEY (user_id, tier_id)
 );
 
--- Create default account tiers (Free, Pro, Enterprise)
+-- Create default account tiers (Free, Basic, Pro, Enterprise) if not already present
 INSERT INTO enhancifai.account_tiers (tier_name, max_tokens, max_rows, max_prompts)
-VALUES 
-    ('Free', 1000, 20, 4),
-    ('Basic', 2000, 0, 0),
-    ('Pro', 10000, 0, 0),
-    ('Enterprise', 100000, 0, 0);
+SELECT 'Free', 1000, 20, 4
+WHERE NOT EXISTS (SELECT 1 FROM enhancifai.account_tiers)
+UNION ALL
+SELECT 'Basic', 2000, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM enhancifai.account_tiers WHERE tier_name = 'Free')
+UNION ALL
+SELECT 'Pro', 10000, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM enhancifai.account_tiers WHERE tier_name = 'Basic')
+UNION ALL
+SELECT 'Enterprise', 100000, 0, 0
+WHERE NOT EXISTS (SELECT 1 FROM enhancifai.account_tiers WHERE tier_name = 'Pro');
 
--- Update the users table to add a reference to the current tier (optional, for convenience)
+-- Update the users table to add a reference to the current tier
 ALTER TABLE enhancifai.users
-ADD COLUMN IF NOT EXISTS current_tier_id INT REFERENCES enhancifai.account_tiers(tier_id);
+ADD COLUMN IF NOT EXISTS current_tier_id INT DEFAULT (
+    SELECT tier_id
+    FROM enhancifai.account_tiers
+    ORDER BY tier_id ASC
+    LIMIT 1
+) REFERENCES enhancifai.account_tiers(tier_id);
+
