@@ -17,10 +17,17 @@ CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage (
     created_at TIMESTAMP DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS enhancifai.google_credentials (
+CREATE TABLE IF NOT EXISTS enhancifai.google_sheets_credentials (
     user_id INT REFERENCES enhancifai.users(user_id),
     credentials JSONB NOT NULL,
     updated_at TIMESTAMP DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS enhancifai.google_oauth_state (
+    user_id INT REFERENCES enhancifai.users(user_id),
+    state VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT now(),
+    PRIMARY KEY (user_id, state)
 );
 
 CREATE TABLE IF NOT EXISTS enhancifai.user_register_tokens (

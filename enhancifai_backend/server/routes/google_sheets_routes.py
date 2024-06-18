@@ -1,71 +1,75 @@
-from fastapi import APIRouter, FastAPI, Depends, HTTPException, Cookie
+import os
+import json
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from google_auth_oauthlib.flow import Flow
-from googleapiclient.discovery import build
-import os
-from typing import List, Optional
 
+from enhancifai_backend.database.handlers.sheets import SheetsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.server.utils import get_current_user_id
 
 router = APIRouter()
 
-# Ensure you replace the below path with the actual path to your OAuth 2.0 Client IDs JSON file
-CLIENT_SECRETS_FILE = "path/to/client_secret.json"
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly', 'https://www.googleapis.com/auth/drive.metadata.readonly']
-REDIRECT_URI = "http://localhost:8000/auth"
+# Load client secrets from environment variable
+client_secrets_json = os.getenv("GOOGLE_TOKEN_INFO_AUTH")
+if not client_secrets_json:
+    raise ValueError("GOOGLE_TOKEN_INFO_AUTH environment variable not set")
 
-#flow = Flow.from_client_config(os.getenv('GOOGLE_TOKEN_INFO_AUTH'), SCOPES, redirect_uri=os.getenv('GOOGLE_REDIRECT_URL'))
-flow = None
+client_secrets = json.loads(client_secrets_json)
+
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive.file']
+REDIRECT_URI = os.getenv("GOOGLE_SHEETS_REDIRECT_URI")
+if not REDIRECT_URI:
+    raise ValueError("GOOGLE_SHEETS_REDIRECT_URI environment variable not set")
+
+def get_flow(state=None):
+    return Flow.from_client_config(
+        client_secrets,
+        scopes=SCOPES,
+        state=state,
+        redirect_uri=REDIRECT_URI
+    )
+
 @router.get("/sheets/login", tags=["Sheets"])
 async def login(user_id: Optional[int] = Depends(get_current_user_id)):
-    authorization_url, _ = flow.authorization_url(prompt='consent', access_type='offline')
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+    
+    flow = get_flow()
+    authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
+    
+    # Store state in the database
+    SheetsDbCore.store_oauth_state(user_id, state)
+    
     return RedirectResponse(authorization_url)
 
-@router.get("/sheets/auth", tags=["Sheets"])
-async def auth(code: str, user_id: Optional[int] = Depends(get_current_user_id)):
-    flow.fetch_token(code=code)
-    credentials = flow.credentials
-
-    # Save credentials to DB - adjust with your logic
-    UsersDbCore.update_user_google_credentials(user_id, credentials)
-
-    response = RedirectResponse(url="/sheets/success")
+@router.get("/callback/google/sheets", tags=["Sheets"])
+async def oauth2callback(request: Request):
+    state = request.query_params.get("state")
+    if not state:
+        raise HTTPException(status_code=400, detail="Missing state parameter")
     
-    response.set_cookie(key="access_token", value=credentials.token, httponly=True)
-    return response
+    user_id = SheetsDbCore.get_oauth_state(state)
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Invalid state parameter")
+    
+    flow = get_flow(state)
+    flow.fetch_token(authorization_response=str(request.url))
+    creds = flow.credentials
+    
+    UsersDbCore.update_user_google_credentials(user_id, creds_to_dict(creds))
+    SheetsDbCore.delete_oauth_state(state)
+    
+    return RedirectResponse(url="/")
 
-def get_credentials(access_token: Optional[str] = Cookie(None)):
-    if not access_token:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    return access_token
+def creds_to_dict(creds):
+    return {
+        'token': creds.token,
+        'refresh_token': creds.refresh_token,
+        'token_uri': creds.token_uri,
+        'client_id': creds.client_id,
+        'client_secret': creds.client_secret,
+        'scopes': creds.scopes
+    }
 
-
-
-@router.get("/sheets/sheets", tags=["Sheets"])
-async def list_sheets(access_token: str = Depends(get_credentials), user_id: Optional[int] = Depends(get_current_user_id)):
-    credentials = flow.credentials
-    service = build('drive', 'v3', credentials=credentials)
-    results = service.files().list(q="mimeType='application/vnd.google-apps.spreadsheet'", fields="nextPageToken, files(id, name)").execute()
-    items = results.get('files', [])
-    if not items:
-        return {'message': 'No sheets found.'}
-    sheets = [{'id': item['id'], 'name': item['name']} for item in items]
-    return sheets
-
-@router.get("/sheets/search-sheet/", tags=["Sheets"])
-async def search_sheet(name: str, access_token: str = Depends(get_credentials)):
-    credentials = flow.credentials
-    service = build('drive', 'v3', credentials=credentials)
-    query = f"mimeType='application/vnd.google-apps.spreadsheet' and name contains '{name}'"
-    results = service.files().list(q=query, fields="files(id, name)").execute()
-    items = results.get('files', [])
-    if not items:
-        return {'message': 'No matching sheets found.'}
-    sheets = [{'id': item['id'], 'name': item['name']} for item in items]
-    return sheets
-
-@router.post("/sheets/process-sheet/", tags=["Sheets"])
-async def process_sheet(sheet_id: str):
-    # Placeholder for accepting a sheet ID for further processing
-    return {"sheet_id": sheet_id, "status": "Ready for processing"}

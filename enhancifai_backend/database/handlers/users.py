@@ -197,7 +197,7 @@ class UsersDbCore:
         None
         """
         sql = schemafy(
-            "INSERT INTO enhancifai.google_credentials (user_id, credentials) "
+            "INSERT INTO enhancifai.google_sheets_credentials (user_id, credentials) "
             "VALUES (%s, %s) "
             "ON CONFLICT (user_id) DO UPDATE "
             "SET credentials = EXCLUDED.credentials, "
