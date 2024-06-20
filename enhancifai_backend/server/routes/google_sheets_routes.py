@@ -13,8 +13,6 @@ router = APIRouter()
 
 # Load client secrets from environment variable
 client_secrets_json = os.getenv("GOOGLE_TOKEN_INFO_AUTH")
-print(f"JSON: {client_secrets_json}")
-print(type(client_secrets_json))
 if client_secrets_json is None:
     raise ValueError("GOOGLE_TOKEN_INFO_AUTH environment variable not set")
 
@@ -22,7 +20,7 @@ client_secrets = json.loads(client_secrets_json)
 
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive.file']
 REDIRECT_URI = os.getenv("GOOGLE_SHEETS_REDIRECT_URI")
-if not REDIRECT_URI:
+if REDIRECT_URI is None:
     raise ValueError("GOOGLE_SHEETS_REDIRECT_URI environment variable not set")
 
 def get_flow(state=None):
