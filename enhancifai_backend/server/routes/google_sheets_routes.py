@@ -13,6 +13,7 @@ router = APIRouter()
 
 # Load client secrets from environment variable
 client_secrets_json = os.getenv("GOOGLE_TOKEN_INFO_AUTH")
+print(client_secrets_json)
 if not client_secrets_json:
     raise ValueError("GOOGLE_TOKEN_INFO_AUTH environment variable not set")
 
