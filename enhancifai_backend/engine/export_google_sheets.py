@@ -13,7 +13,7 @@ async def export_to_google_sheets(user_id: int, file_path: Union[str, Path]):
     if not creds_dict:
         raise HTTPException(status_code=401, detail="User is not authenticated with Google")
     
-    creds = Credentials(**creds_dict)
+    creds = Credentials(**creds_dict) # pylint: disable=not-a-mapping
     service = build('sheets', 'v4', credentials=creds)
     sheet = service.spreadsheets() # pylint: disable=no-member
 
