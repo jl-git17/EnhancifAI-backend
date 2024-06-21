@@ -25,7 +25,7 @@ class SheetsDbCore:
         write_db.do('execute', sql=sql, data=(user_id, creds,))
     
     @classmethod
-    def get_user_google_credentials(cls, user_id):
+    def get_user_google_credentials(cls, user_id) -> dict:
         """
         Retrieve Google credentials for a user.
 
