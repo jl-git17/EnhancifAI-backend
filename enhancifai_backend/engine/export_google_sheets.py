@@ -2,13 +2,11 @@ import pandas as pd
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
 from fastapi import HTTPException
-from typing import List, Union
+from typing import Union
 from pathlib import Path
 from datetime import datetime
 
-
 from enhancifai_backend.database.handlers.sheets import SheetsDbCore
-
 
 async def export_to_google_sheets(user_id: int, file_path: Union[str, Path]):
     creds_dict = SheetsDbCore.get_user_google_credentials(user_id)
@@ -52,11 +50,11 @@ async def export_to_google_sheets(user_id: int, file_path: Union[str, Path]):
     }
 
     # Insert data into the sheet
-    result = sheet.values().update(
+    sheet.values().update(
         spreadsheetId=sheet_id,
         range='Sheet1!A1',
         valueInputOption='RAW',
         body=body
     ).execute()
 
-    return result
+    return {'spreadsheetId': sheet_id}
