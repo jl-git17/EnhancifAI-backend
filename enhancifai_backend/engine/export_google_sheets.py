@@ -13,9 +13,12 @@ async def export_to_google_sheets(user_id: int, file_path: Union[str, Path]):
     if not creds_dict:
         raise HTTPException(status_code=401, detail="User is not authenticated with Google")
     
-    creds = Credentials(**creds_dict) # pylint: disable=not-a-mapping
-    service = build('sheets', 'v4', credentials=creds)
-    sheet = service.spreadsheets() # pylint: disable=no-member
+    try:
+        creds = Credentials(**creds_dict)  # pylint: disable=not-a-mapping
+        service = build('sheets', 'v4', credentials=creds)
+        sheet = service.spreadsheets()  # pylint: disable=no-member
+    except Exception as e:
+        raise HTTPException(status_code=403, detail="Invalid Google credentials or access revoked")
 
     # Read data from the file
     file_path = Path(file_path)
@@ -35,26 +38,29 @@ async def export_to_google_sheets(user_id: int, file_path: Union[str, Path]):
     # Create the title using the current date and time
     title = f'EnhancifAI - {current_time}'
 
-    # Create a new sheet with the generated title
-    spreadsheet = {
-        'properties': {
-            'title': title
+    try:
+        # Create a new sheet with the generated title
+        spreadsheet = {
+            'properties': {
+                'title': title
+            }
         }
-    }
-    spreadsheet = sheet.create(body=spreadsheet, fields='spreadsheetId').execute()
-    sheet_id = spreadsheet.get('spreadsheetId')
+        spreadsheet = sheet.create(body=spreadsheet, fields='spreadsheetId').execute()
+        sheet_id = spreadsheet.get('spreadsheetId')
 
-    # Prepare data for insertion
-    body = {
-        'values': data
-    }
+        # Prepare data for insertion
+        body = {
+            'values': data
+        }
 
-    # Insert data into the sheet
-    sheet.values().update(
-        spreadsheetId=sheet_id,
-        range='Sheet1!A1',
-        valueInputOption='RAW',
-        body=body
-    ).execute()
+        # Insert data into the sheet
+        sheet.values().update(
+            spreadsheetId=sheet_id,
+            range='Sheet1!A1',
+            valueInputOption='RAW',
+            body=body
+        ).execute()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to create or update the Google Sheet")
 
     return {'spreadsheetId': sheet_id}
