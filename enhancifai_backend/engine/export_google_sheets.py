@@ -11,7 +11,7 @@ from enhancifai_backend.database.handlers.sheets import SheetsDbCore
 async def export_to_google_sheets(user_id: int, file_path: Union[str, Path]):
     creds_dict = SheetsDbCore.get_user_google_credentials(user_id)
     if not creds_dict:
-        raise HTTPException(status_code=401, detail="User is not authenticated with Google")
+        raise HTTPException(status_code=403, detail="User is not authenticated with Google")
     
     try:
         creds = Credentials(**creds_dict)  # pylint: disable=not-a-mapping
