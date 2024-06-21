@@ -8,7 +8,7 @@ from google_auth_oauthlib.flow import Flow
 from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.sheets import SheetsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
-from enhancifai_backend.server.utils import get_current_user_id
+from enhancifai_backend.server.utils import get_current_user_id, verify_secret_key
 from enhancifai_backend.engine.export_google_sheets import export_to_google_sheets
 
 router = APIRouter()
@@ -76,7 +76,7 @@ def creds_to_dict(creds):
     }
 
 @router.post("/sheets/export", tags=["Sheets"])
-async def export_to_sheets(run_id: int, user_id: Optional[int] = Depends(get_current_user_id)):
+async def export_to_sheets(run_id: int, user_id: Optional[int] = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
     if not user_id:
         raise HTTPException(status_code=401, detail="User not authenticated")
 
