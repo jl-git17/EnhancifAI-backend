@@ -1,3 +1,4 @@
+import json
 import time
 from enhancifai_backend.database.access import read_db, write_db
 from enhancifai_backend.database.handlers.utils import schemafy
@@ -164,3 +165,18 @@ class RunsDbCore:
         sql = schemafy("SELECT user_id FROM enhancifai.runs WHERE id = %s;")
         result = read_db.do('select_one', sql=sql, data=(run_id,))
         return result['user_id'] if result else None
+    
+    @classmethod
+    def get_run_file_url(cls, run_id):
+        """
+        Retrieve the file URL for a given run ID from the run_details JSONB column.
+        """
+        sql = schemafy("SELECT run_details FROM enhancifai.runs WHERE run_id = %s;")
+        result = read_db.do('select_one', sql=sql, data=(run_id,))
+        
+        if result and 'run_details' in result:
+            run_details = json.loads(result['run_details'])
+            file_url = run_details.get('details', {}).get('file_url')
+            return file_url
+        
+        return None
