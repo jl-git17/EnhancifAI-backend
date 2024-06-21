@@ -15,7 +15,7 @@ async def export_to_google_sheets(user_id: int, file_path: Union[str, Path]):
     
     creds = Credentials(**creds_dict)
     service = build('sheets', 'v4', credentials=creds)
-    sheet = service.spreadsheets()
+    sheet = service.spreadsheets() # pylint: disable=no-member
 
     # Read data from the file
     file_path = Path(file_path)
