@@ -13,3 +13,6 @@ class PromptObject(BaseModel):
     prompt: str
     columns: str
     output_heading: str
+
+class ExportSheetsRequest(BaseModel):
+    run_id: int
