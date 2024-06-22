@@ -19,3 +19,8 @@ class ExportSheetsRequest(BaseModel):
 
 class RunDataRequest(BaseModel):
     run_id: int
+
+class CacheRequest(BaseModel):
+    user_id: int
+    run_id: int
+    filename: str
