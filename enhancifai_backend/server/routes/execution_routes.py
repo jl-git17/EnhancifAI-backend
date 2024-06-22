@@ -501,7 +501,7 @@ async def get_data(req_data: RunDataRequest, _: str = Depends(verify_secret_key)
 
 @router.post("/execution/cache", tags=["Execution"])
 async def get_cached_file(request: CacheRequest):
-    cache_path = get_from_cache(request.user_id, request.run_id, request.filename)
+    cache_path = get_from_cache(request.user_id, request.filename)
     if cache_path and os.path.exists(cache_path):
         return FileResponse(cache_path)
     else:
