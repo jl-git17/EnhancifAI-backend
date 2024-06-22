@@ -19,7 +19,7 @@ from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.prompts import PromptsProcessor
 from enhancifai_backend.engine.runs_progress import runs_progress
 from enhancifai_backend.server.hooks import handle_csv_file, handle_excel_file
-from enhancifai_backend.server.models.execution import PromptObject, RunCancelsRequest, RunProgressRequest
+from enhancifai_backend.server.models.execution import PromptObject, RunCancelsRequest, RunProgressRequest, RunDataRequest
 from enhancifai_backend.server.utils import STATIC_FILES_DIRECTORY, get_current_user_id, verify_secret_key
 
 MAX_RECORDS = 10
@@ -433,14 +433,14 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
     return JSONResponse(status_code=200, content=response_data)
 """
 
-@router.get("/execution/get_data/{run_id}", tags=["Execution"])
-async def get_data(run_id: str, _: str = Depends(verify_secret_key), __: Optional[int] = Depends(get_current_user_id)):
+@router.post("/execution/get_data", tags=["Execution"])
+async def get_data(req_data: RunDataRequest, _: str = Depends(verify_secret_key), __: Optional[int] = Depends(get_current_user_id)):
     """
     Retrieve CSV or Excel data for a given run_id and return it in JSON format.
     """
     try:
         # Get the file URL using the run_id
-        file_url = RunsDbCore.get_run_file_url(run_id)
+        file_url = RunsDbCore.get_run_file_url(req_data.run_id)
         if not file_url:
             raise HTTPException(status_code=404, detail="File not found for the given run_id")
 
