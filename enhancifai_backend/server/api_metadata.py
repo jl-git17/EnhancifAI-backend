@@ -42,5 +42,9 @@ TAGS_METADATA = [
     {
         "name": "Google Sheets",
         "description": "Google Sheets endpoints"
+    },
+    {
+        "name": "Files",
+        "description": "Files endpoints"
     }
 ]
