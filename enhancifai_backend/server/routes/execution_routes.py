@@ -39,21 +39,20 @@ def ensure_cache_directory():
     if not os.path.exists(CACHE_DIRECTORY):
         os.makedirs(CACHE_DIRECTORY)
 
-def get_cache_file_path(user_id, run_id, filename):
+def get_cache_file_path(user_id, filename):
     ensure_cache_directory()
     user_dir = os.path.join(CACHE_DIRECTORY, str(user_id))
-    run_dir = os.path.join(user_dir, str(run_id))
-    os.makedirs(run_dir, exist_ok=True)
-    return os.path.join(run_dir, filename)
+    os.makedirs(user_dir, exist_ok=True)
+    return os.path.join(user_dir, filename)
 
-def save_to_cache(file_path, user_id, run_id, filename):
-    cache_path = get_cache_file_path(user_id, run_id, filename)
+def save_to_cache(file_path, user_id, filename):
+    cache_path = get_cache_file_path(user_id, filename)
     os.makedirs(os.path.dirname(cache_path), exist_ok=True)
     os.rename(file_path, cache_path)
     return cache_path
 
-def get_from_cache(user_id, run_id, filename):
-    cache_path = get_cache_file_path(user_id, run_id, filename)
+def get_from_cache(user_id, filename):
+    cache_path = get_cache_file_path(user_id, filename)
     if os.path.exists(cache_path):
         return cache_path
     return None
@@ -262,8 +261,8 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
         runs_progress.add_run(run_id, None)
 
         # Save files to cache
-        save_to_cache(temp_data_file_path, user_id, run_id, file_name)
-        save_to_cache(temp_prompt_file_path, user_id, run_id, prompt_file.filename)
+        save_to_cache(temp_data_file_path, user_id, file_name)
+        save_to_cache(temp_prompt_file_path, user_id, prompt_file.filename)
 
         Thread(target=start_async_run, args=(run_id, temp_data_file_path, prompts, max_recs, user_id, file_name)).start()
 
@@ -347,7 +346,7 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
         runs_progress.add_run(run_id, None)
 
         # Save file to cache
-        save_to_cache(temp_data_file_path, user_id, run_id, file_name)
+        save_to_cache(temp_data_file_path, user_id, file_name)
 
         Thread(target=start_async_run, args=(run_id, temp_data_file_path, read_prompts, max_recs, user_id, file_name)).start()
 
