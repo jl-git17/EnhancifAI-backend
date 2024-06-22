@@ -16,3 +16,6 @@ class PromptObject(BaseModel):
 
 class ExportSheetsRequest(BaseModel):
     run_id: int
+
+class RunDataRequest(BaseModel):
+    run_id: int
