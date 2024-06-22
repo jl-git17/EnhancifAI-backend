@@ -35,7 +35,7 @@ def get_flow(state=None):
     )
 
 @router.get("/sheets/login", tags=["Sheets"])
-async def login(user_id: Optional[int] = Depends(get_current_user_id)):
+async def login_sheets(user_id: Optional[int] = Depends(get_current_user_id)):
     if not user_id:
         raise HTTPException(status_code=401, detail="User not authenticated")
     
