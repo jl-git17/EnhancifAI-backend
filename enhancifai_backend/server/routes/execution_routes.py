@@ -7,7 +7,7 @@ import os
 from tempfile import NamedTemporaryFile
 from threading import Thread
 import time
-from typing import List, Optional
+from typing import Optional
 import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse
@@ -19,7 +19,8 @@ from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.prompts import PromptsProcessor
 from enhancifai_backend.engine.runs_progress import runs_progress
 from enhancifai_backend.server.hooks import handle_csv_file, handle_excel_file
-from enhancifai_backend.server.models.execution import CacheRequest, PromptObject, RunCancelsRequest, RunProgressRequest, RunDataRequest
+from enhancifai_backend.server.models.execution import PromptObject, RunCancelsRequest, RunProgressRequest, RunDataRequest
+from enhancifai_backend.server.routes.files_routes import save_to_cache
 from enhancifai_backend.server.utils import STATIC_FILES_DIRECTORY, get_current_user_id, verify_secret_key
 
 MAX_RECORDS = 10
@@ -32,30 +33,6 @@ class EngineType(str, Enum):
     gpt_3_5_turbo = "gpt-3.5-turbo"
     
 router = APIRouter()
-
-CACHE_DIRECTORY = '/tmp/cache'
-
-def ensure_cache_directory():
-    if not os.path.exists(CACHE_DIRECTORY):
-        os.makedirs(CACHE_DIRECTORY)
-
-def get_cache_file_path(user_id, filename):
-    ensure_cache_directory()
-    user_dir = os.path.join(CACHE_DIRECTORY, str(user_id))
-    os.makedirs(user_dir, exist_ok=True)
-    return os.path.join(user_dir, filename)
-
-def save_to_cache(file_path, user_id, filename):
-    cache_path = get_cache_file_path(user_id, filename)
-    os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-    os.rename(file_path, cache_path)
-    return cache_path
-
-def get_from_cache(user_id, filename):
-    cache_path = get_cache_file_path(user_id, filename)
-    if os.path.exists(cache_path):
-        return cache_path
-    return None
 
 def read_prompt_file(prompt_file_path: str):
     """
@@ -498,16 +475,3 @@ async def get_data(req_data: RunDataRequest, _: str = Depends(verify_secret_key)
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
-
-@router.post("/execution/cache", tags=["Execution"])
-async def get_cached_file(request: CacheRequest):
-    cache_path = get_from_cache(request.user_id, request.filename)
-    if cache_path and os.path.exists(cache_path):
-        return FileResponse(cache_path)
-    else:
-        # Check if the file exists in the database
-        file_url = RunsDbCore.get_run_file_url(request.run_id)
-        if file_url:
-            return FileResponse(file_url)
-        else:
-            raise HTTPException(status_code=404, detail="File not found in cache or database")
