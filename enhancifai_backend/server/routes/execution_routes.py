@@ -12,6 +12,7 @@ import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse
 import openpyxl
+import pandas as pd
 
 from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
@@ -431,3 +432,36 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
     
     return JSONResponse(status_code=200, content=response_data)
 """
+
+@router.get("/execution/get_data/{run_id}", tags=["Execution"])
+async def get_data(run_id: str, _: str = Depends(verify_secret_key), __: Optional[int] = Depends(get_current_user_id)):
+    """
+    Retrieve CSV or Excel data for a given run_id and return it in JSON format.
+    """
+    try:
+        # Get the file URL using the run_id
+        file_url = RunsDbCore.get_run_file_url(run_id)
+        if not file_url:
+            raise HTTPException(status_code=404, detail="File not found for the given run_id")
+
+        # Determine the file type based on the file extension
+        file_extension = os.path.splitext(file_url)[-1].lower()
+        if file_extension not in ['.csv', '.xlsx', '.xls']:
+            raise HTTPException(status_code=400, detail="Unsupported file type")
+
+        # Read the file content and convert it to JSON
+        if file_extension == '.csv':
+            data = pd.read_csv(file_url)
+        else:  # Excel file
+            data = pd.read_excel(file_url)
+
+        # Convert DataFrame to JSON
+        data_json = data.to_json()
+
+        return JSONResponse(status_code=200, content={
+                "message": "Data file retrieved successfully.",
+                "prompts": json.loads(data_json)
+        })
+
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
