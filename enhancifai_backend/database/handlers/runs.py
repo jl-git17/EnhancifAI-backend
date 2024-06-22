@@ -171,7 +171,7 @@ class RunsDbCore:
         """
         Retrieve the file URL for a given run ID from the run_details JSONB column.
         """
-        sql = schemafy("SELECT run_details FROM enhancifai.runs WHERE run_id = %s;")
+        sql = schemafy("SELECT run_details FROM enhancifai.runs WHERE id = %s;")
         result = read_db.do('select_one', sql=sql, data=(run_id,))
         
         if result and 'run_details' in result:
