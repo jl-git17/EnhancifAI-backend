@@ -460,7 +460,7 @@ async def get_data(req_data: RunDataRequest, _: str = Depends(verify_secret_key)
 
         return JSONResponse(status_code=200, content={
                 "message": "Data file retrieved successfully.",
-                "prompts": json.loads(data_json)
+                "prompts": data_json
         })
 
     except Exception as e:
