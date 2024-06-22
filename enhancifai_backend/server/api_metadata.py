@@ -38,5 +38,9 @@ TAGS_METADATA = [
     {
         "name": "Admin",
         "description": "Admin endpoints."
+    },
+    {
+        "name": "Google Sheets",
+        "description": "Google Sheets endpoints"
     }
 ]
