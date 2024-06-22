@@ -34,7 +34,7 @@ def get_flow(state=None):
         redirect_uri=REDIRECT_URI
     )
 
-@router.get("/sheets/login", tags=["Sheets"])
+@router.get("/sheets/login", tags=["Sheets"], operation_id="login_sheets_operation")
 async def login_sheets(user_id: Optional[int] = Depends(get_current_user_id)):
     if not user_id:
         raise HTTPException(status_code=401, detail="User not authenticated")
@@ -47,7 +47,7 @@ async def login_sheets(user_id: Optional[int] = Depends(get_current_user_id)):
     
     return RedirectResponse(authorization_url)
 
-@router.get("/callback/google/sheets", tags=["Sheets"])
+@router.get("/callback/google/sheets", tags=["Sheets"], operation_id="oauth2callback_google_sheets_operation")
 async def oauth2callback(request: Request):
     state = request.query_params.get("state")
     if not state:
@@ -76,7 +76,7 @@ def creds_to_dict(creds):
         'scopes': creds.scopes
     }
 
-@router.post("/sheets/export", tags=["Sheets"])
+@router.post("/sheets/export", tags=["Sheets"], operation_id="export_to_sheets_operation")
 async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: Optional[int] = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
     if not user_id:
         raise HTTPException(status_code=401, detail="User not authenticated")
