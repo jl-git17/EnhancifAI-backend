@@ -433,7 +433,7 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
     return JSONResponse(status_code=200, content=response_data)
 """
 
-@router.post("/execution/get_data", tags=["Execution"])
+@router.post("/execution/get-data", tags=["Execution"])
 async def get_data(req_data: RunDataRequest, _: str = Depends(verify_secret_key), __: Optional[int] = Depends(get_current_user_id)):
     """
     Retrieve CSV or Excel data for a given run_id and return it in JSON format.
