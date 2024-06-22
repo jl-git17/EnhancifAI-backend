@@ -21,5 +21,4 @@ class RunDataRequest(BaseModel):
     run_id: int
 
 class CacheRequest(BaseModel):
-    user_id: int
     filename: str

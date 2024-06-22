@@ -2,11 +2,12 @@
 
 import os
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
 
 from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.server.models.execution import CacheRequest
+from enhancifai_backend.server.utils import get_current_user_id, verify_secret_key
 
 
 CACHE_DIRECTORY = '/tmp/cache'
@@ -37,14 +38,9 @@ def get_from_cache(user_id, filename):
 
 
 @router.post("/files/cache", tags=["Files"])
-async def get_cached_file(request: CacheRequest):
-    cache_path = get_from_cache(request.user_id, request.filename)
+async def get_cached_file(request: CacheRequest, _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
+    cache_path = get_from_cache(user_id, request.filename)
     if cache_path and os.path.exists(cache_path):
         return FileResponse(cache_path)
     else:
-        # Check if the file exists in the database
-        file_url = RunsDbCore.get_run_file_url(request.run_id)
-        if file_url:
-            return FileResponse(file_url)
-        else:
-            raise HTTPException(status_code=404, detail="File not found in cache or database")
+        raise HTTPException(status_code=404, detail="File not found in cache or database")
