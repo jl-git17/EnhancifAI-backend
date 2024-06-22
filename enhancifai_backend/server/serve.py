@@ -5,7 +5,7 @@ import mimetypes
 import os
 import time
 import uvicorn
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -76,7 +76,7 @@ def delete_old_files():
 
 @app.get("/")
 async def root():
-    server_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    server_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     msg = {
         "server": "EnhancifAI Backend",
         "status": "Online",
