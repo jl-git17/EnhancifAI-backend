@@ -175,7 +175,7 @@ class RunsDbCore:
         result = read_db.do('select_one', sql=sql, data=(run_id,))
         
         if result and 'run_details' in result:
-            run_details = json.loads(result['run_details'])
+            run_details = result['run_details']
             file_url = run_details.get('details', {}).get('file_url')
             return file_url
         
