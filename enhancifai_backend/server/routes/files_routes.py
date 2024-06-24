@@ -1,6 +1,7 @@
 
 
 import os
+import shutil
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse
@@ -27,7 +28,7 @@ def get_cache_file_path(user_id, filename):
 def save_to_cache(file_path, user_id, filename):
     cache_path = get_cache_file_path(user_id, filename)
     os.makedirs(os.path.dirname(cache_path), exist_ok=True)
-    os.rename(file_path, cache_path)
+    shutil.copy(file_path, cache_path)
     return cache_path
 
 def get_from_cache(user_id, filename):
