@@ -37,6 +37,21 @@ def get_flow(state=None):
 
 @router.get("/sheets/login", tags=["Google Sheets"], operation_id="login_sheets_operation")
 async def login_sheets(user_id: Optional[int] = Depends(get_current_user_id)):
+    """
+    Initiate Google Sheets login and authorization process.
+
+    This endpoint initiates the OAuth2 flow for Google Sheets API. It generates an authorization URL that the user
+    needs to visit to grant access to their Google Sheets account.
+
+    - **user_id**: The ID of the authenticated user. This is fetched automatically by dependency injection (`token`).
+
+    Returns a JSON response containing the status of the operation and the authorization URL.
+
+    - **200**: Successfully generated authorization URL.
+      - **content**: `{"status": "success", "url": "<Google Sheets Authorization URL>"}`
+    - **401**: User not authenticated.
+      - **detail**: `{"detail": "User not authenticated"}`
+    """
     if not user_id:
         raise HTTPException(status_code=401, detail="User not authenticated")
     
@@ -47,6 +62,7 @@ async def login_sheets(user_id: Optional[int] = Depends(get_current_user_id)):
     SheetsDbCore.store_oauth_state(user_id, state)
     
     return JSONResponse(status_code=200, content={"status": "success", "url": authorization_url})
+
 
 @router.get("/callback/google/sheets", tags=["Google Sheets"], operation_id="oauth2callback_google_sheets_operation")
 async def oauth2callback(request: Request):
