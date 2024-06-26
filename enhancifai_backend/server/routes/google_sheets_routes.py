@@ -89,7 +89,7 @@ async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: Optional[in
 
     Returns a JSON response containing the status of the export operation and the URL of the created Google Sheets document if successful.
 
-    - **200**: Successfully exported to Google Sheets.
+    - **200**: Successfully processed request.
       - **content**: `{"status": "success", "url": "<Google Sheets URL>"}`
       - **content**: `{"status": "failed", "status_code": 400, "error": "Unsupported file type"}`
       - **content**: `{"status": "failed", "status_code": 403, "error": "User is not authenticated with Google"}`
