@@ -46,7 +46,7 @@ async def login_sheets(user_id: Optional[int] = Depends(get_current_user_id)):
     # Store state in the database
     SheetsDbCore.store_oauth_state(user_id, state)
     
-    return RedirectResponse(authorization_url)
+    return JSONResponse(status_code=200, content={"status": "success", "url": authorization_url})
 
 @router.get("/callback/google/sheets", tags=["Google Sheets"], operation_id="oauth2callback_google_sheets_operation")
 async def oauth2callback(request: Request):
