@@ -4,6 +4,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse, JSONResponse
 from google_auth_oauthlib.flow import Flow
+from starlette.middleware.cors import CORSMiddleware
 
 from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.sheets import SheetsDbCore
