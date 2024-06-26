@@ -92,10 +92,10 @@ async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: Optional[in
 
     - **200**: Successfully exported to Google Sheets.
       - **content**: `{"status": "success", "url": "<Google Sheets URL>"}`
-      - **content**: `{"status": "failed", "status_code": 400, "error": "Unsupported file type"}
-      - **content**: `{"status": "failed", "status_code": 403, "error": "User is not authenticated with Google"}
-      - **content**: `{"status": "failed", "status_code": 403, "error": "Invalid Google credentials or access revoked"}
-      - **content**: `{"status": "failed", "status_code": 500, "error": "Failed to create or update the Google Sheet"}
+      - **content**: `{"status": "failed", "status_code": 400, "error": "Unsupported file type"}`
+      - **content**: `{"status": "failed", "status_code": 403, "error": "User is not authenticated with Google"}`
+      - **content**: `{"status": "failed", "status_code": 403, "error": "Invalid Google credentials or access revoked"}`
+      - **content**: `{"status": "failed", "status_code": 500, "error": "Failed to create or update the Google Sheet"}`
     - **401**: User not authenticated.
       - **detail**: `{"detail": "User not authenticated"}`
     - **404**: Run not found or file path not available.
