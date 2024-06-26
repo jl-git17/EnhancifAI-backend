@@ -78,6 +78,32 @@ def creds_to_dict(creds):
 
 @router.post("/sheets/export", tags=["Google Sheets"], operation_id="export_to_sheets_operation")
 async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: Optional[int] = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
+    
+    """
+    Export run data to a Google Sheets document.
+
+    This endpoint exports the run data specified by `run_id` in the request body to a Google Sheets document.
+    
+    - **req_sheets**: The request body containing the `run_id` of the data to be exported.
+    - **user_id**: The ID of the authenticated user. This is fetched automatically by dependency injection.
+    - **verify_secret_key**: A security mechanism to ensure the request is authorized. This is also handled by dependency injection.
+
+    Returns a JSON response containing the status of the export operation and the URL of the created Google Sheets document if successful.
+
+    - **200**: Successfully exported to Google Sheets.
+      - **content**: `{"status": "success", "url": "<Google Sheets URL>"}`
+      - **content**: `{"status": "failed", "status_code": 400, "error": "Unsupported file type"}
+      - **content**: `{"status": "failed", "status_code": 403, "error": "User is not authenticated with Google"}
+      - **content**: `{"status": "failed", "status_code": 403, "error": "Invalid Google credentials or access revoked"}
+      - **content**: `{"status": "failed", "status_code": 500, "error": "Failed to create or update the Google Sheet"}
+    - **401**: User not authenticated.
+      - **detail**: `{"detail": "User not authenticated"}`
+    - **404**: Run not found or file path not available.
+      - **detail**: `{"detail": "Run not found or file path not available"}`
+    - **500**: Internal server error.
+      - **detail**: Error message detailing what went wrong.
+    """
+    
     if not user_id:
         raise HTTPException(status_code=401, detail="User not authenticated")
 
@@ -87,7 +113,10 @@ async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: Optional[in
 
     try:
         result = await export_to_google_sheets(user_id, file_path)
-        sheet_url = f"https://docs.google.com/spreadsheets/d/{result['spreadsheetId']}"
-        return JSONResponse(status_code=200, content={"url": sheet_url})
+        if isinstance(result, dict):
+            sheet_url = f"https://docs.google.com/spreadsheets/d/{result['spreadsheetId']}"
+            return JSONResponse(status_code=200, content={"status": "success", "url": sheet_url})
+        elif isinstance(result, HTTPException):
+            return JSONResponse(status_code=200, content={"status": "failed", "status_code": result.status_code, "error": result.detail})
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e

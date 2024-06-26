@@ -11,14 +11,14 @@ from enhancifai_backend.database.handlers.sheets import SheetsDbCore
 async def export_to_google_sheets(user_id: int, file_path: Union[str, Path]):
     creds_dict = SheetsDbCore.get_user_google_credentials(user_id)
     if not creds_dict:
-        raise HTTPException(status_code=403, detail="User is not authenticated with Google")
+        return HTTPException(status_code=403, detail="User is not authenticated with Google")
     
     try:
         creds = Credentials(**creds_dict)  # pylint: disable=not-a-mapping
         service = build('sheets', 'v4', credentials=creds)
         sheet = service.spreadsheets()  # pylint: disable=no-member
     except Exception as e:
-        raise HTTPException(status_code=403, detail="Invalid Google credentials or access revoked")
+        return HTTPException(status_code=403, detail="Invalid Google credentials or access revoked")
 
     # Read data from the file
     file_path = Path(file_path)
@@ -27,7 +27,7 @@ async def export_to_google_sheets(user_id: int, file_path: Union[str, Path]):
     elif file_path.suffix in ['.xls', '.xlsx']:
         df = pd.read_excel(file_path)
     else:
-        raise HTTPException(status_code=400, detail="Unsupported file type")
+        return HTTPException(status_code=400, detail="Unsupported file type")
 
     data = df.values.tolist()
     data.insert(0, df.columns.tolist())  # Add the header row
@@ -61,6 +61,6 @@ async def export_to_google_sheets(user_id: int, file_path: Union[str, Path]):
             body=body
         ).execute()
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Failed to create or update the Google Sheet")
+        return HTTPException(status_code=500, detail="Failed to create or update the Google Sheet")
 
     return {'spreadsheetId': sheet_id}
