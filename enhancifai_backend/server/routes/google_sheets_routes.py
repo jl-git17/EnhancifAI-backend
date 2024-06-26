@@ -85,8 +85,7 @@ async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: Optional[in
     This endpoint exports the run data specified by `run_id` in the request body to a Google Sheets document.
     
     - **req_sheets**: The request body containing the `run_id` of the data to be exported.
-    - **user_id**: The ID of the authenticated user. This is fetched automatically by dependency injection.
-    - **verify_secret_key**: A security mechanism to ensure the request is authorized. This is also handled by dependency injection.
+    - **user_id**: The ID of the authenticated user. This is fetched automatically by dependency injection (`token`).
 
     Returns a JSON response containing the status of the export operation and the URL of the created Google Sheets document if successful.
 
