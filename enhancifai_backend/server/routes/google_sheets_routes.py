@@ -136,4 +136,5 @@ async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: Optional[in
         elif isinstance(result, HTTPException):
             return JSONResponse(status_code=200, content={"status": "failed", "status_code": result.status_code, "error": result.detail})
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail=str(e)) from e

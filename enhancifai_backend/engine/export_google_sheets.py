@@ -45,8 +45,10 @@ async def export_to_google_sheets(user_id: int, file_path: Union[str, Path]):
                 'title': title
             }
         }
+        print("Creating sheet")
         spreadsheet = sheet.create(body=spreadsheet, fields='spreadsheetId').execute()
         sheet_id = spreadsheet.get('spreadsheetId')
+        print(f"Sheet ID: {sheet_id}")
 
         # Prepare data for insertion
         body = {
