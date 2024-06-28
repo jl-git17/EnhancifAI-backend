@@ -1,5 +1,5 @@
 import pandas as pd
-from google.oauth2.credentials import Credentials
+from google.oauth2.credentials import Credentials  # Correct import for user credentials
 from googleapiclient.discovery import build
 from fastapi import HTTPException
 from typing import Union
@@ -14,7 +14,7 @@ async def export_to_google_sheets(user_id: int, file_path: Union[str, Path]):
         return HTTPException(status_code=403, detail="User is not authenticated with Google")
     
     try:
-        creds = Credentials.from_service_account_info(creds_dict)  # Use from_service_account_info
+        creds = Credentials(**creds_dict)  # Initialize user credentials
         service = build('sheets', 'v4', credentials=creds, cache_discovery=False)
         sheet = service.spreadsheets()  # pylint: disable=no-member
     except Exception as e:
