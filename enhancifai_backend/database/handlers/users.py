@@ -2,6 +2,8 @@ import time
 from enhancifai_backend.database.access import read_db, write_db
 from enhancifai_backend.database.handlers.utils import schemafy
 
+from psycopg2.extras import Json
+
 class UsersDbCore:
     """
     A class to handle database operations related to users.
@@ -191,7 +193,7 @@ class UsersDbCore:
 
         Parameters:
         user_id (str): The ID of the user.
-        creds (str): The Google credentials.
+        creds (dict): The Google credentials.
 
         Returns:
         None
@@ -203,7 +205,8 @@ class UsersDbCore:
             "SET credentials = EXCLUDED.credentials, "
             "updated_at = now();"
         )
-        write_db.do('execute', sql=sql, data=(user_id, creds,))
+        creds_json = Json(creds)
+        write_db.do('execute', sql=sql, data=(user_id, creds_json))
     
     @classmethod
     def get_user_pending_jobs(cls, user_id):
