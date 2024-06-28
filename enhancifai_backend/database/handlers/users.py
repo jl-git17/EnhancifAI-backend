@@ -185,30 +185,7 @@ class UsersDbCore:
             "UPDATE enhancifai.users SET name = %s WHERE user_id = %s;"
         )
         write_db.do('execute', sql=sql, data=(name, user_id,))
-    
-    @classmethod
-    def update_user_google_credentials(cls, user_id, creds):
-        """
-        Update Google credentials for a user.
 
-        Parameters:
-        user_id (str): The ID of the user.
-        creds (Credentials): The Google credentials.
-
-        Returns:
-        None
-        """
-        print(creds)
-        print(type(creds))
-        sql = schemafy(
-            "INSERT INTO enhancifai.google_sheets_credentials (user_id, credentials) "
-            "VALUES (%s, %s) "
-            "ON CONFLICT (user_id) DO UPDATE "
-            "SET credentials = EXCLUDED.credentials, "
-            "updated_at = now();"
-        )
-        write_db.do('execute', sql=sql, data=(user_id, creds))
-    
     @classmethod
     def get_user_pending_jobs(cls, user_id):
         """

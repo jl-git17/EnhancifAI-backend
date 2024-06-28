@@ -83,7 +83,7 @@ async def oauth2callback(request: Request):
 
     creds = flow.credentials
     
-    UsersDbCore.update_user_google_credentials(user_id, creds)
+    SheetsDbCore.update_user_google_credentials(user_id, creds)
     SheetsDbCore.delete_oauth_state(state)
     
     return RedirectResponse(url="/")
