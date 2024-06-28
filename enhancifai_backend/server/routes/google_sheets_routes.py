@@ -76,6 +76,7 @@ async def oauth2callback(request: Request):
     
     flow = get_flow(state)
     flow.fetch_token(authorization_response=str(request.url))
+    print(str(request.url))
     creds = flow.credentials
     
     UsersDbCore.update_user_google_credentials(user_id, creds_to_dict(creds))
