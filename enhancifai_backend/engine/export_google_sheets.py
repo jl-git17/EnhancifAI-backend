@@ -67,8 +67,7 @@ async def export_to_google_sheets(user_id: int, file_url: str):
 
     # Convert DataFrame to list
     print("Converting DataFrame to list")
-    data = df.values.tolist()
-    data.insert(0, df.columns.tolist())
+    data = [df.columns.tolist()] + df.values.tolist()
     print(f"Data to be exported: {data[:5]}...")  # Only printing the first 5 rows for brevity
 
     # Create a unique title for the Google Sheet
@@ -87,7 +86,7 @@ async def export_to_google_sheets(user_id: int, file_url: str):
         print("Opening the created sheet")
         sheet = client.open_by_key(sheet_id).sheet1
         print("Updating the sheet with data")
-        sheet.update([data])
+        sheet.update('A1', data)
         print("Sheet update successful")
     except Exception as e:
         error_message = f"Failed to create or update the Google Sheet: {str(e)}"
