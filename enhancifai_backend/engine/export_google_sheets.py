@@ -1,7 +1,9 @@
-
 import pandas as pd
+import gspread
 from google.oauth2.credentials import Credentials
 from googleapiclient.discovery import build
+from google.auth.transport.requests import Request
+from google_auth_oauthlib.flow import InstalledAppFlow
 from fastapi import HTTPException
 from typing import Union
 from pathlib import Path
@@ -9,17 +11,29 @@ from datetime import datetime
 
 from enhancifai_backend.database.handlers.sheets import SheetsDbCore
 
-async def export_to_google_sheets(user_id: int, file_path: Union[str, Path]):
+SCOPE = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive"
+]
+
+def authenticate_google_sheets(user_id):
     creds = SheetsDbCore.get_user_google_credentials(user_id)
     if not creds:
         return HTTPException(status_code=403, detail="User is not authenticated with Google")
     
-    try:
-        service = build('sheets', 'v4', credentials=creds, cache_discovery=False)
-        sheet = service.spreadsheets()  # pylint: disable=no-member
-    except Exception as e:
-        return HTTPException(status_code=403, detail=f"Invalid Google credentials or access revoked: {str(e)}")
+    if not creds.valid:
+        if creds.expired and creds.refresh_token:
+            creds.refresh(Request())
+        else:
+            return HTTPException(status_code=403, detail="Google credentials are invalid or expired")
+    
+    return creds
 
+async def export_to_google_sheets(user_id: int, file_path: Union[str, Path]):
+    creds = authenticate_google_sheets(user_id)
+    client = gspread.authorize(creds)
+    
     file_path = Path(file_path)
     if file_path.suffix == '.csv':
         df = pd.read_csv(file_path)
@@ -41,20 +55,12 @@ async def export_to_google_sheets(user_id: int, file_path: Union[str, Path]):
             }
         }
         print("Creating sheet")
-        spreadsheet = sheet.create(body=spreadsheet, fields='spreadsheetId').execute()
-        sheet_id = spreadsheet.get('spreadsheetId')
+        spreadsheet = client.create(title)
+        sheet_id = spreadsheet.id
         print(f"Sheet ID: {sheet_id}")
 
-        body = {
-            'values': data
-        }
-
-        sheet.values().update(
-            spreadsheetId=sheet_id,
-            range='Sheet1!A1',
-            valueInputOption='RAW',
-            body=body
-        ).execute()
+        sheet = client.open_by_key(sheet_id).sheet1
+        sheet.update([data])
     except Exception as e:
         return HTTPException(status_code=500, detail=f"Failed to create or update the Google Sheet: {str(e)}")
 

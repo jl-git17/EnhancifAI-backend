@@ -1,11 +1,12 @@
 import pickle
+from google.oauth2.credentials import Credentials
 from enhancifai_backend.database.access import read_db, write_db
 from enhancifai_backend.database.handlers.utils import schemafy
 
 class SheetsDbCore:
 
     @classmethod
-    def update_user_google_credentials(cls, user_id, creds):
+    def update_user_google_credentials(cls, user_id, creds: Credentials):
         """
         Update Google credentials for a user.
 
@@ -27,7 +28,7 @@ class SheetsDbCore:
         write_db.do('execute', sql=sql, data=(user_id, creds_bytes))
     
     @classmethod
-    def get_user_google_credentials(cls, user_id):
+    def get_user_google_credentials(cls, user_id) -> Credentials:
         """
         Retrieve Google credentials for a user.
 
