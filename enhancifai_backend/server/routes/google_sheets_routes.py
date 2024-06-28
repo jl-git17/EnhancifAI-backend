@@ -75,8 +75,8 @@ async def oauth2callback(request: Request):
         raise HTTPException(status_code=400, detail="Invalid state parameter")
     
     flow = get_flow(state)
-    flow.fetch_token(authorization_response=str(request.url))
     print(str(request.url))
+    flow.fetch_token(authorization_response=str(request.url))
     creds = flow.credentials
     
     UsersDbCore.update_user_google_credentials(user_id, creds_to_dict(creds))
