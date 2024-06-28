@@ -14,11 +14,11 @@ async def export_to_google_sheets(user_id: int, file_path: Union[str, Path]):
         return HTTPException(status_code=403, detail="User is not authenticated with Google")
     
     try:
-        creds = Credentials(**creds_dict)  # pylint: disable=not-a-mapping
-        service = build('sheets', 'v4', credentials=creds)
+        creds = Credentials.from_service_account_info(creds_dict)  # Use from_service_account_info
+        service = build('sheets', 'v4', credentials=creds, cache_discovery=False)
         sheet = service.spreadsheets()  # pylint: disable=no-member
     except Exception as e:
-        return HTTPException(status_code=403, detail="Invalid Google credentials or access revoked")
+        return HTTPException(status_code=403, detail=f"Invalid Google credentials or access revoked: {str(e)}")
 
     # Read data from the file
     file_path = Path(file_path)
@@ -63,6 +63,6 @@ async def export_to_google_sheets(user_id: int, file_path: Union[str, Path]):
             body=body
         ).execute()
     except Exception as e:
-        return HTTPException(status_code=500, detail="Failed to create or update the Google Sheet")
+        return HTTPException(status_code=500, detail=f"Failed to create or update the Google Sheet: {str(e)}")
 
     return {'spreadsheetId': sheet_id}
