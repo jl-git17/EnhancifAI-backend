@@ -9,9 +9,6 @@ from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.trustedhost import TrustedHostMiddleware
-from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBasic
@@ -49,10 +46,6 @@ app.add_middleware(
     allow_headers=["*"],
     allow_credentials=True,
 )
-# Add middleware to trust the specified hosts
-app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
-# Add middleware to redirect HTTP to HTTPS
-app.add_middleware(HTTPSRedirectMiddleware)
 app.mount("/files", StaticFiles(directory=STATIC_FILES_DIRECTORY, html=True), name="files")
 app.mount("/pages", StaticFiles(directory=STATIC_FILES_DIRECTORY, html=True), name="pages")
 app.include_router(router_users)
