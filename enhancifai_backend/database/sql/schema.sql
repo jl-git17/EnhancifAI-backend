@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage (
 
 CREATE TABLE IF NOT EXISTS enhancifai.google_sheets_credentials (
     user_id INT REFERENCES enhancifai.users(user_id) UNIQUE,
-    credentials JSONB NOT NULL,
+    credentials BYTEA NOT NULL,
     updated_at TIMESTAMP DEFAULT now()
 );
 

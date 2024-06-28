@@ -1,3 +1,4 @@
+import pickle
 from enhancifai_backend.database.access import read_db, write_db
 from enhancifai_backend.database.handlers.utils import schemafy
 
@@ -10,11 +11,12 @@ class SheetsDbCore:
 
         Parameters:
         user_id (str): The ID of the user.
-        creds (dict): The Google credentials as a dictionary.
+        creds (google.oauth2.credentials.Credentials): The Google credentials.
 
         Returns:
         None
         """
+        creds_bytes = pickle.dumps(creds)
         sql = schemafy("""
             INSERT INTO enhancifai.google_sheets_credentials (user_id, credentials) 
             VALUES (%s, %s) 
@@ -22,10 +24,10 @@ class SheetsDbCore:
             SET credentials = EXCLUDED.credentials, 
             updated_at = now();
         """)
-        write_db.do('execute', sql=sql, data=(user_id, creds,))
+        write_db.do('execute', sql=sql, data=(user_id, creds_bytes))
     
     @classmethod
-    def get_user_google_credentials(cls, user_id) -> dict:
+    def get_user_google_credentials(cls, user_id):
         """
         Retrieve Google credentials for a user.
 
@@ -33,11 +35,14 @@ class SheetsDbCore:
         user_id (str): The ID of the user.
 
         Returns:
-        dict: The Google credentials.
+        google.oauth2.credentials.Credentials: The Google credentials.
         """
         sql = schemafy("SELECT credentials FROM enhancifai.google_sheets_credentials WHERE user_id = %s;")
         result = read_db.do('select_one', sql=sql, data=(user_id,))
-        return result['credentials'] if result else None
+        if result:
+            creds_bytes = result['credentials']
+            return pickle.loads(creds_bytes)
+        return None
     
     @classmethod
     def store_oauth_state(cls, user_id, state):

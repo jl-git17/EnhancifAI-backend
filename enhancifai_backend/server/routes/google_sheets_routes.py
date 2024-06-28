@@ -76,23 +76,17 @@ async def oauth2callback(request: Request):
     
     _url = str(request.url).replace("http://", "https://")
     flow = get_flow(state)
-    flow.fetch_token(authorization_response=_url)
+    try:
+        flow.fetch_token(authorization_response=_url)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Token fetch failed: {str(e)}")
+
     creds = flow.credentials
     
-    UsersDbCore.update_user_google_credentials(user_id, creds_to_dict(creds))
+    UsersDbCore.update_user_google_credentials(user_id, creds)
     SheetsDbCore.delete_oauth_state(state)
     
     return RedirectResponse(url="/")
-
-def creds_to_dict(creds):
-    return {
-        'token': creds.token,
-        'refresh_token': creds.refresh_token,
-        'token_uri': creds.token_uri,
-        'client_id': creds.client_id,
-        'client_secret': creds.client_secret,
-        'scopes': creds.scopes
-    }
 
 @router.post("/sheets/export", tags=["Google Sheets"], operation_id="export_to_sheets_operation")
 async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: Optional[int] = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
