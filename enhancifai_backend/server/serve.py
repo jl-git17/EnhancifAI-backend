@@ -49,8 +49,9 @@ app.add_middleware(
     allow_headers=["*"],
     allow_credentials=True,
 )
-# Middleware to trust the headers from the proxy
-app.add_middleware(BaseHTTPMiddleware, dispatch=TrustedHostMiddleware, allowed_hosts=["*"]) # TODO: limit allowed_hosts
+# Add middleware to trust the specified hosts
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=["*"])
+# Add middleware to redirect HTTP to HTTPS
 app.add_middleware(HTTPSRedirectMiddleware)
 app.mount("/files", StaticFiles(directory=STATIC_FILES_DIRECTORY, html=True), name="files")
 app.mount("/pages", StaticFiles(directory=STATIC_FILES_DIRECTORY, html=True), name="pages")
