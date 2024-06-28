@@ -193,11 +193,13 @@ class UsersDbCore:
 
         Parameters:
         user_id (str): The ID of the user.
-        creds (dict): The Google credentials.
+        creds (Credentials): The Google credentials.
 
         Returns:
         None
         """
+        print(creds)
+        print(type(creds))
         sql = schemafy(
             "INSERT INTO enhancifai.google_sheets_credentials (user_id, credentials) "
             "VALUES (%s, %s) "
