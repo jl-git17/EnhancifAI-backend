@@ -96,12 +96,11 @@ def creds_to_dict(creds):
 
 @router.post("/sheets/export", tags=["Google Sheets"], operation_id="export_to_sheets_operation")
 async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: Optional[int] = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
-    
     """
     Export run data to a Google Sheets document.
 
     This endpoint exports the run data specified by `run_id` in the request body to a Google Sheets document.
-    
+
     - **req_sheets**: The request body containing the `run_id` of the data to be exported.
     - **user_id**: The ID of the authenticated user. This is fetched automatically by dependency injection (`token`).
 
