@@ -5,7 +5,7 @@
 TITLE = "EnhancifAI Backend API"
 
 DESCRIPTION = """
-    EnhancifAI Backend API for AI CSV Processor.
+    EnhancifAI Backend API for the EnhancifAI web app.
 """
 
 VERSION = "1.0"
