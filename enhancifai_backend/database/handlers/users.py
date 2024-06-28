@@ -205,8 +205,7 @@ class UsersDbCore:
             "SET credentials = EXCLUDED.credentials, "
             "updated_at = now();"
         )
-        creds_json = Json(creds)
-        write_db.do('execute', sql=sql, data=(user_id, creds_json))
+        write_db.do('execute', sql=sql, data=(user_id, creds))
     
     @classmethod
     def get_user_pending_jobs(cls, user_id):
