@@ -65,8 +65,8 @@ async def login_sheets(user_id: Optional[int] = Depends(get_current_user_id)):
 
 
 @router.get("/callback/google/sheets", tags=["Google Sheets"], operation_id="oauth2callback_google_sheets_operation")
-async def oauth2callback(request: Request):
-    state = request.query_params.get("state")
+async def oauth2callback(request: Request, code: str, state: str):
+    #state = request.query_params.get("state")
     if not state:
         raise HTTPException(status_code=400, detail="Missing state parameter")
     
@@ -74,9 +74,9 @@ async def oauth2callback(request: Request):
     if not user_id:
         raise HTTPException(status_code=400, detail="Invalid state parameter")
     
-    flow = get_flow(state)
     print(str(request.url))
-    flow.fetch_token(authorization_response=str(request.url))
+    flow = get_flow(state)
+    flow.fetch_token(code=code, state=state)#authorization_response=str(request.url))
     creds = flow.credentials
     
     UsersDbCore.update_user_google_credentials(user_id, creds_to_dict(creds))
