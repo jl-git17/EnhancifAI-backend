@@ -86,7 +86,8 @@ async def oauth2callback(request: Request):
     SheetsDbCore.update_user_google_credentials(user_id, creds)
     SheetsDbCore.delete_oauth_state(state)
     
-    return RedirectResponse(url="/")
+    #return RedirectResponse(url="/")
+    return "Authentication successful. You can close this window."
 
 @router.post("/sheets/export", tags=["Google Sheets"], operation_id="export_to_sheets_operation")
 async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: Optional[int] = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
