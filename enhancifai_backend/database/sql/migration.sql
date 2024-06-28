@@ -54,4 +54,3 @@ ADD COLUMN IF NOT EXISTS current_tier_id INT DEFAULT (
     ORDER BY tier_id ASC
     LIMIT 1
 ) REFERENCES enhancifai.account_tiers(tier_id);
-
