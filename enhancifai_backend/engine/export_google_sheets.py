@@ -55,13 +55,13 @@ async def export_to_google_sheets(user_id: int, file_url: str):
             df = pd.read_excel(file_path)
         else:
             print("Unsupported file type")
-            raise HTTPException(status_code=400, detail="Unsupported file type")
+            return HTTPException(status_code=400, detail="Unsupported file type")
         
         print(f"DataFrame read successfully: {df.shape} rows and columns")
     except Exception as e:
         error_message = f"Error reading file: {str(e)}"
         print(error_message)
-        raise HTTPException(status_code=400, detail=error_message)
+        return HTTPException(status_code=400, detail=error_message)
     
     # Handle NaN and infinite values
     df = df.fillna('').replace([float('inf'), float('-inf')], '')
@@ -92,7 +92,7 @@ async def export_to_google_sheets(user_id: int, file_url: str):
     except Exception as e:
         error_message = f"Failed to create or update the Google Sheet: {str(e)}"
         print(error_message)
-        raise HTTPException(status_code=500, detail=error_message)
+        return HTTPException(status_code=500, detail=error_message)
 
     print(f"Export successful, spreadsheetId: {sheet_id}")
     return {'spreadsheetId': sheet_id}
