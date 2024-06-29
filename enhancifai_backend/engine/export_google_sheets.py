@@ -28,7 +28,7 @@ def authenticate_google_sheets(user_id):
             creds.refresh(Request())
         else:
             return HTTPException(status_code=403, detail="Google credentials are invalid or expired")
-    
+    print(f"Found creds: {creds}")
     return creds
 
 async def export_to_google_sheets(user_id: int, file_url: str):
@@ -37,6 +37,7 @@ async def export_to_google_sheets(user_id: int, file_url: str):
     # Authenticate Google Sheets
     print("Authenticating Google Sheets")
     creds = authenticate_google_sheets(user_id)
+    print(f"Creds: {creds}")
     client = gspread.authorize(creds)
     print("Google Sheets authentication successful")
     
