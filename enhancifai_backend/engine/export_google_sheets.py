@@ -37,7 +37,10 @@ async def export_to_google_sheets(user_id: int, file_url: str):
     # Authenticate Google Sheets
     print("Authenticating Google Sheets")
     creds = authenticate_google_sheets(user_id)
-    print(f"Creds: {creds}")
+
+    if isinstance(creds, HTTPException):
+        return creds
+
     client = gspread.authorize(creds)
     print("Google Sheets authentication successful")
     
