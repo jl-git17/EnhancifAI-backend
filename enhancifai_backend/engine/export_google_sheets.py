@@ -69,6 +69,10 @@ async def export_to_google_sheets(user_id: int, file_url: str):
     # Handle NaN and infinite values
     df = df.fillna('').replace([float('inf'), float('-inf')], '')
 
+    # Convert Timestamp columns to string to ensure JSON serialization compatibility
+    for col in df.select_dtypes(include=['datetime64[ns]', 'datetime64[ns, UTC]', 'timedelta64[ns]']).columns:
+        df[col] = df[col].astype(str)
+
     # Convert DataFrame to list
     print("Converting DataFrame to list")
     data = [df.columns.tolist()] + df.values.tolist()
