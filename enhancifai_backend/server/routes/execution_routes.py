@@ -239,8 +239,8 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
         runs_progress.add_run(run_id, None)
 
         # Save files to cache
-        save_to_cache(temp_data_file_path, user_id, file_name)
-        save_to_cache(temp_prompt_file_path, user_id, prompt_file.filename)
+        save_to_cache(data_file.filename, user_id, file_name)
+        save_to_cache(prompt_file.filename, user_id, prompt_file.filename)
 
         Thread(target=start_async_run, args=(run_id, temp_data_file_path, prompts, max_recs, user_id, file_name)).start()
 
@@ -325,7 +325,7 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
         runs_progress.add_run(run_id, None)
 
         # Save file to cache
-        save_to_cache(temp_data_file_path, user_id, file_name)
+        save_to_cache(data_file.filename, user_id, file_name)
 
         Thread(target=start_async_run, args=(run_id, temp_data_file_path, read_prompts, max_recs, user_id, file_name)).start()
 
