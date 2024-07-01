@@ -193,10 +193,6 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
     """
     temp_prompt_file_path = None
 
-    # Save files to cache
-    save_to_cache(data_file.filename, user_id, file_name)
-    save_to_cache(prompt_file.filename, user_id, prompt_file.filename)
-
     # Determine the suffix for the files based on their content type
     file_suffix_map = {
         'text/csv': '.csv',
@@ -242,6 +238,10 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
         run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
         runs_progress.add_run(run_id, None)
 
+        # Save files to cache
+        save_to_cache(temp_data_file_path, user_id, data_file.filename)
+        save_to_cache(temp_prompt_file_path, user_id, prompt_file.filename)
+
         Thread(target=start_async_run, args=(run_id, temp_data_file_path, prompts, max_recs, user_id, file_name)).start()
 
     except HTTPException as e:
@@ -284,9 +284,6 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
     Upload a CSV/Excel file, with prompts payload.
     """
 
-    # Save file to cache
-    save_to_cache(data_file.filename, user_id, file_name)
-
     # Determine the suffix for the file based on its content type
     file_suffix_map = {
         'text/csv': '.csv',
@@ -326,6 +323,9 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
         source_filename = data_file.filename
         run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
         runs_progress.add_run(run_id, None)
+
+        # Save file to cache
+        save_to_cache(temp_data_file_path, user_id, data_file.filename)
 
         Thread(target=start_async_run, args=(run_id, temp_data_file_path, read_prompts, max_recs, user_id, file_name)).start()
 
