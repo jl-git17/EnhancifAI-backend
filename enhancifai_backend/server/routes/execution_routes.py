@@ -234,7 +234,8 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
             temp_data_file.flush()
 
         run_type = 'csv' if data_file.content_type == 'text/csv' else 'excel'
-        run_id = RunsDbCore.new_run(user_id, run_type)
+        source_filename = temp_data_file_path # TODO: get the name of file, for example sample.csv
+        run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
         runs_progress.add_run(run_id, None)
 
         # Save files to cache
@@ -319,7 +320,8 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
             temp_data_file.flush()
 
         run_type = 'csv' if data_file.content_type == 'text/csv' else 'excel'
-        run_id = RunsDbCore.new_run(user_id, run_type)
+        source_filename = temp_data_file_path # TODO: get the name of file, for example sample.csv
+        run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
         runs_progress.add_run(run_id, None)
 
         # Save file to cache

@@ -9,7 +9,7 @@ class RunsDbCore:
     """
 
     @classmethod
-    def new_run(cls, user_id, source_type):
+    def new_run(cls, user_id, source_type, source_filename):
         """
         Create a new run entry in the database.
 
@@ -20,8 +20,8 @@ class RunsDbCore:
         Returns:
         Any: Result of the write_db operation.
         """
-        sql = schemafy("INSERT INTO enhancifai.runs (user_id, source_type) VALUES (%s,%s) RETURNING id;")
-        return write_db.do('execute', sql=sql, data=(user_id, source_type))
+        sql = schemafy("INSERT INTO enhancifai.runs (user_id, source_type, source_filename) VALUES (%s,%s,%s) RETURNING id;")
+        return write_db.do('execute', sql=sql, data=(user_id, source_type, source_filename))
     
     @classmethod
     def new_run_call(cls, run_id, prompt, tokens_used):
