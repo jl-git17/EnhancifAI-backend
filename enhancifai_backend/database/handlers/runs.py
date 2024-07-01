@@ -180,3 +180,18 @@ class RunsDbCore:
             return file_url
         
         return None
+
+    @classmethod
+    def get_source_filename(cls, run_id):
+        """
+        Retrieve the source filename for a given run ID.
+
+        Parameters:
+        run_id (str): The ID of the run.
+
+        Returns:
+        str: The source filename.
+        """
+        sql = schemafy("SELECT source_filename FROM enhancifai.runs WHERE id = %s;")
+        result = read_db.do('select_one', sql=sql, data=(run_id,))
+        return result['source_filename'] if result else None

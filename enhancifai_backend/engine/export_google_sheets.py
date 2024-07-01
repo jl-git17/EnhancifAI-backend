@@ -31,7 +31,7 @@ def authenticate_google_sheets(user_id):
     print(f"Found creds: {creds}")
     return creds
 
-async def export_to_google_sheets(user_id: int, file_url: str):
+async def export_to_google_sheets(user_id: int, file_url: str, source_filename: str):
     print(f"Starting export_to_google_sheets with user_id: {user_id} and file_url: {file_url}")
     
     # Authenticate Google Sheets
@@ -78,9 +78,8 @@ async def export_to_google_sheets(user_id: int, file_url: str):
     data = [df.columns.tolist()] + df.values.tolist()
     print(f"Data to be exported: {data[:5]}...")  # Only printing the first 5 rows for brevity
 
-    # Create a unique title for the Google Sheet
-    current_time = datetime.now().strftime('%Y-%m-%d-%H%M%S')
-    title = f'EnhancifAI - {current_time}'
+    # Create a title for the Google Sheet
+    title = f'EnhancifAI - {source_filename}'
     print(f"Generated title for the sheet: {title}")
 
     try:

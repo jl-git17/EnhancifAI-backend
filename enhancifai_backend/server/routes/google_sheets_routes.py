@@ -1,3 +1,4 @@
+from datetime import datetime
 import os
 import json
 from typing import Optional
@@ -120,11 +121,13 @@ async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: Optional[in
         raise HTTPException(status_code=401, detail="User not authenticated")
 
     file_path = RunsDbCore.get_run_file_url(req_sheets.run_id)
+    current_time = datetime.now().strftime('%Y-%m-%d-%H%M%S')
+    source_filename = RunsDbCore.get_source_filename(req_sheets.run_id) or current_time
     if not file_path:
         raise HTTPException(status_code=404, detail="Run not found or file path not available")
 
     try:
-        result = await export_to_google_sheets(user_id, file_path)
+        result = await export_to_google_sheets(user_id, file_path, source_filename)
         if isinstance(result, dict):
             sheet_url = f"https://docs.google.com/spreadsheets/d/{result['spreadsheetId']}"
             return JSONResponse(status_code=200, content={"status": "success", "url": sheet_url})
