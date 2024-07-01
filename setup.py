@@ -1,5 +1,5 @@
 """
-Setup script for the AI CSV Processor.
+Setup script for the backend service of EnhancifAI.
 Ensures Python 3.10 or newer is used and sets up the package.
 """
 
