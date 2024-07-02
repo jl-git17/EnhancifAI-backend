@@ -320,7 +320,7 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
             temp_data_file.flush()
 
         run_type = 'csv' if data_file.content_type == 'text/csv' else 'excel'
-        source_filename = data_file.filename
+        source_filename = str(data_file.filename).replace(data_file_suffix, '')
         run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
         runs_progress.add_run(run_id, None)
 
