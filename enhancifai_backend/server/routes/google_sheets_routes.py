@@ -121,8 +121,7 @@ async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: Optional[in
         raise HTTPException(status_code=401, detail="User not authenticated")
 
     file_path = RunsDbCore.get_run_file_url(req_sheets.run_id)
-    current_time = datetime.now().strftime('%Y-%m-%d-%H%M%S')
-    source_filename = RunsDbCore.get_source_filename(req_sheets.run_id) or current_time
+    source_filename = RunsDbCore.get_source_filename(req_sheets.run_id)
     if not file_path:
         raise HTTPException(status_code=404, detail="Run not found or file path not available")
 

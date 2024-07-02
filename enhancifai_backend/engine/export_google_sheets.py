@@ -34,6 +34,8 @@ def authenticate_google_sheets(user_id):
 async def export_to_google_sheets(user_id: int, file_url: str, source_filename: str):
     print(f"Starting export_to_google_sheets with user_id: {user_id} and file_url: {file_url}")
     
+    if source_filename is None:
+        source_filename = "Your File"
     # Authenticate Google Sheets
     print("Authenticating Google Sheets")
     creds = authenticate_google_sheets(user_id)
@@ -79,7 +81,8 @@ async def export_to_google_sheets(user_id: int, file_url: str, source_filename: 
     print(f"Data to be exported: {data[:5]}...")  # Only printing the first 5 rows for brevity
 
     # Create a title for the Google Sheet
-    title = f'EnhancifAI - {source_filename}'
+    current_time = datetime.now().strftime('%Y-%m-%d-%H%M%S')
+    title = f'EnhancifAI - {source_filename} - {current_time}'
     print(f"Generated title for the sheet: {title}")
 
     try:
