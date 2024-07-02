@@ -234,7 +234,7 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
             temp_data_file.flush()
 
         run_type = 'csv' if data_file.content_type == 'text/csv' else 'excel'
-        source_filename = os.path.splitext(str(data_file.filename))[0]
+        source_filename = str(data_file.filename).replace(data_file_suffix, '')
         run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
         runs_progress.add_run(run_id, None)
 
