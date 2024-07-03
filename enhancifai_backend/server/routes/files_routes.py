@@ -2,8 +2,9 @@
 
 import os
 import shutil
+from tempfile import NamedTemporaryFile
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from fastapi.responses import FileResponse
 
 from enhancifai_backend.database.handlers.runs import RunsDbCore
@@ -45,3 +46,25 @@ async def get_cached_file(request: CacheRequest, _: str = Depends(verify_secret_
         return FileResponse(cache_path)
     else:
         raise HTTPException(status_code=404, detail="File not found in cache or database")
+
+@router.post("/files/cache/upload", tags=["Files"])
+async def add_cached_file(data_file: UploadFile = File(...), _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
+    # Determine the suffix for the file based on its content type
+    file_suffix_map = {
+        'text/csv': '.csv',
+        'application/vnd.ms-excel': '.xls',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx'
+    }
+    data_file_suffix = file_suffix_map.get(data_file.content_type, None)
+    temp_data_file_path = None
+
+    if not data_file_suffix:
+        raise HTTPException(status_code=400, detail="Invalid data file type")
+    # Handling Data File
+    with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
+        temp_data_file_path = temp_data_file.name
+        data_contents = await data_file.read()
+        temp_data_file.write(data_contents)
+        temp_data_file.flush()
+    # Save file to cache
+    save_to_cache(temp_data_file_path, user_id, data_file.filename)
