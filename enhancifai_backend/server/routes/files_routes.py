@@ -39,15 +39,15 @@ def get_from_cache(user_id, filename):
     return None
 
 
-@router.post("/files/cache", tags=["Files"])
-async def get_cached_file(request: CacheRequest, _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
-    cache_path = get_from_cache(user_id, request.filename)
+@router.post("/cache/download", tags=["Cache"])
+async def get_cached_file(req: CacheRequest, _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
+    cache_path = get_from_cache(user_id, req.filename)
     if cache_path and os.path.exists(cache_path):
         return FileResponse(cache_path)
     else:
         raise HTTPException(status_code=404, detail="File not found in cache or database")
 
-@router.post("/files/cache/upload", tags=["Files"])
+@router.post("/cache/upload", tags=["Cache"])
 async def add_cached_file(data_file: UploadFile = File(...), _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
     # Determine the suffix for the file based on its content type
     file_suffix_map = {
