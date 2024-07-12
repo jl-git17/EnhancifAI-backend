@@ -1,10 +1,13 @@
+import os
 from typing import List
 import pandas as pd
 from fastapi import HTTPException
 
 from enhancifai_backend.server.models.execution import PromptObject
-# Import os if you're going to use environment variables for defaults
-# import os
+
+GLOBAL_MAX_PROMPTS = int(os.getenv('GLOBAL_MAX_PROMPTS'))
+
+# TODO: add check if env vars are set
 
 class PromptsProcessor:
 
@@ -80,7 +83,7 @@ class PromptsProcessor:
                     # 'temperature': temperature,
                     # 'top_p': top_p
                 })
-                if len (valid_prompts) > 4: # TODO: beta temp
+                if len (valid_prompts) > GLOBAL_MAX_PROMPTS:
                     errors.append('A maximum of 4 prompts is allowed.')
                     break
                 i += 1
@@ -135,7 +138,7 @@ class PromptsProcessor:
                     # 'temperature': temperature,
                     # 'top_p': top_p
                 })
-                if len(valid_prompts) > 4:  # TODO: beta temp
+                if len(valid_prompts) > GLOBAL_MAX_PROMPTS:
                     errors.append('A maximum of 4 prompts is allowed.')
                     break
                 i += 1
