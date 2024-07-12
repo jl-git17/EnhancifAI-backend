@@ -84,7 +84,7 @@ class PromptsProcessor:
                     # 'top_p': top_p
                 })
                 if len (valid_prompts) > GLOBAL_MAX_PROMPTS:
-                    errors.append('A maximum of 4 prompts is allowed.')
+                    errors.append(f'A maximum of {GLOBAL_MAX_PROMPTS} prompts is allowed.')
                     break
                 i += 1
             except KeyError as e:
@@ -139,7 +139,7 @@ class PromptsProcessor:
                     # 'top_p': top_p
                 })
                 if len(valid_prompts) > GLOBAL_MAX_PROMPTS:
-                    errors.append('A maximum of 4 prompts is allowed.')
+                    errors.append(f'A maximum of {GLOBAL_MAX_PROMPTS} prompts is allowed.')
                     break
                 i += 1
             except Exception as e:
