@@ -5,7 +5,7 @@ import mimetypes
 import os
 import time
 import uvicorn
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -22,6 +22,8 @@ from enhancifai_backend.server.routes.execution_routes import router as router_e
 from enhancifai_backend.server.routes.downloads_routes import router as router_downloads
 from enhancifai_backend.server.routes.google_sheets_routes import router as router_sheets
 from enhancifai_backend.server.routes.admin_routes import router as router_admin
+from enhancifai_backend.server.routes.google_sheets_routes import router as router_google_sheets
+from enhancifai_backend.server.routes.files_routes import router as router_files
 from enhancifai_backend.server.utils import STATIC_FILES_DIRECTORY
 
 
@@ -51,6 +53,8 @@ app.include_router(router_execution)
 app.include_router(router_downloads)
 app.include_router(router_sheets)
 app.include_router(router_admin)
+app.include_router(router_google_sheets)
+app.include_router(router_files)
 
 security = HTTPBasic()
 
@@ -74,7 +78,7 @@ def delete_old_files():
 
 @app.get("/")
 async def root():
-    server_time = datetime.utcnow().strftime("%Y-%m-%d %H:%M:%S")
+    server_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     msg = {
         "server": "EnhancifAI Backend",
         "status": "Online",

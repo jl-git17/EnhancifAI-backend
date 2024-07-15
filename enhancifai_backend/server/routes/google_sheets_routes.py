@@ -1,71 +1,137 @@
-from fastapi import APIRouter, FastAPI, Depends, HTTPException, Cookie
-from fastapi.responses import RedirectResponse
-from google_auth_oauthlib.flow import Flow
-from googleapiclient.discovery import build
+from datetime import datetime
 import os
-from typing import List, Optional
+import json
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse, JSONResponse
+from google_auth_oauthlib.flow import Flow
+from starlette.middleware.cors import CORSMiddleware
 
+from enhancifai_backend.database.handlers.runs import RunsDbCore
+from enhancifai_backend.database.handlers.sheets import SheetsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
-from enhancifai_backend.server.utils import get_current_user_id
+from enhancifai_backend.server.models.execution import ExportSheetsRequest
+from enhancifai_backend.server.utils import get_current_user_id, verify_secret_key
+from enhancifai_backend.engine.export_google_sheets import export_to_google_sheets
 
 router = APIRouter()
 
-# Ensure you replace the below path with the actual path to your OAuth 2.0 Client IDs JSON file
-CLIENT_SECRETS_FILE = "path/to/client_secret.json"
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly', 'https://www.googleapis.com/auth/drive.metadata.readonly']
-REDIRECT_URI = "http://localhost:8000/auth"
+# Load client secrets from environment variable
+client_secrets_json = os.getenv("GOOGLE_TOKEN_INFO_AUTH")
+if client_secrets_json is None:
+    raise ValueError("GOOGLE_TOKEN_INFO_AUTH environment variable not set")
 
-#flow = Flow.from_client_config(os.getenv('GOOGLE_TOKEN_INFO_AUTH'), SCOPES, redirect_uri=os.getenv('GOOGLE_REDIRECT_URL'))
-flow = None
-@router.get("/sheets/login", tags=["Sheets"])
-async def login(user_id: Optional[int] = Depends(get_current_user_id)):
-    authorization_url, _ = flow.authorization_url(prompt='consent', access_type='offline')
-    return RedirectResponse(authorization_url)
+client_secrets = json.loads(client_secrets_json)
 
-@router.get("/sheets/auth", tags=["Sheets"])
-async def auth(code: str, user_id: Optional[int] = Depends(get_current_user_id)):
-    flow.fetch_token(code=code)
-    credentials = flow.credentials
+SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive.file']
+REDIRECT_URI = os.getenv("GOOGLE_SHEETS_REDIRECT_URI")
+if REDIRECT_URI is None:
+    raise ValueError("GOOGLE_SHEETS_REDIRECT_URI environment variable not set")
 
-    # Save credentials to DB - adjust with your logic
-    UsersDbCore.update_user_google_credentials(user_id, credentials)
+def get_flow(state=None):
+    return Flow.from_client_config(
+        client_secrets,
+        scopes=SCOPES,
+        state=state,
+        redirect_uri=REDIRECT_URI
+    )
 
-    response = RedirectResponse(url="/sheets/success")
+@router.get("/sheets/login", tags=["Google Sheets"], operation_id="login_sheets_operation")
+async def login_sheets(user_id: Optional[int] = Depends(get_current_user_id)):
+    """
+    Initiate Google Sheets login and authorization process.
+
+    This endpoint initiates the OAuth2 flow for Google Sheets API. It generates an authorization URL that the user
+    needs to visit to grant access to their Google Sheets account.
+
+    - **user_id**: The ID of the authenticated user. This is fetched automatically by dependency injection (`token`).
+
+    Returns a JSON response containing the status of the operation and the authorization URL.
+
+    - **200**: Successfully generated authorization URL.
+      - **content**: `{"status": "success", "url": "<Google Sheets Authorization URL>"}`
+    - **401**: User not authenticated.
+      - **detail**: `{"detail": "User not authenticated"}`
+    """
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
     
-    response.set_cookie(key="access_token", value=credentials.token, httponly=True)
-    return response
+    flow = get_flow()
+    authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
+    
+    # Store state in the database
+    SheetsDbCore.store_oauth_state(user_id, state)
+    
+    return JSONResponse(status_code=200, content={"status": "success", "url": authorization_url})
 
-def get_credentials(access_token: Optional[str] = Cookie(None)):
-    if not access_token:
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    return access_token
 
+@router.get("/callback/google/sheets", tags=["Google Sheets"], operation_id="oauth2callback_google_sheets_operation")
+async def oauth2callback(request: Request):
+    state = request.query_params.get("state")
+    if not state:
+        raise HTTPException(status_code=400, detail="Missing state parameter")
+    
+    user_id = SheetsDbCore.get_oauth_state(state)
+    if not user_id:
+        raise HTTPException(status_code=400, detail="Invalid state parameter")
+    
+    _url = str(request.url).replace("http://", "https://")
+    flow = get_flow(state)
+    try:
+        flow.fetch_token(authorization_response=_url)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Token fetch failed: {str(e)}")
 
+    creds = flow.credentials
+    
+    SheetsDbCore.update_user_google_credentials(user_id, creds)
+    SheetsDbCore.delete_oauth_state(state)
+    
+    #return RedirectResponse(url="/")
+    return "Authentication successful. You can close this window."
 
-@router.get("/sheets/sheets", tags=["Sheets"])
-async def list_sheets(access_token: str = Depends(get_credentials), user_id: Optional[int] = Depends(get_current_user_id)):
-    credentials = flow.credentials
-    service = build('drive', 'v3', credentials=credentials)
-    results = service.files().list(q="mimeType='application/vnd.google-apps.spreadsheet'", fields="nextPageToken, files(id, name)").execute()
-    items = results.get('files', [])
-    if not items:
-        return {'message': 'No sheets found.'}
-    sheets = [{'id': item['id'], 'name': item['name']} for item in items]
-    return sheets
+@router.post("/sheets/export", tags=["Google Sheets"], operation_id="export_to_sheets_operation")
+async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: Optional[int] = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
+    
+    """
+    Export run data to a Google Sheets document.
 
-@router.get("/sheets/search-sheet/", tags=["Sheets"])
-async def search_sheet(name: str, access_token: str = Depends(get_credentials)):
-    credentials = flow.credentials
-    service = build('drive', 'v3', credentials=credentials)
-    query = f"mimeType='application/vnd.google-apps.spreadsheet' and name contains '{name}'"
-    results = service.files().list(q=query, fields="files(id, name)").execute()
-    items = results.get('files', [])
-    if not items:
-        return {'message': 'No matching sheets found.'}
-    sheets = [{'id': item['id'], 'name': item['name']} for item in items]
-    return sheets
+    This endpoint exports the run data specified by `run_id` in the request body to a Google Sheets document.
+    
+    - **req_sheets**: The request body containing the `run_id` of the data to be exported.
+    - **user_id**: The ID of the authenticated user. This is fetched automatically by dependency injection (`token`).
 
-@router.post("/sheets/process-sheet/", tags=["Sheets"])
-async def process_sheet(sheet_id: str):
-    # Placeholder for accepting a sheet ID for further processing
-    return {"sheet_id": sheet_id, "status": "Ready for processing"}
+    Returns a JSON response containing the status of the export operation and the URL of the created Google Sheets document if successful.
+
+    - **200**: Successfully processed request.
+      - **content**: `{"status": "success", "url": "<Google Sheets URL>"}`
+      - **content**: `{"status": "failed", "status_code": 400, "error": "Unsupported file type"}`
+      - **content**: `{"status": "failed", "status_code": 403, "error": "User is not authenticated with Google"}`
+      - **content**: `{"status": "failed", "status_code": 403, "error": "Invalid Google credentials or access revoked"}`
+      - **content**: `{"status": "failed", "status_code": 500, "error": "Failed to create or update the Google Sheet"}`
+    - **401**: User not authenticated.
+      - **detail**: `{"detail": "User not authenticated"}`
+    - **404**: Run not found or file path not available.
+      - **detail**: `{"detail": "Run not found or file path not available"}`
+    - **500**: Internal server error.
+      - **detail**: Error message detailing what went wrong.
+    """
+    
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+
+    file_path = RunsDbCore.get_run_file_url(req_sheets.run_id)
+    source_filename = RunsDbCore.get_source_filename(req_sheets.run_id)
+    if not file_path:
+        raise HTTPException(status_code=404, detail="Run not found or file path not available")
+
+    try:
+        result = await export_to_google_sheets(user_id, file_path, source_filename)
+        if isinstance(result, dict):
+            sheet_url = f"https://docs.google.com/spreadsheets/d/{result['spreadsheetId']}"
+            return JSONResponse(status_code=200, content={"status": "success", "url": sheet_url})
+        elif isinstance(result, HTTPException):
+            return JSONResponse(status_code=200, content={"status": "failed", "status_code": result.status_code, "error": result.detail})
+    except Exception as e:
+        print(e)
+        raise HTTPException(status_code=500, detail=str(e)) from e

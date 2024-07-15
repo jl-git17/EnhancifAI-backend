@@ -1,5 +1,5 @@
 """
-Setup script for the AI CSV Processor.
+Setup script for the backend service of EnhancifAI.
 Ensures Python 3.10 or newer is used and sets up the package.
 """
 
@@ -14,7 +14,7 @@ assert sys.version_info[0] == 3 and sys.version_info[1] >= 10, \
 
 setup(
     name='enhancifai_backend',
-    version='0.1.0',
+    version='1.1.0',
     description="EnhancifAI Backend.",
     long_description=open('README.md', 'r', encoding='UTF-8').read(),
     packages=find_packages(exclude=['scripts']),
@@ -29,6 +29,7 @@ setup(
         'google-api-python-client',
         'google-auth-httplib2',
         'google-auth-oauthlib',
+        'google-auth',
         'PyJWT',
         'psycopg2-binary',
         'pydantic[email]',

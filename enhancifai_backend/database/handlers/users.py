@@ -2,6 +2,8 @@ import time
 from enhancifai_backend.database.access import read_db, write_db
 from enhancifai_backend.database.handlers.utils import schemafy
 
+from psycopg2.extras import Json
+
 class UsersDbCore:
     """
     A class to handle database operations related to users.
@@ -183,28 +185,7 @@ class UsersDbCore:
             "UPDATE enhancifai.users SET name = %s WHERE user_id = %s;"
         )
         write_db.do('execute', sql=sql, data=(name, user_id,))
-    
-    @classmethod
-    def update_user_google_credentials(cls, user_id, creds):
-        """
-        Update Google credentials for a user.
 
-        Parameters:
-        user_id (str): The ID of the user.
-        creds (str): The Google credentials.
-
-        Returns:
-        None
-        """
-        sql = schemafy(
-            "INSERT INTO enhancifai.google_credentials (user_id, credentials) "
-            "VALUES (%s, %s) "
-            "ON CONFLICT (user_id) DO UPDATE "
-            "SET credentials = EXCLUDED.credentials, "
-            "updated_at = now();"
-        )
-        write_db.do('execute', sql=sql, data=(user_id, creds,))
-    
     @classmethod
     def get_user_pending_jobs(cls, user_id):
         """
@@ -278,6 +259,67 @@ class UsersDbCore:
         """
         sql = schemafy("INSERT INTO enhancifai.users_token_usage (user_id, model, tokens) VALUES (%s, %s, %s);")
         write_db.do('execute', sql=sql, data=(user_id, model, tokens))
+    
+    @classmethod
+    def assign_tier_to_user(cls, user_id, tier_id):
+        """
+        Assign a tier to a user.
+
+        Parameters:
+        user_id (int): The ID of the user.
+        tier_id (int): The ID of the tier.
+
+        Returns:
+        None
+        """
+        sql = schemafy("INSERT INTO enhancifai.user_account_tiers (user_id, tier_id, assigned_at) VALUES (%s, %s, now()) ON CONFLICT (user_id) DO UPDATE SET tier_id = EXCLUDED.tier_id, assigned_at = now();")
+        write_db.do('execute', sql=sql, data=(user_id, tier_id))
+        cls.update_user_current_tier(user_id, tier_id)
+    
+    @classmethod
+    def get_user_tier(cls, user_id):
+        """
+        Get the tier of a user.
+
+        Parameters:
+        user_id (int): The ID of the user.
+
+        Returns:
+        Any: The tier data.
+        """
+        sql = schemafy("SELECT t.* FROM enhancifai.account_tiers t JOIN enhancifai.user_account_tiers uat ON t.tier_id = uat.tier_id WHERE uat.user_id = %s;")
+        return read_db.do('select_one', sql=sql, data=(user_id,))
+    
+    @classmethod
+    def get_all_tiers(cls):
+        """
+        Get all available tiers.
+
+        Returns:
+        Any: The list of all tiers.
+        """
+        sql = schemafy("SELECT * FROM enhancifai.account_tiers;")
+        return read_db.do('select_all', sql=sql)
+    
+    @classmethod
+    def update_user_current_tier(cls, user_id, tier_id):
+        """
+        Update the user's current tier in the users table.
+
+        Parameters:
+        user_id (int): The ID of the user.
+        tier_id (int): The ID of the tier.
+
+        Returns:
+        None
+        """
+        sql = schemafy("UPDATE enhancifai.users SET current_tier_id = %s WHERE user_id = %s;")
+        write_db.do('execute', sql=sql, data=(tier_id, user_id))
+    
+    @classmethod
+    def is_user_admin(cls, user_id) -> bool:
+        sql = schemafy("SELECT * FROM enhancifai.users WHERE is_admin IS TRUE AND user_id = %s")
+        return write_db.do('select_exists', sql=sql, data=(user_id,))
 
 class UsersDbRegisterTokens:
     """

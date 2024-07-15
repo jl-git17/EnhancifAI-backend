@@ -7,18 +7,20 @@ import os
 from tempfile import NamedTemporaryFile
 from threading import Thread
 import time
-from typing import List, Optional
+from typing import Optional
 import uuid
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse
 import openpyxl
+import pandas as pd
 
 from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.prompts import PromptsProcessor
 from enhancifai_backend.engine.runs_progress import runs_progress
 from enhancifai_backend.server.hooks import handle_csv_file, handle_excel_file
-from enhancifai_backend.server.models.execution import PromptObject, RunCancelsRequest, RunProgressRequest
+from enhancifai_backend.server.models.execution import PromptObject, RunCancelsRequest, RunProgressRequest, RunDataRequest
+from enhancifai_backend.server.routes.files_routes import save_to_cache
 from enhancifai_backend.server.utils import STATIC_FILES_DIRECTORY, get_current_user_id, verify_secret_key
 
 MAX_RECORDS = 10
@@ -232,8 +234,14 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
             temp_data_file.flush()
 
         run_type = 'csv' if data_file.content_type == 'text/csv' else 'excel'
-        run_id = RunsDbCore.new_run(user_id, run_type)
+        source_filename = str(data_file.filename).replace(data_file_suffix, '')
+        run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
         runs_progress.add_run(run_id, None)
+
+        # Save files to cache
+        save_to_cache(temp_data_file_path, user_id, data_file.filename)
+        save_to_cache(temp_prompt_file_path, user_id, prompt_file.filename)
+
         Thread(target=start_async_run, args=(run_id, temp_data_file_path, prompts, max_recs, user_id, file_name)).start()
 
     except HTTPException as e:
@@ -312,8 +320,13 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
             temp_data_file.flush()
 
         run_type = 'csv' if data_file.content_type == 'text/csv' else 'excel'
-        run_id = RunsDbCore.new_run(user_id, run_type)
+        source_filename = str(data_file.filename).replace(data_file_suffix, '')
+        run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
         runs_progress.add_run(run_id, None)
+
+        # Save file to cache
+        save_to_cache(temp_data_file_path, user_id, data_file.filename)
+
         Thread(target=start_async_run, args=(run_id, temp_data_file_path, read_prompts, max_recs, user_id, file_name)).start()
 
     except HTTPException as e:
@@ -431,3 +444,36 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
     
     return JSONResponse(status_code=200, content=response_data)
 """
+
+@router.post("/execution/get-data", tags=["Execution"])
+async def get_data(req_data: RunDataRequest, _: str = Depends(verify_secret_key), __: Optional[int] = Depends(get_current_user_id)):
+    """
+    Retrieve CSV or Excel data for a given run_id and return it in JSON format.
+    """
+    try:
+        # Get the file URL using the run_id
+        file_url = RunsDbCore.get_run_file_url(req_data.run_id)
+        if not file_url:
+            raise HTTPException(status_code=404, detail="File not found for the given run_id")
+
+        # Determine the file type based on the file extension
+        file_extension = os.path.splitext(file_url)[-1].lower()
+        if file_extension not in ['.csv', '.xlsx', '.xls']:
+            raise HTTPException(status_code=400, detail="Unsupported file type")
+
+        # Read the file content and convert it to JSON
+        if file_extension == '.csv':
+            data = pd.read_csv(file_url)
+        else:  # Excel file
+            data = pd.read_excel(file_url)
+
+        # Convert DataFrame to JSON
+        data_json = data.to_json()
+
+        return JSONResponse(status_code=200, content={
+                "message": "Data file retrieved successfully.",
+                "prompts": data_json
+        })
+
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})

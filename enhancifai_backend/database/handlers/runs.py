@@ -1,3 +1,4 @@
+import json
 import time
 from enhancifai_backend.database.access import read_db, write_db
 from enhancifai_backend.database.handlers.utils import schemafy
@@ -8,7 +9,7 @@ class RunsDbCore:
     """
 
     @classmethod
-    def new_run(cls, user_id, source_type):
+    def new_run(cls, user_id, source_type, source_filename):
         """
         Create a new run entry in the database.
 
@@ -19,8 +20,8 @@ class RunsDbCore:
         Returns:
         Any: Result of the write_db operation.
         """
-        sql = schemafy("INSERT INTO enhancifai.runs (user_id, source_type) VALUES (%s,%s) RETURNING id;")
-        return write_db.do('execute', sql=sql, data=(user_id, source_type))
+        sql = schemafy("INSERT INTO enhancifai.runs (user_id, source_type, source_filename) VALUES (%s,%s,%s) RETURNING id;")
+        return write_db.do('execute', sql=sql, data=(user_id, source_type, source_filename))
     
     @classmethod
     def new_run_call(cls, run_id, prompt, tokens_used):
@@ -164,3 +165,33 @@ class RunsDbCore:
         sql = schemafy("SELECT user_id FROM enhancifai.runs WHERE id = %s;")
         result = read_db.do('select_one', sql=sql, data=(run_id,))
         return result['user_id'] if result else None
+    
+    @classmethod
+    def get_run_file_url(cls, run_id):
+        """
+        Retrieve the file URL for a given run ID from the run_details JSONB column.
+        """
+        sql = schemafy("SELECT run_details FROM enhancifai.runs WHERE id = %s;")
+        result = read_db.do('select_one', sql=sql, data=(run_id,))
+        
+        if result and 'run_details' in result:
+            run_details = result['run_details']
+            file_url = run_details.get('details', {}).get('file_url')
+            return file_url
+        
+        return None
+
+    @classmethod
+    def get_source_filename(cls, run_id):
+        """
+        Retrieve the source filename for a given run ID.
+
+        Parameters:
+        run_id (str): The ID of the run.
+
+        Returns:
+        str: The source filename.
+        """
+        sql = schemafy("SELECT source_filename FROM enhancifai.runs WHERE id = %s;")
+        result = read_db.do('select_one', sql=sql, data=(run_id,))
+        return result['source_filename'] if result else None
