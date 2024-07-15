@@ -51,9 +51,4 @@ WHERE NOT EXISTS (SELECT 1 FROM enhancifai.account_tiers WHERE tier_name = 'Pro'
 
 -- Update the users table to add a reference to the current tier
 ALTER TABLE enhancifai.users
-ADD COLUMN IF NOT EXISTS current_tier_id INT DEFAULT (
-    SELECT tier_id
-    FROM enhancifai.account_tiers
-    ORDER BY tier_id ASC
-    LIMIT 1
-) REFERENCES enhancifai.account_tiers(tier_id);
+ADD COLUMN IF NOT EXISTS current_tier_id INT DEFAULT 1 REFERENCES enhancifai.account_tiers(tier_id);
