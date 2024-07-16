@@ -17,7 +17,7 @@ from enhancifai_backend.server.utils import clean_user_data, create_jwt_token, g
 router = APIRouter()
 
 @router.post("/users/profile/", tags=["Users"])
-async def update_user_profile(profile: Profile, user_id: Optional[int] = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
+async def update_user_profile(profile: Profile, user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
     try:
         UsersDbCore.update_user_profile(
             user_id=user_id, 
@@ -32,7 +32,7 @@ async def update_user_profile(profile: Profile, user_id: Optional[int] = Depends
 
 
 @router.get("/users/profile/", tags=["Users"])
-async def get_user_profile(user_id: Optional[int] = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
+async def get_user_profile(user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
     try:
         user_details = UsersDbCore.get_user_by_id(user_id)
     except HTTPException as e:
@@ -43,7 +43,7 @@ async def get_user_profile(user_id: Optional[int] = Depends(get_current_user_id)
     return JSONResponse(status_code=200, content=clean_user_data(user_details))
 
 @router.post("/users/password/update", tags=["Users"])
-async def update_password(password: Password, user_id: Optional[int] = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
+async def update_password(password: Password, user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
     try:
         user = UsersDbCore.get_user_by_id(user_id)
         email = user['email']
@@ -229,3 +229,8 @@ async def login_password(user: UserLoginPassword, _api_key: str = Depends(verify
 async def validate_password_reset_token(token: str, email: str):
     exists = UsersDbPswdResetTokens.check_user_password_reset_token(email=email, token=token)
     return JSONResponse(content={"exists": exists})
+
+@router.get("/users/consent/ai", tags=["Users"])
+async def check_user_ai_consent(user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
+    consent = UsersDbCore.check_ai_consent(user_id)
+    return JSONResponse(content={"consent": consent})

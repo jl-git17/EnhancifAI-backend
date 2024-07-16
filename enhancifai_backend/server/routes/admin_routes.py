@@ -32,7 +32,7 @@ async def is_user_admin(user_id):
 
 @router.post("/admin/ai-settings", tags=["Admin"])
 async def set_admin_settings_ai(settings:AdminAISettings, _: str = Depends(verify_secret_key),
-                                user_id: Optional[int] = Depends(get_current_user_id)):
+                                user_id: int = Depends(get_current_user_id)):
     """Set the Admin settings for AI."""
     # TODO: check if user is an admin
     AdminSettings.set_ai_settings(engine=settings.ai_engine.value, api_key=settings.api_key)

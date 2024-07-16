@@ -37,7 +37,7 @@ def get_flow(state=None):
     )
 
 @router.get("/sheets/login", tags=["Google Sheets"], operation_id="login_sheets_operation")
-async def login_sheets(user_id: Optional[int] = Depends(get_current_user_id)):
+async def login_sheets(user_id: int = Depends(get_current_user_id)):
     """
     Initiate Google Sheets login and authorization process.
 
@@ -91,7 +91,7 @@ async def oauth2callback(request: Request):
     return "Authentication successful. You can close this window."
 
 @router.post("/sheets/export", tags=["Google Sheets"], operation_id="export_to_sheets_operation")
-async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: Optional[int] = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
+async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: int = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
     
     """
     Export run data to a Google Sheets document.

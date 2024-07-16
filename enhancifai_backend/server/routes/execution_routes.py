@@ -149,7 +149,7 @@ def cleanup_temp_files(prompt_file_path, data_file_path):
 
 @router.post("/execution/progress", tags=["Execution"])
 async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verify_secret_key),
-                             user_id: Optional[int] = Depends(get_current_user_id)):
+                             user_id: int = Depends(get_current_user_id)):
     """Check the progress of a given Run ID."""
     retries = 3  # Number of retries
     for attempt in range(retries):
@@ -187,7 +187,7 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
 @router.post("/execution/upload/", tags=["Execution"])
 async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFile = File(...),
                        max_records: bool = Form(False), _: str = Depends(verify_secret_key),
-                       user_id: Optional[int] = Depends(get_current_user_id)):
+                       user_id: int = Depends(get_current_user_id)):
     """
     Upload a CSV/Excel file and a prompt file (CSV or Excel).
     """
@@ -262,7 +262,7 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
 
 @router.post("/execution/cancel", tags=["Execution"])
 async def cancel_run(req_run: RunCancelsRequest, _: str = Depends(verify_secret_key),
-                             user_id: Optional[int] = Depends(get_current_user_id)):
+                             user_id: int = Depends(get_current_user_id)):
     """Cancel a job, given Run ID."""
     try:
         if RunsDbCore.check_run_ownership(user_id=user_id, run_id=req_run.run_id) is False:
@@ -279,7 +279,7 @@ async def cancel_run(req_run: RunCancelsRequest, _: str = Depends(verify_secret_
 @router.post("/execution/direct", tags=["Execution"])
 async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile = File(...),
                                max_records: bool = Form(...), _: str = Depends(verify_secret_key),
-                               user_id: Optional[int] = Depends(get_current_user_id)):
+                               user_id: int = Depends(get_current_user_id)):
     """
     Upload a CSV/Excel file, with prompts payload.
     """
