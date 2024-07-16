@@ -320,6 +320,16 @@ class UsersDbCore:
     def is_user_admin(cls, user_id) -> bool:
         sql = schemafy("SELECT * FROM enhancifai.users WHERE is_admin IS TRUE AND user_id = %s")
         return write_db.do('select_exists', sql=sql, data=(user_id,))
+    
+    @classmethod
+    def check_ai_consent(cls, user_id) -> bool:
+        sql = schemafy("SELECT * FROM enhancifai.users WHERE ai_consent IS NOT NULL AND user_id = %s")
+        return write_db.do('select_exists', sql=sql, data=(user_id,))
+    
+    @classmethod
+    def update_ai_consent(cls, user_id) -> bool:
+        sql = schemafy("UPDATE enhancifai.users SET ai_consent = NOW() WHERE user_id = %s;")
+        return write_db.do('execute', sql=sql, data=(user_id,))
 
 class UsersDbRegisterTokens:
     """
