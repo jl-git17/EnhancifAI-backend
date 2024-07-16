@@ -234,3 +234,8 @@ async def validate_password_reset_token(token: str, email: str):
 async def check_user_ai_consent(user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
     consent = UsersDbCore.check_ai_consent(user_id)
     return JSONResponse(content={"consent": consent})
+
+@router.post("/users/consent/ai", tags=["Users"])
+async def update_user_ai_consent(user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
+    UsersDbCore.update_ai_consent(user_id)
+    return JSONResponse(content={"message": "AI consent updated successfully."})
