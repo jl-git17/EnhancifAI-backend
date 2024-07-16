@@ -232,10 +232,32 @@ async def validate_password_reset_token(token: str, email: str):
 
 @router.get("/users/consent/ai", tags=["Users"])
 async def check_user_ai_consent(user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
+    """
+    Check if the current user has given consent for AI usage.
+
+    Returns:
+        JSONResponse: 
+            A JSON response containing the user's AI consent status.
+            Example response:
+            {
+                "consent": bool
+            }
+    """
     consent = UsersDbCore.check_ai_consent(user_id)
     return JSONResponse(content={"consent": consent})
 
 @router.post("/users/consent/ai", tags=["Users"])
 async def update_user_ai_consent(user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
+    """
+    Update the AI consent status for the current user.
+
+    Returns:
+        JSONResponse: 
+            A JSON response indicating that the AI consent was updated successfully.
+            Example response:
+            {
+                "message": "AI consent updated successfully."
+            }
+    """
     UsersDbCore.update_ai_consent(user_id)
     return JSONResponse(content={"message": "AI consent updated successfully."})
