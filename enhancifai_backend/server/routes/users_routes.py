@@ -139,13 +139,17 @@ async def create_user(user: UserCreatePassword, _api_key: str = Depends(verify_s
         if len(user.password) < 8:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Password must be at least 8 characters long')
 
-        token = generate_unique_token()
+        user_reg_token = generate_unique_token()
         password_hash = hash_password(user.password)
-        UsersDbRegisterTokens.create_user_register_token(user.email, token)
+        UsersDbRegisterTokens.create_user_register_token(user.email, user_reg_token)
         UsersDbCore.create_user_by_email(user.email,user.name, password_hash)
-        SendGrid.send_registration_email(user.email, token, user.name)
+        SendGrid.send_registration_email(user.email, user_reg_token, user.name)
+        
+        login_token, login_expiration = create_jwt_token({"email": user.email})
         result = {
-            "message": "User registration email sent successfully."
+            "message": "User registration email sent successfully.",
+            "token": login_token,
+            "expiration": login_expiration
         }
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
