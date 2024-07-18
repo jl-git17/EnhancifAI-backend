@@ -198,7 +198,7 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
     # If we get here, it means all retries have failed
     return JSONResponse(status_code=400, content={"detail": f"Run ID '{req_run.run_id}' not found after {retries} attempts."})
 
-@router.post("/execution/upload/", tags=["Execution"])
+@router.post("/execution/upload", tags=["Execution"])
 async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFile = File(...),
                        max_records: bool = Form(False), _: str = Depends(verify_secret_key),
                        user_id: int = Depends(get_current_user_id)):
