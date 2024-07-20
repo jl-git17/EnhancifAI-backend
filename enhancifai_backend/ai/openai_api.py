@@ -40,6 +40,7 @@ class OpenAIConnector:
             'columns': columns,
             'rows': rows,
         }
+        print(f"payload:  {payload}")
 
         initial_delay = 1  # Initial delay in seconds
         max_attempts = 3
@@ -81,7 +82,7 @@ class OpenAIConnector:
                 completion = self.client.chat.completions.create(
                     model=self.engine,
                     messages=messages,
-                    temperature=0.6,
+                    temperature=0.5,
                     #temperature=self.temperature,
                     #top_p=self.top_p
                 )
