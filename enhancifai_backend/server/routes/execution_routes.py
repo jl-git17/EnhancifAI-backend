@@ -29,7 +29,7 @@ GLOBAL_MAX_PROMPTS = int(os.getenv('GLOBAL_MAX_PROMPTS', 0))
 
 class EngineType(str, Enum):
     gpt_4_o = "gpt-4o"
-    gpt_4_turbo_preview = "gpt-4-turbo-preview"
+    gpt_4_o_mini = "gpt-4-turbo-preview"
     gpt_3_5_turbo = "gpt-3.5-turbo"
     
 router = APIRouter()

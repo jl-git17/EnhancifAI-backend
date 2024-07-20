@@ -6,7 +6,7 @@ import pytz
 
 class Engine(str, Enum):
     GPT4_O = "gpt-4o"
-    GPT4_TURBO_PREVIEW = "gpt-4-turbo-preview"
+    GPT4_O_MINI = "gpt-4o-mini"
     GPT3_5_TURBO = "gpt-3.5-turbo"
     GEMINI = "gemini"
 
