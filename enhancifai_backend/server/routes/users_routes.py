@@ -235,7 +235,7 @@ async def validate_password_reset_token(token: str, email: str):
     return JSONResponse(content={"exists": exists})
 
 @router.get("/users/consent/ai", tags=["Users"])
-async def check_user_ai_consent(user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
+async def check_user_ai_consent(user_id: int = Depends(get_current_user_id_unverified), _api_key: str = Depends(verify_secret_key)):
     """
     Check if the current user has given consent for AI usage.
 
