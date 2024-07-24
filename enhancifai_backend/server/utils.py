@@ -77,6 +77,19 @@ def get_current_user_id(token: str = Header(None, alias="token")) -> Optional[in
     user_details = UsersDbCore.get_user_by_email(user_email)
     return user_details.get("user_id", None)
 
+def get_current_user_id_unverified(token: str = Header(None, alias="token")) -> Optional[int]:
+    if not token:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Your session has expired. Please login again.")
+    
+    jwt_data = decode_jwt(token)
+    user_email = jwt_data.get("email", None)
+    
+    if not user_email:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Your session has expired. Please login again.")
+    
+    user_details = UsersDbCore.get_user_by_email_unverified(user_email)
+    return user_details.get("user_id", None)
+
 def clean_user_data(data):
     if data['password_hash'] is None or data['password_hash'] == '':
         data['has_password'] = False

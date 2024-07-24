@@ -12,7 +12,7 @@ from enhancifai_backend.database.handlers.users import UsersDbCore, UsersDbLogin
 from enhancifai_backend.integrations.sendgrid_api import SendGrid
 from enhancifai_backend.server.models.users import Password, PasswordReset, Profile, UserCreatePassword, UserLoginPassword, UserPasswordReset, ValidateRegister
 from enhancifai_backend.oauth.google import google_auth
-from enhancifai_backend.server.utils import clean_user_data, create_jwt_token, generate_unique_token, get_current_user_id, hash_password, verify_secret_key
+from enhancifai_backend.server.utils import clean_user_data, create_jwt_token, generate_unique_token, get_current_user_id, get_current_user_id_unverified, hash_password, verify_secret_key
 
 router = APIRouter()
 
@@ -251,7 +251,7 @@ async def check_user_ai_consent(user_id: int = Depends(get_current_user_id), _ap
     return JSONResponse(content={"consent": consent})
 
 @router.post("/users/consent/ai", tags=["Users"])
-async def update_user_ai_consent(user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
+async def update_user_ai_consent(user_id: int = Depends(get_current_user_id_unverified), _api_key: str = Depends(verify_secret_key)):
     """
     Update the AI consent status for the current user.
 

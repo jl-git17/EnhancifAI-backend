@@ -52,6 +52,20 @@ class UsersDbCore:
         return read_db.do('select_one', sql=sql, data=(email,))
     
     @classmethod
+    def get_user_by_email_unverified(cls, email):
+        """
+        Retrieve a user by their email if the email is verified.
+
+        Parameters:
+        email (str): The email of the user.
+
+        Returns:
+        Any: The user data.
+        """
+        sql = schemafy("SELECT * FROM enhancifai.users WHERE email = %s;")
+        return read_db.do('select_one', sql=sql, data=(email,))
+    
+    @classmethod
     def check_user_exists_email(cls, email):
         """
         Check if a user exists by their email.
