@@ -437,7 +437,7 @@ async def download_prompts(prompts: str = Form(...), _: str = Depends(verify_sec
 
             for idx, prompt in enumerate(prompt_list, start=1):
                 sheet[f'A{idx + 1}'] = idx
-                sheet[f'B{idx + 1}'] = '*'
+                sheet[f'B{idx + 1}'] = prompt['columns']
                 sheet[f'C{idx + 1}'] = prompt['prompt']
                 sheet[f'D{idx + 1}'] = prompt['output_heading']
 
