@@ -83,9 +83,10 @@ class PromptsProcessor:
                     # 'temperature': temperature,
                     # 'top_p': top_p
                 })
-                if len (valid_prompts) and GLOBAL_MAX_PROMPTS != 0:
-                    errors.append(f'A maximum of {GLOBAL_MAX_PROMPTS} prompts is allowed.')
-                    break
+                if GLOBAL_MAX_PROMPTS != 0:
+                    if len (valid_prompts) > GLOBAL_MAX_PROMPTS:
+                        errors.append(f'A maximum of {GLOBAL_MAX_PROMPTS} prompts is allowed.')
+                        break
                 i += 1
             except KeyError as e:
                 errors.append(f"Row {i} >> Missing required column: {e}")
