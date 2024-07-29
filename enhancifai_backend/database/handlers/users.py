@@ -90,7 +90,7 @@ class UsersDbCore:
         Returns:
         bool: True if the user has verified their email address, False otherwise.
         """
-        sql = schemafy("SELECT * FROM enhancifai.users WHERE email_verified = true")
+        sql = schemafy("SELECT * FROM enhancifai.users WHERE email_verified = true AND email = %s")
         return read_db.do('select_exists', sql=sql, data=(email,))
     
     @classmethod
