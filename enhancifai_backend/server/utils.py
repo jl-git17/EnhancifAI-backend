@@ -1,11 +1,13 @@
-from datetime import datetime, timedelta, timezone
-import hashlib
 import os
+import hashlib
 import secrets
-from enhancifai_backend.database.handlers.users import UsersDbCore
-import jwt
+from datetime import datetime, timedelta, timezone
 from typing import Optional
+
 from fastapi import HTTPException, Header, status
+import jwt
+
+from enhancifai_backend.database.handlers.users import UsersDbCore
 
 SECRET_KEY = os.getenv("API_KEY")
 JWT_SECRET = os.getenv("JWT_SECRET_KEY")
@@ -16,17 +18,25 @@ JWT_EXPIRATION = 2  # in days
 STATIC_FILES_DIRECTORY = os.path.join(os.path.dirname(os.path.realpath(__file__)), "files")
 STATIC_PAGES_DIRECTORY = os.path.join(os.path.dirname(os.path.realpath(__file__)), "pages")
 
-
 VALID_ENGINES = ["gpt-4-turbo", "gpt-3.5-turbo", "gemini", "gpt-4o", "gpt-4o-mini"]
 
+
 class AdminSettings:
+    """Class to manage AI settings for the application."""
     settings = {
         'ai_api_key': os.getenv('OPENAI_API_KEY'),
         'ai_engine': 'gpt-4o-mini'
     }
 
     @classmethod
-    def set_ai_settings(cls, engine, api_key):
+    def set_ai_settings(cls, engine: str, api_key: str) -> None:
+        """
+        Set AI settings for the application.
+
+        Args:
+            engine (str): The AI engine to use.
+            api_key (str): The API key for the AI engine.
+        """
         if engine == 'gemini':
             cls.settings['ai_engine'] = engine
             cls.settings['ai_api_key'] = os.getenv('OPENAI_API_KEY')
@@ -35,27 +45,73 @@ class AdminSettings:
             cls.settings['ai_api_key'] = api_key
 
     @classmethod
-    def get_ai_engine(cls):
-        #print(f"AI Engine: {cls.settings['ai_engine']}")
+    def get_ai_engine(cls) -> str:
+        """
+        Get the current AI engine.
+
+        Returns:
+            str: The current AI engine.
+        """
         return cls.settings['ai_engine']
-    
+
     @classmethod
-    def get_ai_api_key(cls):
+    def get_ai_api_key(cls) -> str:
+        """
+        Get the current AI API key.
+
+        Returns:
+            str: The current AI API key.
+        """
         return cls.settings['ai_api_key']
 
 
-def verify_secret_key(x_api_key: str = Header(None, alias="x-api-key")):
+def verify_secret_key(x_api_key: str = Header(None, alias="x-api-key")) -> str:
+    """
+    Verify the provided API key.
+
+    Args:
+        x_api_key (str): The API key to verify.
+
+    Raises:
+        HTTPException: If the API key is invalid.
+
+    Returns:
+        str: The verified API key.
+    """
     if x_api_key != SECRET_KEY:
-        print(f"Wrong API key: {x_api_key}")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key.")
     return x_api_key
 
-def create_jwt_token(data: dict, days=JWT_EXPIRATION):
+
+def create_jwt_token(data: dict, days: int = JWT_EXPIRATION) -> tuple[str, str]:
+    """
+    Create a JWT token.
+
+    Args:
+        data (dict): The data to include in the token.
+        days (int): The number of days the token is valid for.
+
+    Returns:
+        tuple[str, str]: The token and its expiration date.
+    """
     expiration = datetime.now(timezone.utc) + timedelta(days=days)
     token = jwt.encode({"exp": expiration, **data}, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return token, expiration.strftime('%Y-%m-%d %H:%M:%S') + 'Z'
 
-def decode_jwt(token: str):
+
+def decode_jwt(token: str) -> dict:
+    """
+    Decode a JWT token.
+
+    Args:
+        token (str): The token to decode.
+
+    Raises:
+        HTTPException: If the token is expired or invalid.
+
+    Returns:
+        dict: The decoded token data.
+    """
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         return payload
@@ -64,43 +120,93 @@ def decode_jwt(token: str):
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Your session has expired. Please login again.")
 
+
 def get_current_user_id(token: str = Header(None, alias="token")) -> Optional[int]:
+    """
+    Get the current user ID from the token.
+
+    Args:
+        token (str): The token to extract the user ID from.
+
+    Raises:
+        HTTPException: If the token is missing or invalid.
+
+    Returns:
+        Optional[int]: The user ID.
+    """
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Your session has expired. Please login again.")
-    
+
     jwt_data = decode_jwt(token)
-    user_email = jwt_data.get("email", None)
-    
+    user_email = jwt_data.get("email")
+
     if not user_email:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Your session has expired. Please login again.")
-    
+
     user_details = UsersDbCore.get_user_by_email(user_email)
-    return user_details.get("user_id", None)
+    return user_details.get("user_id")
+
 
 def get_current_user_id_unverified(token: str = Header(None, alias="token")) -> Optional[int]:
+    """
+    Get the current user ID from the token without verification.
+
+    Args:
+        token (str): The token to extract the user ID from.
+
+    Raises:
+        HTTPException: If the token is missing or invalid.
+
+    Returns:
+        Optional[int]: The user ID.
+    """
     if not token:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Your session has expired. Please login again.")
-    
+
     jwt_data = decode_jwt(token)
-    user_email = jwt_data.get("email", None)
-    
+    user_email = jwt_data.get("email")
+
     if not user_email:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Your session has expired. Please login again.")
-    
-    user_details = UsersDbCore.get_user_by_email_unverified(user_email)
-    return user_details.get("user_id", None)
 
-def clean_user_data(data):
-    if data['password_hash'] is None or data['password_hash'] == '':
-        data['has_password'] = False
-    else:
-        data['has_password'] = True
+    user_details = UsersDbCore.get_user_by_email_unverified(user_email)
+    return user_details.get("user_id")
+
+
+def clean_user_data(data: dict) -> dict:
+    """
+    Clean user data by removing sensitive information.
+
+    Args:
+        data (dict): The user data to clean.
+
+    Returns:
+        dict: The cleaned user data.
+    """
+    data['has_password'] = bool(data['password_hash'])
     for key in ['user_id', 'google_oauth_token', 'password_hash']:
-        del data[key]
+        data.pop(key, None)
     return data
 
+
 def hash_password(password: str) -> str:
+    """
+    Hash a password using SHA-256.
+
+    Args:
+        password (str): The password to hash.
+
+    Returns:
+        str: The hashed password.
+    """
     return hashlib.sha256(password.encode()).hexdigest()
 
-def generate_unique_token():
+
+def generate_unique_token() -> str:
+    """
+    Generate a unique token.
+
+    Returns:
+        str: The generated token.
+    """
     return secrets.token_hex(32)
