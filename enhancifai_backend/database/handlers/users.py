@@ -80,7 +80,7 @@ class UsersDbCore:
         return read_db.do('select_exists', sql=sql, data=(email,))
     
     @classmethod
-    def check_user_verified_email(cls, email):
+    def check_user_verified_email(cls, email) -> bool:
         """
         Check if a user account has verified their email address.
 
