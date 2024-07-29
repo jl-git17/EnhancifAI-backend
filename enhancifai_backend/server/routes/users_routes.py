@@ -208,6 +208,10 @@ async def google_callback(code: str, state: str, _api_key: str = Depends(verify_
 @router.post("/users/login/password", tags=["Users"])
 async def login_password(user: UserLoginPassword, _api_key: str = Depends(verify_secret_key)):
     try:
+        verified = UsersDbCore.check_user_verified_email(user.email)
+        if not verified:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Check your email to verify your account.")
+
         exists = UsersDbCore.get_user_by_email(user.email)
         if not exists:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User does not exist.")

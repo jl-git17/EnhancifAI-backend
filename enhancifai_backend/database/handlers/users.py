@@ -80,6 +80,20 @@ class UsersDbCore:
         return read_db.do('select_exists', sql=sql, data=(email,))
     
     @classmethod
+    def check_user_verified_email(cls, email):
+        """
+        Check if a user account has verified their email address.
+
+        Parameters:
+        email (str): The email of the user.
+
+        Returns:
+        bool: True if the user has verified their email address, False otherwise.
+        """
+        sql = schemafy("SELECT * FROM enhancifai.users WHERE email_verified = true")
+        return read_db.do('select_exists', sql=sql, data=(email,))
+    
+    @classmethod
     def check_user_password(cls, email, password_hash) -> bool:
         """
         Check if the provided password hash matches the stored password hash for the user.
