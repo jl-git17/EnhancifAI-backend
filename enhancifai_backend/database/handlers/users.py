@@ -52,6 +52,20 @@ class UsersDbCore:
         return read_db.do('select_one', sql=sql, data=(email,))
     
     @classmethod
+    def get_user_by_email_unverified(cls, email):
+        """
+        Retrieve a user by their email if the email is verified.
+
+        Parameters:
+        email (str): The email of the user.
+
+        Returns:
+        Any: The user data.
+        """
+        sql = schemafy("SELECT * FROM enhancifai.users WHERE email = %s;")
+        return read_db.do('select_one', sql=sql, data=(email,))
+    
+    @classmethod
     def check_user_exists_email(cls, email):
         """
         Check if a user exists by their email.
@@ -63,6 +77,20 @@ class UsersDbCore:
         bool: True if the user exists, False otherwise.
         """
         sql = schemafy("SELECT * FROM enhancifai.users WHERE email = %s")
+        return read_db.do('select_exists', sql=sql, data=(email,))
+    
+    @classmethod
+    def check_user_verified_email(cls, email) -> bool:
+        """
+        Check if a user account has verified their email address.
+
+        Parameters:
+        email (str): The email of the user.
+
+        Returns:
+        bool: True if the user has verified their email address, False otherwise.
+        """
+        sql = schemafy("SELECT * FROM enhancifai.users WHERE email_verified = true AND email = %s")
         return read_db.do('select_exists', sql=sql, data=(email,))
     
     @classmethod
@@ -320,6 +348,16 @@ class UsersDbCore:
     def is_user_admin(cls, user_id) -> bool:
         sql = schemafy("SELECT * FROM enhancifai.users WHERE is_admin IS TRUE AND user_id = %s")
         return write_db.do('select_exists', sql=sql, data=(user_id,))
+    
+    @classmethod
+    def check_ai_consent(cls, user_id) -> bool:
+        sql = schemafy("SELECT * FROM enhancifai.users WHERE ai_consent IS NOT NULL AND user_id = %s")
+        return write_db.do('select_exists', sql=sql, data=(user_id,))
+    
+    @classmethod
+    def update_ai_consent(cls, user_id) -> bool:
+        sql = schemafy("UPDATE enhancifai.users SET ai_consent = NOW() WHERE user_id = %s;")
+        return write_db.do('execute', sql=sql, data=(user_id,))
 
 class UsersDbRegisterTokens:
     """

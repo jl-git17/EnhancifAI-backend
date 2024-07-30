@@ -12,7 +12,8 @@ class RateLimitManager:
             'gpt-3.5-turbo': {'token_limit': 160000, 'rpm': 5000},
             'gpt-4': {'token_limit': 80000, 'rpm': 5000},
             'gpt-4-turbo': {'token_limit': 600000, 'rpm': 5000},
-            'gpt-4o': {'token_limit': 600000, 'rpm': 5000},
+            'gpt-4o': {'token_limit': 800000, 'rpm': 5000},
+            'gpt-4o-mini': {'token_limit': 160000, 'rpm': 5000},
             'text-embedding-3-small': {'token_limit': 5000000, 'rpm': 5000}
         }
         self.request_logs = {model: deque() for model in self.limits}
@@ -113,9 +114,13 @@ class RateLimitManager:
                                     self.awarded[current_id] = model
                                 break
                             else:
-                                if self._are_tokens_available('gpt-4-turbo'):
+                                if self._are_tokens_available('gpt-3.5-turbo'):
                                     with self.awarded_lock:
-                                        self.awarded[current_id] = 'gpt-4-turbo'
+                                        self.awarded[current_id] = 'gpt-3.5-turbo'
+                                    break
+                                elif self._are_tokens_available('gpt-4o'):
+                                    with self.awarded_lock:
+                                        self.awarded[current_id] = 'gpt-4o'
                                     break
 
                 # Update current priority for round robin

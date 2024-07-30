@@ -30,7 +30,7 @@ async def download_prompts_template(_: str = Depends(verify_secret_key)):
     
 @router.get("/downloads/{filename}", tags=["Downloads"])
 async def download_file(filename: str, _: str = Depends(verify_secret_key), 
-                        user_id: Optional[int] = Depends(get_current_user_id)):
+                        user_id: int = Depends(get_current_user_id)):
     try:
         file_path = os.path.join('/tmp', filename)
         if os.path.exists(file_path):

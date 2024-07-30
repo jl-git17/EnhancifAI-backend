@@ -29,7 +29,7 @@ GLOBAL_MAX_PROMPTS = int(os.getenv('GLOBAL_MAX_PROMPTS', 0))
 
 class EngineType(str, Enum):
     gpt_4_o = "gpt-4o"
-    gpt_4_turbo_preview = "gpt-4-turbo-preview"
+    gpt_4_o_mini = "gpt-4-turbo-preview"
     gpt_3_5_turbo = "gpt-3.5-turbo"
     
 router = APIRouter()
@@ -109,6 +109,20 @@ def read_prompt_file(prompt_file_path: str):
 
     return valid_prompts
 
+def extract_columns_from_file(file_path):
+    # Read the file based on its extension
+    if file_path.endswith('.csv'):
+        df = pd.read_csv(file_path)
+    elif file_path.endswith(('.xls', '.xlsx')):
+        df = pd.read_excel(file_path)
+    else:
+        raise ValueError("Unsupported file format")
+
+    # Extract columns and format them as JSON objects
+    columns = {chr(65 + i): col for i, col in enumerate(df.columns)}
+    extracted_columns = [columns]
+    return extracted_columns
+
 def start_async_run(run_id, data_file, prompts, max_recs, user_id, file_name):
     asyncio.run(process_run(run_id, data_file, prompts, max_recs, user_id, file_name))
 
@@ -149,7 +163,7 @@ def cleanup_temp_files(prompt_file_path, data_file_path):
 
 @router.post("/execution/progress", tags=["Execution"])
 async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verify_secret_key),
-                             user_id: Optional[int] = Depends(get_current_user_id)):
+                             user_id: int = Depends(get_current_user_id)):
     """Check the progress of a given Run ID."""
     retries = 3  # Number of retries
     for attempt in range(retries):
@@ -184,10 +198,10 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
     # If we get here, it means all retries have failed
     return JSONResponse(status_code=400, content={"detail": f"Run ID '{req_run.run_id}' not found after {retries} attempts."})
 
-@router.post("/execution/upload/", tags=["Execution"])
+@router.post("/execution/upload", tags=["Execution"])
 async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFile = File(...),
                        max_records: bool = Form(False), _: str = Depends(verify_secret_key),
-                       user_id: Optional[int] = Depends(get_current_user_id)):
+                       user_id: int = Depends(get_current_user_id)):
     """
     Upload a CSV/Excel file and a prompt file (CSV or Excel).
     """
@@ -232,6 +246,9 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
             data_contents = await data_file.read()
             temp_data_file.write(data_contents)
             temp_data_file.flush()
+        
+        # Extract columns from data file
+        extracted_columns = extract_columns_from_file(temp_data_file_path)
 
         run_type = 'csv' if data_file.content_type == 'text/csv' else 'excel'
         source_filename = str(data_file.filename).replace(data_file_suffix, '')
@@ -258,11 +275,11 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
     # Cleanup prompt file after starting the async task
     cleanup_temp_files(temp_prompt_file_path, None)
 
-    return JSONResponse(status_code=200, content={'run_id': run_id})
+    return JSONResponse(status_code=200, content={'run_id': run_id, "data_columns": extracted_columns})
 
 @router.post("/execution/cancel", tags=["Execution"])
 async def cancel_run(req_run: RunCancelsRequest, _: str = Depends(verify_secret_key),
-                             user_id: Optional[int] = Depends(get_current_user_id)):
+                             user_id: int = Depends(get_current_user_id)):
     """Cancel a job, given Run ID."""
     try:
         if RunsDbCore.check_run_ownership(user_id=user_id, run_id=req_run.run_id) is False:
@@ -279,7 +296,7 @@ async def cancel_run(req_run: RunCancelsRequest, _: str = Depends(verify_secret_
 @router.post("/execution/direct", tags=["Execution"])
 async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile = File(...),
                                max_records: bool = Form(...), _: str = Depends(verify_secret_key),
-                               user_id: Optional[int] = Depends(get_current_user_id)):
+                               user_id: int = Depends(get_current_user_id)):
     """
     Upload a CSV/Excel file, with prompts payload.
     """
@@ -319,6 +336,9 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
             temp_data_file.write(data_contents)
             temp_data_file.flush()
 
+        # Extract columns from data file
+        extracted_columns = extract_columns_from_file(temp_data_file_path)
+
         run_type = 'csv' if data_file.content_type == 'text/csv' else 'excel'
         source_filename = str(data_file.filename).replace(data_file_suffix, '')
         run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
@@ -347,7 +367,7 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
     if temp_data_file_path:
         cleanup_temp_files(None, temp_data_file_path)
 
-    return JSONResponse(status_code=200, content={'run_id': run_id})
+    return JSONResponse(status_code=200, content={'run_id': run_id, "data_columns": extracted_columns})
 
 @router.post("/execution/upload/prompts", tags=["Execution"])
 async def upload_prompts(prompt_file: UploadFile = File(...), _: str = Depends(verify_secret_key),
@@ -417,7 +437,7 @@ async def download_prompts(prompts: str = Form(...), _: str = Depends(verify_sec
 
             for idx, prompt in enumerate(prompt_list, start=1):
                 sheet[f'A{idx + 1}'] = idx
-                sheet[f'B{idx + 1}'] = '*'
+                sheet[f'B{idx + 1}'] = prompt['columns']
                 sheet[f'C{idx + 1}'] = prompt['prompt']
                 sheet[f'D{idx + 1}'] = prompt['output_heading']
 

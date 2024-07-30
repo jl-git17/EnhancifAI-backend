@@ -17,28 +17,19 @@ class PromptsProcessor:
         Reads and validates prompts from a CSV or Excel file.
         """
         if file_format not in ['csv', 'excel']:
-            raise ValueError("Invalid file format. Supported formats are 'csv' and 'excel'.")
-        
-        def validate_and_parse_float(value, default, min_value=0.0, max_value=2.0):
-            """
-            Validates and parses a float value ensuring it has exactly one decimal place.
-            Falls back to a default value if the input is invalid.
-            """
-            try:
-                # Attempt to convert to float and check the decimal place constraint
-                num = float(value)
-                if min_value <= num <= max_value and len(str(value).split('.')[-1]) == 1:
-                    return num
-            except ValueError:
-                pass
-            return default
-        
+            raise ValueError(
+                "Invalid file format. Supported formats are 'csv' and 'excel'."
+            )
+
+
         valid_prompts = []
         errors = []
         # Default values fetched from environment variables
-        # default_temperature = validate_and_parse_float(os.getenv('DEFAULT_OPENAI_TEMPERATURE'), 0.0)
-        # default_top_p = validate_and_parse_float(os.getenv('DEFAULT_OPENAI_TOP_P'), 0.0)
-        
+        # default_temperature = validate_and_parse_float(
+        #   os.getenv('DEFAULT_OPENAI_TEMPERATURE'), 0.0)
+        # default_top_p = validate_and_parse_float(
+        #   os.getenv('DEFAULT_OPENAI_TOP_P'), 0.0)
+
         # Read file using pandas
         try:
             if file_format == 'csv':
@@ -48,7 +39,7 @@ class PromptsProcessor:
         except Exception as e:
             errors.append(f"Error reading file: {e}")
             df = pd.DataFrame()  # Ensure df is defined in case of an error
-        
+
         i = 1
         for _, row in df.iterrows():
             try:
@@ -56,19 +47,36 @@ class PromptsProcessor:
                 columns = str(row['Columns being Referenced'])
                 prompt = str(row['The Prompt'])
                 output_heading = str(row['Output Heading'])
-                #temperature = validate_and_parse_float(row.get('Temperature', default_temperature), default_temperature)
-                #top_p = validate_and_parse_float(row.get('Top_P', default_top_p), default_top_p)
-                
+                #temperature = validate_and_parse_float(
+                #   row.get('Temperature', default_temperature), default_temperature)
+                #top_p = validate_and_parse_float(
+                #   row.get('Top_P', default_top_p), default_top_p)
+
                 if not prompt_number.isdigit():
-                    errors.append(f"Row {i} >> Invalid prompt number: '{prompt_number}'. Prompt number must be a digit.")
+                    errors.append(
+                        f"Row {i} >> Invalid prompt number: '{prompt_number}'. "
+                        "Prompt number must be a digit."
+                    )
                     continue
 
+
                 columns = columns.replace(" ", "").upper()
-                if columns != '*' and not all(c.isalpha() and len(c) == 1 for c in columns.split('+')):
+                if (
+                    columns != '*'
+                    and not all(c.isalpha() and len(c) == 1 for c in columns.split('+'))
+                ):
                     if '+' not in columns:
-                        errors.append(f"Row {i} >> 'Columns being Referenced' must be separated by a '+' (plus) character. Provided: '{columns}'")
+                        errors.append(
+                            f"Row {i} >> 'Columns being Referenced' "
+                            "must be separated by a '+' "
+                            f"(plus) character. Provided: '{columns}'"
+                        )
                     else:
-                        errors.append(f"Row {i} >> Invalid 'Columns being Referenced' format: '{columns}'. Only single letters or '*' are allowed.")
+                        errors.append(
+                            f"Row {i} >> Invalid 'Columns being Referenced' "
+                            f"format: '{columns}'. "
+                            "Only single letters or '*' are allowed."
+                        )
                     continue
 
                 if not prompt:
@@ -83,17 +91,20 @@ class PromptsProcessor:
                     # 'temperature': temperature,
                     # 'top_p': top_p
                 })
-                if len (valid_prompts) > GLOBAL_MAX_PROMPTS:
-                    errors.append(f'A maximum of {GLOBAL_MAX_PROMPTS} prompts is allowed.')
-                    break
+                if GLOBAL_MAX_PROMPTS != 0:
+                    if len(valid_prompts) > GLOBAL_MAX_PROMPTS:
+                        errors.append(
+                            f"A maximum of {GLOBAL_MAX_PROMPTS} prompts is allowed."
+                        )
+                        break
                 i += 1
             except KeyError as e:
                 errors.append(f"Row {i} >> Missing required column: {e}")
                 break
-        
+
         if errors:
             raise HTTPException(status_code=400, detail='\n\n'.join(errors).strip())
-            
+
         return valid_prompts
 
     @classmethod
@@ -111,19 +122,34 @@ class PromptsProcessor:
                 columns = str(prompt_obj.columns)
                 prompt = str(prompt_obj.prompt)
                 output_heading = str(prompt_obj.output_heading)
-                #temperature = validate_and_parse_float(row.get('Temperature', default_temperature), default_temperature)
-                #top_p = validate_and_parse_float(row.get('Top_P', default_top_p), default_top_p)
+                #temperature = validate_and_parse_float(
+                #   row.get('Temperature', default_temperature), default_temperature)
+                #top_p = validate_and_parse_float(
+                #   row.get('Top_P', default_top_p), default_top_p)
 
                 if not prompt_number.isdigit():
-                    errors.append(f"Prompt {i} >> Invalid prompt number: '{prompt_number}'. Prompt number must be a digit.")
+                    errors.append(
+                        f"Prompt {i} >> Invalid prompt number: '{prompt_number}'. "
+                        "Prompt number must be a digit."
+                    )
                     continue
 
                 columns = columns.replace(" ", "").upper()
-                if columns != '*' and not all(c.isalpha() and len(c) == 1 for c in columns.split('+')):
+                if columns != '*' and not all(
+                    c.isalpha() and len(c) == 1 for c in columns.split('+')
+                ):
                     if '+' not in columns:
-                        errors.append(f"Prompt {i} >> 'Columns being Referenced' must be separated by a '+' (plus) character. Provided: '{columns}'")
+                        errors.append(
+                            f"Prompt {i} >> 'Columns being Referenced' "
+                            "must be separated by a '+' "
+                            f"(plus) character. Provided: '{columns}'"
+                        )
                     else:
-                        errors.append(f"Prompt {i} >> Invalid 'Columns being Referenced' format: '{columns}'. Only single letters or '*' are allowed.")
+                        errors.append(
+                            f"Prompt {i} >> Invalid 'Columns being Referenced' "
+                            f"format: '{columns}'. "
+                            "Only single letters or '*' are allowed."
+                        )
                     continue
 
                 if not prompt:
@@ -138,15 +164,18 @@ class PromptsProcessor:
                     # 'temperature': temperature,
                     # 'top_p': top_p
                 })
-                if len(valid_prompts) > GLOBAL_MAX_PROMPTS:
-                    errors.append(f'A maximum of {GLOBAL_MAX_PROMPTS} prompts is allowed.')
-                    break
+                if GLOBAL_MAX_PROMPTS != 0:
+                    if len(valid_prompts) > GLOBAL_MAX_PROMPTS:
+                        errors.append(
+                            f"A maximum of {GLOBAL_MAX_PROMPTS} prompts is allowed."
+                        )
+                        break
                 i += 1
             except Exception as e:
                 errors.append(f"Error processing prompt {i}: {e}")
                 break
-        
+
         if errors:
             raise HTTPException(status_code=400, detail='\n\n'.join(errors).strip())
-        
+
         return valid_prompts
