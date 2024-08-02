@@ -52,6 +52,20 @@ class UsersDbCore:
         return read_db.do('select_one', sql=sql, data=(email,))
     
     @classmethod
+    def get_user_id_by_email(cls, email):
+        """
+        Retrieve a user's ID by their email.
+
+        Parameters:
+        email (str): The email of the user.
+
+        Returns:
+        Any: The user ID.
+        """
+        sql = schemafy("SELECT user_id FROM enhancifai.users WHERE email = %s;")
+        return read_db.do('select_one', sql=sql, data=(email,))
+    
+    @classmethod
     def get_user_by_email_unverified(cls, email):
         """
         Retrieve a user by their email if the email is verified.
@@ -358,6 +372,50 @@ class UsersDbCore:
     def update_ai_consent(cls, user_id) -> bool:
         sql = schemafy("UPDATE enhancifai.users SET ai_consent = NOW() WHERE user_id = %s;")
         return write_db.do('execute', sql=sql, data=(user_id,))
+    
+    @classmethod
+    def create_session(cls, user_id, token, expires_at):
+        """
+        Create a new session for a user.
+
+        Parameters:
+        user_id (int): The ID of the user.
+        token (str): The session token (JWT).
+        expires_at (str): The expiration timestamp of the session.
+
+        Returns:
+        None
+        """
+        sql = schemafy("INSERT INTO enhancifai.users_sessions (user_id, token, expires_at) VALUES (%s, %s, %s);")
+        write_db.do('execute', sql=sql, data=(user_id, token, expires_at,))
+
+    @classmethod
+    def is_token_expired(cls, token):
+        """
+        Check if the provided token is expired.
+
+        Parameters:
+        token (str): The session token (JWT).
+
+        Returns:
+        bool: True if the token is expired, False otherwise.
+        """
+        sql = schemafy("SELECT expires_at < now() FROM enhancifai.users_sessions WHERE token = %s;")
+        return read_db.do('select_one', sql=sql, data=(token,))
+
+    @classmethod
+    def get_session_expiration_by_user_id(cls, user_id):
+        """
+        Get the session expiration timestamp for a user by their ID.
+
+        Parameters:
+        user_id (int): The ID of the user.
+
+        Returns:
+        str: The expiration timestamp of the session.
+        """
+        sql = schemafy("SELECT expires_at FROM enhancifai.users_sessions WHERE user_id = %s ORDER BY created_at DESC LIMIT 1;")
+        return read_db.do('select_one', sql=sql, data=(user_id,))
 
 class UsersDbRegisterTokens:
     """

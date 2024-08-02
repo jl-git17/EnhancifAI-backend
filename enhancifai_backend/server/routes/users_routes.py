@@ -1,4 +1,5 @@
 
+from datetime import datetime, timezone
 import os
 import re
 import time
@@ -226,6 +227,8 @@ async def login_password(user: UserLoginPassword, _api_key: str = Depends(verify
             "token": token,
             "expiration": expiration
         }
+        user_id = UsersDbCore.get_user_id_by_email(user.email)
+        UsersDbCore.create_session(user_id, token, expiration)
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
     except Exception as e:
@@ -269,3 +272,25 @@ async def update_user_ai_consent(user_id: int = Depends(get_current_user_id_unve
     """
     UsersDbCore.update_ai_consent(user_id)
     return JSONResponse(content={"message": "AI consent updated successfully."})
+
+@router.get("/users/session/check", tags=["Users"])
+async def session_check(user_id: int = Depends(get_current_user_id_unverified), _api_key: str = Depends(verify_secret_key)):
+    """
+    Check if the user has a valid session.
+
+    Returns:
+        JSONResponse:
+            A JSON response indicating the session's expiration and validity.
+    """
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session token. Please login again.")
+    
+    exp = UsersDbCore.get_session_expiration_by_user_id(user_id)
+    if not exp:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session token. Please login again.")
+    
+    # Check if the expiration date has not been reached
+    valid = exp > datetime.now(timezone.utc)
+    
+    return JSONResponse(content={"expires": exp.isoformat(), "valid": valid})
+    

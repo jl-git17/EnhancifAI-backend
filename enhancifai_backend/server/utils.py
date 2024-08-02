@@ -172,7 +172,6 @@ def get_current_user_id_unverified(token: str = Header(None, alias="token")) -> 
     user_details = UsersDbCore.get_user_by_email_unverified(user_email)
     return user_details.get("user_id")
 
-
 def clean_user_data(data: dict) -> dict:
     """
     Clean user data by removing sensitive information.

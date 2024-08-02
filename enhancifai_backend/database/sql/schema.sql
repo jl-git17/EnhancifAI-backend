@@ -9,6 +9,14 @@ CREATE TABLE IF NOT EXISTS enhancifai.users (
     created_at TIMESTAMP DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS enhancifai.users_sessions (
+    session_id SERIAL PRIMARY KEY,
+    user_id INT NOT NULL REFERENCES enhancifai.users(user_id),
+    token TEXT NOT NULL,
+    expires_at TIMESTAMP NOT NULL,
+    created_at TIMESTAMP DEFAULT now() NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES enhancifai.users(user_id),
