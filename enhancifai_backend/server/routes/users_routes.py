@@ -227,7 +227,7 @@ async def login_password(user: UserLoginPassword, _api_key: str = Depends(verify
             "token": token,
             "expiration": expiration
         }
-        user_id = UsersDbCore.get_user_id_by_email(user.email)
+        user_id = UsersDbCore.get_user_id_by_email(user.email)['user_id']
         UsersDbCore.create_session(user_id, token, expiration)
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
