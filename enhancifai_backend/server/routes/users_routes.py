@@ -285,7 +285,7 @@ async def session_check(user_id: int = Depends(get_current_user_id_unverified), 
     if not user_id:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session token. Please login again.")
     
-    exp = UsersDbCore.get_session_expiration_by_user_id(user_id)
+    exp = UsersDbCore.get_session_expiration_by_user_id(user_id)['expires_at']
     if not exp:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session token. Please login again.")
     
