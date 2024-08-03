@@ -289,6 +289,10 @@ async def session_check(user_id: int = Depends(get_current_user_id_unverified), 
     if not exp:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session token. Please login again.")
     
+    # Convert exp to timezone-aware datetime if it is naive
+    if exp.tzinfo is None:
+        exp = exp.replace(tzinfo=timezone.utc)
+    
     # Check if the expiration date has not been reached
     valid = exp > datetime.now(timezone.utc)
     
