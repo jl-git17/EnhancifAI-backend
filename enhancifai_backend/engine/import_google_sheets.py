@@ -1,6 +1,9 @@
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
 from fastapi import HTTPException
+import pandas as pd
+import gspread
+from gspread_dataframe import get_as_dataframe
 
 from enhancifai_backend.database.handlers.sheets import SheetsDbCore
 
@@ -61,3 +64,18 @@ class GoogleSheetsHandler:
         sheet_details = [{"spreadsheet_id": self.get_spreadsheet_details(sheet)[0],
                           "sheet_name": self.get_spreadsheet_details(sheet)[1]} for sheet in matching_sheets]
         return sheet_details
+
+    def get_sheet_as_dataframe(self, spreadsheet_id, worksheet_name=None):
+        try:
+            gc = gspread.authorize(self.creds)
+            sh = gc.open_by_key(spreadsheet_id)
+            
+            if worksheet_name:
+                worksheet = sh.worksheet(worksheet_name)
+            else:
+                worksheet = sh.sheet1
+            
+            df = get_as_dataframe(worksheet, evaluate_formulas=True)
+            return df
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
