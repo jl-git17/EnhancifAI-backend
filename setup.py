@@ -36,6 +36,7 @@ setup(
         'sendgrid',
         'openpyxl',
         'gspread',
+        'gspread-dataframe',
         'oauth2client',
         'google-generativeai',
         'aiofiles'
