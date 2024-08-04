@@ -46,6 +46,20 @@ class SheetsDbCore:
         return None
     
     @classmethod
+    def delete_user_google_credentials(cls, user_id):
+        """
+        Delete Google credentials for a user.
+
+        Parameters:
+        user_id (str): The ID of the user.
+
+        Returns:
+        None
+        """
+        sql = schemafy("DELETE FROM enhancifai.google_sheets_credentials WHERE user_id = %s;")
+        write_db.do('execute', sql=sql, data=(user_id,))
+    
+    @classmethod
     def store_oauth_state(cls, user_id, state):
         """
         Store the OAuth state for a user.
