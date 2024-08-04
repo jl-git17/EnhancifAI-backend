@@ -1,4 +1,3 @@
-from datetime import datetime
 import os
 import json
 from typing import Optional
@@ -10,6 +9,7 @@ from starlette.middleware.cors import CORSMiddleware
 from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.sheets import SheetsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
+from enhancifai_backend.engine.import_google_sheets import GoogleSheetsHandler
 from enhancifai_backend.server.models.execution import ExportSheetsRequest
 from enhancifai_backend.server.utils import get_current_user_id, verify_secret_key
 from enhancifai_backend.engine.export_google_sheets import export_to_google_sheets
@@ -135,3 +135,30 @@ async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: int = Depen
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=str(e)) from e
+
+@router.get("/sheets/list", tags=["Google Sheets"], operation_id="list_sheets_operation")
+async def list_sheets(search_name: Optional[str] = "", user_id: int = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
+    """
+    List and search Google Sheets for the authenticated user.
+
+    This endpoint lists Google Sheets for the authenticated user, optionally filtering by a search name.
+
+    - **search_name**: The name or partial name of the sheet to search for. If empty, all sheets are returned.
+    - **user_id**: The ID of the authenticated user. This is fetched automatically by dependency injection (`token`).
+
+    Returns a JSON response containing the list of sheets with their names and IDs.
+
+    - **200**: Successfully retrieved list of sheets.
+      - **content**: `[{"spreadsheet_id": "<ID>", "sheet_name": "<Name>"}]`
+    """
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+    
+    try:
+        handler = GoogleSheetsHandler(user_id)
+        result = handler.find_sheet(search_name)
+        if isinstance(result, str):
+            return JSONResponse(status_code=200, content={"status": "failed", "detail": result})
+        return JSONResponse(status_code=200, content=result)
+    except HTTPException as e:
+        return {"error": e.detail}
