@@ -80,6 +80,22 @@ class UsersDbCore:
         return read_db.do('select_one', sql=sql, data=(email,))
     
     @classmethod
+    def get_all_users_with_creds(cls):
+        """
+        Retrieve a list of all users and their credentials.
+
+        Returns:
+        Any: The list of user credentials.
+        """
+        sql = schemafy("""
+            SELECT u.user_id, gsc.credentials
+            FROM enhancifai.users u
+            INNER JOIN enhancifai.google_sheets_credentials gsc
+            ON u.user_id = gsc.user_id;
+        """)
+        return read_db.do('select', sql=sql)
+    
+    @classmethod
     def check_user_exists_email(cls, email):
         """
         Check if a user exists by their email.
