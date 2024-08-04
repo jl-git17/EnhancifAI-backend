@@ -20,6 +20,8 @@ STATIC_PAGES_DIRECTORY = os.path.join(os.path.dirname(os.path.realpath(__file__)
 
 VALID_ENGINES = ["gpt-4-turbo", "gpt-3.5-turbo", "gemini", "gpt-4o", "gpt-4o-mini"]
 
+FILE_AGE_LIMIT = 86400  # seconds (1 day)
+
 
 class AdminSettings:
     """Class to manage AI settings for the application."""

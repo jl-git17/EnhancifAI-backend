@@ -1,9 +1,5 @@
-import csv
-from enum import Enum
 import logging
-import mimetypes
 import os
-import time
 import uvicorn
 from datetime import datetime, timezone
 
@@ -17,6 +13,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from enhancifai_backend.database.handlers.sys import SysDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.rate_limit_manager import rate_limit_manager
+from enhancifai_backend.server.jobs import delete_old_files, refresh_google_sheets_creds
 from enhancifai_backend.server.routes.users_routes import router as router_users
 from enhancifai_backend.server.routes.execution_routes import router as router_execution
 from enhancifai_backend.server.routes.downloads_routes import router as router_downloads
@@ -34,8 +31,6 @@ SERVER_PORT = int(os.getenv("SERVER_PORT", 8000))
 # Set global variables
 APP_VERSION = "1.3.2"
 
-
-FILE_AGE_LIMIT = 86400  # seconds (1 day)
 
 
 app = FastAPI()
@@ -59,23 +54,6 @@ app.include_router(router_files)
 security = HTTPBasic()
 
 
-def delete_old_files():
-    """
-    Deletes files in /tmp directory that are older than FILE_AGE_LIMIT.
-    """
-    current_time = time.time()
-    for filename in os.listdir('/tmp'):
-        file_path = os.path.join('/tmp', filename)
-        try:
-            # Get the file's last modification time
-            file_mtime = os.path.getmtime(file_path)
-            # Check if the file is older than the specified age limit
-            if current_time - file_mtime > FILE_AGE_LIMIT:
-                os.remove(file_path)
-                print(f"Deleted old file: {file_path}")
-        except Exception as e:
-            print(f"Error deleting file {file_path}: {e}")
-
 @app.get("/")
 async def root():
     server_time = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
@@ -97,6 +75,7 @@ scheduler.add_job(delete_old_files, 'interval', hours=1)
 scheduler.add_job(SysDbCore.keep_db_alive, 'interval', seconds=21)
 scheduler.add_job(UsersDbCore.cleanup_timed_out_jobs, 'interval', seconds=13)
 scheduler.add_job(rate_limit_manager.clean_cancelled_jobs, 'interval', minutes=1)
+scheduler.add_job(refresh_google_sheets_creds, 'interval', hours=1)
 scheduler.start()
 logging.getLogger('apscheduler.executors.default').setLevel(logging.WARNING)
 
