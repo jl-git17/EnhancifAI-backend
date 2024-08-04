@@ -153,12 +153,7 @@ async def list_sheets(search_name: Optional[str] = "", user_id: int = Depends(ge
     """
     if not user_id:
         raise HTTPException(status_code=401, detail="User not authenticated")
-    
-    try:
-        handler = GoogleSheetsHandler(user_id)
-        result = handler.find_sheet(search_name)
-        if isinstance(result, str):
-            return JSONResponse(status_code=200, content={"status": "failed", "detail": result})
-        return JSONResponse(status_code=200, content=result)
-    except HTTPException as e:
-        return {"error": e.detail}
+
+    handler = GoogleSheetsHandler(user_id)
+    result = handler.find_sheet(search_name)
+    return JSONResponse(status_code=200, content=result)
