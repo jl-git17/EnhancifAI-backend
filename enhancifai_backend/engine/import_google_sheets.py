@@ -1,5 +1,6 @@
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
+from google.auth.exceptions import RefreshError
 from fastapi import HTTPException
 import pandas as pd
 import gspread
@@ -25,7 +26,10 @@ class GoogleSheetsHandler:
         
         if not creds.valid:
             if creds.expired and creds.refresh_token:
-                creds.refresh(Request())
+                try:
+                    creds.refresh(Request())
+                except RefreshError as e:
+                    raise HTTPException(status_code=403, detail="Google credentials are invalid or expired, re-authentication required.")
             else:
                 raise HTTPException(status_code=403, detail="Google credentials are invalid or expired")
         print(f"Found creds: {creds}")
