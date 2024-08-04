@@ -28,7 +28,10 @@ class GoogleSheetsHandler:
             if creds.expired and creds.refresh_token:
                 try:
                     creds.refresh(Request())
-                except RefreshError as e:
+                    # Update the refreshed credentials in the database
+                    SheetsDbCore.update_user_google_credentials(self.user_id, creds)
+                except RefreshError:
+                    SheetsDbCore.delete_user_google_credentials(self.user_id)
                     raise HTTPException(status_code=403, detail="Google credentials are invalid or expired, re-authentication required.")
             else:
                 raise HTTPException(status_code=403, detail="Google credentials are invalid or expired")
