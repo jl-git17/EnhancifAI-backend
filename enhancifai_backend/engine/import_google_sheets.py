@@ -8,12 +8,6 @@ from gspread_dataframe import get_as_dataframe
 
 from enhancifai_backend.database.handlers.sheets import SheetsDbCore
 
-SCOPE = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive.file",
-    "https://www.googleapis.com/auth/drive"
-]
-
 class GoogleSheetsHandler:
     def __init__(self, user_id):
         self.user_id = user_id

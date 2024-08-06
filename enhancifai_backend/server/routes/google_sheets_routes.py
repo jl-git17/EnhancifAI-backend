@@ -23,7 +23,11 @@ if client_secrets_json is None:
 
 client_secrets = json.loads(client_secrets_json)
 
-SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive.file']
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive",
+]
 REDIRECT_URI = os.getenv("GOOGLE_SHEETS_REDIRECT_URI")
 if REDIRECT_URI is None:
     raise ValueError("GOOGLE_SHEETS_REDIRECT_URI environment variable not set")

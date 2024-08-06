@@ -12,11 +12,6 @@ from datetime import datetime
 
 from enhancifai_backend.database.handlers.sheets import SheetsDbCore
 
-SCOPE = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive.file",
-    "https://www.googleapis.com/auth/drive"
-]
 
 def authenticate_google_sheets(user_id):
     creds = SheetsDbCore.get_user_google_credentials(user_id)
