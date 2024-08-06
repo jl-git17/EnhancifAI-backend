@@ -157,3 +157,30 @@ async def list_sheets(search_name: Optional[str] = "", user_id: int = Depends(ge
     handler = GoogleSheetsHandler(user_id)
     result = handler.find_sheet(search_name)
     return JSONResponse(status_code=200, content=result)
+
+@router.get("/sheets/data", tags=["Google Sheets"], operation_id="get_data_sheets_operation")
+async def get_sheet_data(sheet_id: str, worksheet_name: str = None, user_id: int = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
+    """
+    Retrieve the data contained in the specified Google Sheet for the authenticated user.
+
+    This endpoint returns an array of records contained in the specified `sheet_id`.
+
+    - **sheet_id**: The unique ID of the Google Sheet, as retrieved from the `/sheets/list` endpoint.
+    - **worksheet_name**: The name of the worksheet within the Google Sheet. If not specified, the first sheet is used.
+
+    Returns a JSON response containing the list of records.
+
+    - **200**: Successfully retrieved the Google Sheet's data.
+      - **content**: ``
+    """
+    if not user_id:
+        raise HTTPException(status_code=401, detail="User not authenticated")
+    
+    handler = GoogleSheetsHandler(user_id)
+    try:
+        result = handler.get_sheet_as_dataframe(sheet_id, worksheet_name)
+        return result.to_dict(orient='records')
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="An unexpected error occurred")
