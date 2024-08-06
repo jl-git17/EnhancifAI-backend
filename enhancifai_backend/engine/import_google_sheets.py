@@ -38,15 +38,19 @@ class GoogleSheetsHandler:
         print(f"Found creds: {creds}")
         return creds
 
-    def list_google_sheets(self):
+    def list_google_sheets(self, page_size=20, page_token=None):
         service = build('drive', 'v3', credentials=self.creds)
         results = service.files().list(
             q="mimeType='application/vnd.google-apps.spreadsheet'",
             orderBy="modifiedTime desc",
-            fields="files(id, name, modifiedTime)"
+            fields="nextPageToken, files(id, name, modifiedTime)",
+            pageSize=page_size,
+            pageToken=page_token
         ).execute()
         sheets = results.get('files', [])
-        return sheets
+        next_page_token = results.get('nextPageToken')
+        return sheets, next_page_token
+
 
     def search_google_sheet(self, sheets, search_name):
         if not search_name:
@@ -59,18 +63,36 @@ class GoogleSheetsHandler:
         sheet_name = sheet['name']
         return spreadsheet_id, sheet_name
 
-    def find_sheet(self, search_name):
-        sheets = self.list_google_sheets()
+    def get_worksheet_names(self, spreadsheet_id):
+        try:
+            gc = gspread.authorize(self.creds)
+            sh = gc.open_by_key(spreadsheet_id)
+            worksheets = sh.worksheets()
+            worksheet_names = [ws.title for ws in worksheets]
+            return worksheet_names
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"An error occurred while fetching worksheets: {str(e)}")
+
+    def find_sheet(self, search_name, page_size=20, page_token=None):
+        sheets, next_page_token = self.list_google_sheets(page_size=page_size, page_token=page_token)
         if not sheets:
-            return "No Google Sheets found."
+            return {"sheets": [], "nextPageToken": None}
 
         matching_sheets = self.search_google_sheet(sheets, search_name)
         if not matching_sheets:
-            return f"No sheet found with the name containing '{search_name}'."
+            return {"sheets": [], "nextPageToken": next_page_token}
 
-        sheet_details = [{"spreadsheet_id": self.get_spreadsheet_details(sheet)[0],
-                          "sheet_name": self.get_spreadsheet_details(sheet)[1]} for sheet in matching_sheets]
-        return sheet_details
+        sheet_details = []
+        for sheet in matching_sheets:
+            spreadsheet_id, sheet_name = self.get_spreadsheet_details(sheet)
+            worksheet_names = self.get_worksheet_names(spreadsheet_id)
+            sheet_details.append({
+                "spreadsheet_id": spreadsheet_id,
+                "sheet_name": sheet_name,
+                "worksheets": worksheet_names
+            })
+
+        return {"sheets": sheet_details, "nextPageToken": next_page_token}
 
     def get_sheet_as_dataframe(self, spreadsheet_id, worksheet_name=None):
         try:
