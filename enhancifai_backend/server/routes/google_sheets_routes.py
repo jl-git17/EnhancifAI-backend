@@ -137,25 +137,28 @@ async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: int = Depen
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 @router.get("/sheets/list", tags=["Google Sheets"], operation_id="list_sheets_operation")
-async def list_sheets(search_name: Optional[str] = "", user_id: int = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
+async def list_sheets(search_name: Optional[str] = "", page: Optional[int] = 1, page_size: Optional[int] = 20, user_id: int = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
     """
-    List and search Google Sheets for the authenticated user.
+    List and search Google Sheets for the authenticated user with pagination.
 
-    This endpoint lists Google Sheets for the authenticated user, optionally filtering by a search name.
+    This endpoint lists Google Sheets for the authenticated user, optionally filtering by a search name, with pagination.
 
     - **search_name**: The name or partial name of the sheet to search for. If empty, all sheets are returned.
+    - **page**: The page number to retrieve (default is 1).
+    - **page_size**: The number of sheets per page (default is 20).
     - **user_id**: The ID of the authenticated user. This is fetched automatically by dependency injection (`token`).
 
-    Returns a JSON response containing the list of sheets with their names and IDs.
+    Returns a JSON response containing the list of sheets with their names, IDs, and nextPageToken.
 
     - **200**: Successfully retrieved list of sheets.
-      - **content**: `[{"spreadsheet_id": "<ID>", "sheet_name": "<Name>"}]`
+      - **content**: `{"sheets": [{"spreadsheet_id": "<ID>", "sheet_name": "<Name>", "worksheets": ["<worksheet1>", "<worksheet2>"]}], "nextPageToken": "<Token>"}`
     """
     if not user_id:
         raise HTTPException(status_code=401, detail="User not authenticated")
 
     handler = GoogleSheetsHandler(user_id)
-    result = handler.find_sheet(search_name)
+    page_token = None if page == 1 else page
+    result = handler.find_sheet(search_name, page_size, page_token)
     return JSONResponse(status_code=200, content=result)
 
 @router.get("/sheets/data", tags=["Google Sheets"], operation_id="get_data_sheets_operation")
