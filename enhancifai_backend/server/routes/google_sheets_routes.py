@@ -141,7 +141,7 @@ async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: int = Depen
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 @router.get("/sheets/list", tags=["Google Sheets"], operation_id="list_sheets_operation")
-async def list_sheets(search_name: Optional[str] = "", page: Optional[int] = 1, page_size: Optional[int] = 20, user_id: int = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
+async def list_sheets(search_name: Optional[str] = "", page: Optional[int] = 1, user_id: int = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
     """
     List and search Google Sheets for the authenticated user with pagination.
 
@@ -162,7 +162,7 @@ async def list_sheets(search_name: Optional[str] = "", page: Optional[int] = 1, 
 
     handler = GoogleSheetsHandler(user_id)
     page_token = None if page == 1 else page
-    result = handler.find_sheet(search_name, page_size, page_token)
+    result = handler.find_sheet(search_name, page_token)
     return JSONResponse(status_code=200, content=result)
 
 @router.get("/sheets/data", tags=["Google Sheets"], operation_id="get_data_sheets_operation")

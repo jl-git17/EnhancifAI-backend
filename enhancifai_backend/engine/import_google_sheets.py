@@ -8,6 +8,8 @@ from gspread_dataframe import get_as_dataframe
 
 from enhancifai_backend.database.handlers.sheets import SheetsDbCore
 
+PAGE_SIZE = 10
+
 class GoogleSheetsHandler:
     def __init__(self, user_id):
         self.user_id = user_id
@@ -32,7 +34,7 @@ class GoogleSheetsHandler:
         print(f"Found creds: {creds}")
         return creds
 
-    def list_google_sheets(self, page_size=20, page_token=None):
+    def list_google_sheets(self, page_size=10, page_token=None):
         service = build('drive', 'v3', credentials=self.creds)
         results = service.files().list(
             q="mimeType='application/vnd.google-apps.spreadsheet'",
@@ -67,8 +69,8 @@ class GoogleSheetsHandler:
         except Exception as e:
             raise HTTPException(status_code=500, detail=f"An error occurred while fetching worksheets: {str(e)}")
 
-    def find_sheet(self, search_name, page_size=20, page_token=None):
-        sheets, next_page_token = self.list_google_sheets(page_size=page_size, page_token=page_token)
+    def find_sheet(self, search_name, page_token=None):
+        sheets, next_page_token = self.list_google_sheets(page_size=PAGE_SIZE, page_token=page_token)
         if not sheets:
             return {"sheets": [], "nextPageToken": None}
 
