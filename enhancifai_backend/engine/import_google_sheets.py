@@ -94,12 +94,12 @@ class GoogleSheetsHandler:
         try:
             gc = gspread.authorize(self.creds)
             sh = gc.open_by_key(spreadsheet_id)
-            
+
             if worksheet_name:
                 worksheet = sh.worksheet(worksheet_name)
             else:
                 worksheet = sh.sheet1
-            
+
             df = get_as_dataframe(worksheet, evaluate_formulas=True)
             return df
         except Exception as e:
