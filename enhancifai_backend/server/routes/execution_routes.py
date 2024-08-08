@@ -9,7 +9,7 @@ from threading import Thread
 import time
 from typing import Optional
 import uuid
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse
 import openpyxl
 import pandas as pd
@@ -161,6 +161,10 @@ def cleanup_temp_files(prompt_file_path, data_file_path):
     if data_file_path and os.path.exists(data_file_path):
         os.remove(data_file_path)
 
+def json_to_excel(json_data, output_path):
+    df = pd.DataFrame(json_data)
+    df.to_excel(output_path, index=False)
+
 @router.post("/execution/progress", tags=["Execution"])
 async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verify_secret_key),
                              user_id: int = Depends(get_current_user_id)):
@@ -202,83 +206,80 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
     return JSONResponse(status_code=400, content={"detail": f"Run ID '{req_run.run_id}' not found after {retries} attempts."})
 
 @router.post("/execution/upload", tags=["Execution"])
-async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFile = File(...),
-                       max_records: bool = Form(False), _: str = Depends(verify_secret_key),
-                       user_id: int = Depends(get_current_user_id)):
+async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFile = File(None),
+                       json_data: str = Body(None), max_records: bool = Form(False),
+                       _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
     """
-    Upload a CSV/Excel file and a prompt file (CSV or Excel).
+    Upload a CSV/Excel file or provide JSON data, and a prompt file (CSV or Excel).
     """
     ai_consent = UsersDbCore.check_ai_consent(user_id)
     if ai_consent is False:
         raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
-    temp_prompt_file_path = None
-
-    # Determine the suffix for the files based on their content type
-    file_suffix_map = {
-        'text/csv': '.csv',
-        'application/vnd.ms-excel': '.xls',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx'
-    }
-    data_file_suffix = file_suffix_map.get(data_file.content_type, None)
-    prompt_file_suffix = file_suffix_map.get(prompt_file.content_type, None)
-    file_name = data_file.filename
-
-    if not data_file_suffix:
-        raise HTTPException(status_code=400, detail="Invalid data file type")
-
-    if not prompt_file_suffix:
-        raise HTTPException(status_code=400, detail="Invalid prompt file type")
     
-    # check user max jobs
-    current_jobs = UsersDbCore.get_user_pending_jobs(user_id)
-    if current_jobs >= 1: # TODO get max from tier from DB
-        raise HTTPException(status_code=400, detail="User already has a job running")
+    temp_data_file_path = None
+    temp_prompt_file_path = None
+    data_file_suffix = None
+    file_name = None
 
-    max_recs = MAX_RECORDS if max_records else GLOBAL_MAX_ROWS
+    if data_file and json_data:
+        raise HTTPException(status_code=400, detail="Cannot upload both a file and JSON data. Provide either one.")
 
-    try:
-        # Handle Prompt File
-        with NamedTemporaryFile(delete=False, dir='/tmp', suffix=prompt_file_suffix) as temp_prompt_file:
-            temp_prompt_file_path = temp_prompt_file.name
-            prompt_contents = await prompt_file.read()
-            temp_prompt_file.write(prompt_contents)
-            temp_prompt_file.flush()
-            prompt_format = 'csv' if prompt_file_suffix == '.csv' else 'excel'
-            prompts = PromptsProcessor.read_prompt_file(temp_prompt_file_path, file_format=prompt_format)
+    if json_data:
+        try:
+            data_json = json.loads(json_data)
+            unique_filename = f"uploaded_data_{uuid.uuid4().hex}.xlsx"
+            with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx', prefix=unique_filename) as temp_data_file:
+                temp_data_file_path = temp_data_file.name
+                json_to_excel(data_json, temp_data_file_path)
+            file_name = unique_filename
+            data_file_suffix = '.xlsx'
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid JSON data.")
+    elif data_file:
+        file_suffix_map = {
+            'text/csv': '.csv',
+            'application/vnd.ms-excel': '.xls',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx'
+        }
+        data_file_suffix = file_suffix_map.get(data_file.content_type, None)
+        file_name = data_file.filename
 
-        # Handling Data File
+        if not data_file_suffix:
+            raise HTTPException(status_code=400, detail="Invalid data file type")
+
         with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
             temp_data_file_path = temp_data_file.name
             data_contents = await data_file.read()
             temp_data_file.write(data_contents)
             temp_data_file.flush()
-        
-        # Extract columns from data file
-        extracted_columns = extract_columns_from_file(temp_data_file_path)
+    else:
+        raise HTTPException(status_code=400, detail="Either data file or JSON data must be provided.")
 
-        run_type = 'csv' if data_file.content_type == 'text/csv' else 'excel'
-        source_filename = str(data_file.filename).replace(data_file_suffix, '')
-        run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
-        runs_progress.add_run(run_id, None)
+    # Handle Prompt File
+    with NamedTemporaryFile(delete=False, dir='/tmp') as temp_prompt_file:
+        temp_prompt_file_path = temp_prompt_file.name
+        prompt_contents = await prompt_file.read()
+        temp_prompt_file.write(prompt_contents)
+        temp_prompt_file.flush()
+        prompt_format = 'csv' if prompt_file.filename.endswith('.csv') else 'excel'
+        prompts = PromptsProcessor.read_prompt_file(temp_prompt_file_path, file_format=prompt_format)
 
-        # Save files to cache
-        save_to_cache(temp_data_file_path, user_id, data_file.filename)
-        save_to_cache(temp_prompt_file_path, user_id, prompt_file.filename)
+    # Proceed with existing logic after preparing the data file and prompt file
+    max_recs = MAX_RECORDS if max_records else GLOBAL_MAX_ROWS
 
-        Thread(target=start_async_run, args=(run_id, temp_data_file_path, prompts, max_recs, user_id, file_name)).start()
+    # Extract columns from data file
+    extracted_columns = extract_columns_from_file(temp_data_file_path)
 
-    except HTTPException as e:
-        # Cleanup temporary files in case of an error before returning
-        try:
-            cleanup_temp_files(temp_prompt_file_path, temp_data_file_path)
-        except:
-            pass
-        return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
-    except Exception as e:
-        cleanup_temp_files(temp_prompt_file_path, temp_data_file_path)
-        return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
+    run_type = 'csv' if data_file_suffix == '.csv' else 'excel'
+    source_filename = str(file_name).replace(data_file_suffix, '')
+    run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
+    runs_progress.add_run(run_id, None)
 
-    # Cleanup prompt file after starting the async task
+    save_to_cache(temp_data_file_path, user_id, file_name)
+    save_to_cache(temp_prompt_file_path, user_id, prompt_file.filename)
+
+    Thread(target=start_async_run, args=(run_id, temp_data_file_path, prompts, max_recs, user_id, file_name)).start()
+
     cleanup_temp_files(temp_prompt_file_path, None)
 
     return JSONResponse(status_code=200, content={'run_id': run_id, "data_columns": extracted_columns})
@@ -303,82 +304,79 @@ async def cancel_run(req_run: RunCancelsRequest, _: str = Depends(verify_secret_
     
 
 @router.post("/execution/direct", tags=["Execution"])
-async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile = File(...),
-                               max_records: bool = Form(...), _: str = Depends(verify_secret_key),
-                               user_id: int = Depends(get_current_user_id)):
+async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile = File(None),
+                               json_data: str = Body(None), max_records: bool = Form(...),
+                               _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
     """
-    Upload a CSV/Excel file, with prompts payload.
+    Upload a CSV/Excel file or provide JSON data, with prompts payload.
     """
     ai_consent = UsersDbCore.check_ai_consent(user_id)
     if ai_consent is False:
         raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
-    # Determine the suffix for the file based on its content type
-    file_suffix_map = {
-        'text/csv': '.csv',
-        'application/vnd.ms-excel': '.xls',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx'
-    }
-    data_file_suffix = file_suffix_map.get(data_file.content_type, None)
-    file_name = data_file.filename
+    
     temp_data_file_path = None
+    data_file_suffix = None
+    file_name = None
 
-    if not data_file_suffix:
-        raise HTTPException(status_code=400, detail="Invalid data file type")
+    if data_file and json_data:
+        raise HTTPException(status_code=400, detail="Cannot upload both a file and JSON data. Provide either one.")
 
-    # Check user max jobs
-    current_jobs = UsersDbCore.get_user_pending_jobs(user_id)
-    if current_jobs >= 1: # TODO get max from tier from DB
-        raise HTTPException(status_code=400, detail="User already has a job running")
-
-    max_recs = MAX_RECORDS if max_records else GLOBAL_MAX_ROWS
-
-    try:
-        # Handle Prompts
+    if json_data:
         try:
-            prompt_list = json.loads(prompts)
+            data_json = json.loads(json_data)
+            unique_filename = f"uploaded_data_{uuid.uuid4().hex}.xlsx"
+            with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx', prefix=unique_filename) as temp_data_file:
+                temp_data_file_path = temp_data_file.name
+                json_to_excel(data_json, temp_data_file_path)
+            file_name = unique_filename
+            data_file_suffix = '.xlsx'
         except json.JSONDecodeError:
-            raise HTTPException(status_code=400, detail="Invalid prompts payload.")
-        read_prompts = PromptsProcessor.read_prompt_objects([PromptObject(**prompt) for prompt in prompt_list])
+            raise HTTPException(status_code=400, detail="Invalid JSON data.")
+    elif data_file:
+        file_suffix_map = {
+            'text/csv': '.csv',
+            'application/vnd.ms-excel': '.xls',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx'
+        }
+        data_file_suffix = file_suffix_map.get(data_file.content_type, None)
+        file_name = data_file.filename
 
-        # Handling Data File
+        if not data_file_suffix:
+            raise HTTPException(status_code=400, detail="Invalid data file type")
+
         with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
             temp_data_file_path = temp_data_file.name
             data_contents = await data_file.read()
             temp_data_file.write(data_contents)
             temp_data_file.flush()
+    else:
+        raise HTTPException(status_code=400, detail="Either data file or JSON data must be provided.")
 
-        # Extract columns from data file
-        extracted_columns = extract_columns_from_file(temp_data_file_path)
+    # Handle Prompts
+    try:
+        prompt_list = json.loads(prompts)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid prompts payload.")
+    read_prompts = PromptsProcessor.read_prompt_objects([PromptObject(**prompt) for prompt in prompt_list])
 
-        run_type = 'csv' if data_file.content_type == 'text/csv' else 'excel'
-        source_filename = str(data_file.filename).replace(data_file_suffix, '')
-        run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
-        runs_progress.add_run(run_id, None)
+    max_recs = MAX_RECORDS if max_records else GLOBAL_MAX_ROWS
 
-        # Save file to cache
-        save_to_cache(temp_data_file_path, user_id, data_file.filename)
+    # Extract columns from data file
+    extracted_columns = extract_columns_from_file(temp_data_file_path)
 
-        Thread(target=start_async_run, args=(run_id, temp_data_file_path, read_prompts, max_recs, user_id, file_name)).start()
+    run_type = 'csv' if data_file_suffix == '.csv' else 'excel'
+    source_filename = str(file_name).replace(data_file_suffix, '')
+    run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
+    runs_progress.add_run(run_id, None)
 
-    except HTTPException as e:
-        # Cleanup temporary files in case of an error before returning
-        try:
-            if temp_data_file_path:
-                cleanup_temp_files(None, temp_data_file_path)
-        except:
-            pass
-        return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
-    except Exception as e:
-        if temp_data_file_path:
-            cleanup_temp_files(None, temp_data_file_path)
-        return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
+    save_to_cache(temp_data_file_path, user_id, file_name)
 
-    # Cleanup prompt file after starting the async task
-    time.sleep(1)
-    if temp_data_file_path:
-        cleanup_temp_files(None, temp_data_file_path)
+    Thread(target=start_async_run, args=(run_id, temp_data_file_path, read_prompts, max_recs, user_id, file_name)).start()
+
+    cleanup_temp_files(None, temp_data_file_path)
 
     return JSONResponse(status_code=200, content={'run_id': run_id, "data_columns": extracted_columns})
+
 
 @router.post("/execution/upload/prompts", tags=["Execution"])
 async def upload_prompts(prompt_file: UploadFile = File(...), _: str = Depends(verify_secret_key),
