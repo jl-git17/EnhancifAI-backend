@@ -165,6 +165,9 @@ def cleanup_temp_files(prompt_file_path, data_file_path):
 async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verify_secret_key),
                              user_id: int = Depends(get_current_user_id)):
     """Check the progress of a given Run ID."""
+    ai_consent = UsersDbCore.check_ai_consent(user_id)
+    if ai_consent is False:
+        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
     retries = 3  # Number of retries
     for attempt in range(retries):
         try:
@@ -205,6 +208,9 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
     """
     Upload a CSV/Excel file and a prompt file (CSV or Excel).
     """
+    ai_consent = UsersDbCore.check_ai_consent(user_id)
+    if ai_consent is False:
+        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
     temp_prompt_file_path = None
 
     # Determine the suffix for the files based on their content type
@@ -282,6 +288,9 @@ async def cancel_run(req_run: RunCancelsRequest, _: str = Depends(verify_secret_
                              user_id: int = Depends(get_current_user_id)):
     """Cancel a job, given Run ID."""
     try:
+        ai_consent = UsersDbCore.check_ai_consent(user_id)
+        if ai_consent is False:
+            raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
         if RunsDbCore.check_run_ownership(user_id=user_id, run_id=req_run.run_id) is False:
             raise HTTPException(status_code=400, detail="User not owner of provided run_id.")
         RunsDbCore.cancel_run(req_run.run_id)
@@ -300,7 +309,9 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
     """
     Upload a CSV/Excel file, with prompts payload.
     """
-
+    ai_consent = UsersDbCore.check_ai_consent(user_id)
+    if ai_consent is False:
+        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
     # Determine the suffix for the file based on its content type
     file_suffix_map = {
         'text/csv': '.csv',
@@ -371,11 +382,15 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
 
 @router.post("/execution/upload/prompts", tags=["Execution"])
 async def upload_prompts(prompt_file: UploadFile = File(...), _: str = Depends(verify_secret_key),
-                           __: Optional[int] = Depends(get_current_user_id)):
+                           user_id: int = Depends(get_current_user_id)):
     """
     Upload a prompts file, process it and return the prompts.
     """
     try:
+        # Check AI consent
+        ai_consent = UsersDbCore.check_ai_consent(user_id)
+        if ai_consent is False:
+            raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
         # Determine the suffix for the file based on its content type
         file_suffix_map = {
             'text/csv': '.csv',
@@ -421,11 +436,15 @@ async def upload_prompts(prompt_file: UploadFile = File(...), _: str = Depends(v
 
 @router.post("/execution/download/prompts", tags=["Execution"])
 async def download_prompts(prompts: str = Form(...), _: str = Depends(verify_secret_key),
-                           __: Optional[int] = Depends(get_current_user_id)):
+                           user_id: int = Depends(get_current_user_id)):
     """
     Helper endpoint to get a Prompts file from Prompts payload.
     """
     try:
+        # Check AI consent
+        ai_consent = UsersDbCore.check_ai_consent(user_id)
+        if ai_consent is False:
+            raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
         file_path = os.path.join(STATIC_FILES_DIRECTORY, "prompts_template.xlsx")
         unique_filename = f"prompts_{uuid.uuid4()}_{int(time.time()*1000)}.xlsx"
         processed_excel_path = os.path.join('/tmp', unique_filename)
@@ -466,11 +485,15 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
 """
 
 @router.post("/execution/get-data", tags=["Execution"])
-async def get_data(req_data: RunDataRequest, _: str = Depends(verify_secret_key), __: Optional[int] = Depends(get_current_user_id)):
+async def get_data(req_data: RunDataRequest, _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
     """
     Retrieve CSV or Excel data for a given run_id and return it in JSON format.
     """
     try:
+        # Check AI consent
+        ai_consent = UsersDbCore.check_ai_consent(user_id)
+        if ai_consent is False:
+            raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
         # Get the file URL using the run_id
         file_url = RunsDbCore.get_run_file_url(req_data.run_id)
         if not file_url:

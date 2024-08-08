@@ -5,6 +5,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse
 
+from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.server.utils import STATIC_FILES_DIRECTORY, get_current_user_id, verify_secret_key
 
 
@@ -32,6 +33,9 @@ async def download_prompts_template(_: str = Depends(verify_secret_key)):
 async def download_file(filename: str, _: str = Depends(verify_secret_key), 
                         user_id: int = Depends(get_current_user_id)):
     try:
+        ai_consent = UsersDbCore.check_ai_consent(user_id)
+        if ai_consent is False:
+            raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
         file_path = os.path.join('/tmp', filename)
         if os.path.exists(file_path):
             # Guess the MIME type of the file based on its extension

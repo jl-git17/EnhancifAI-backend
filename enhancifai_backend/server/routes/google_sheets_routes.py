@@ -1,7 +1,7 @@
 import os
 import json
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse, JSONResponse
 from google_auth_oauthlib.flow import Flow
 from starlette.middleware.cors import CORSMiddleware
@@ -57,8 +57,10 @@ async def login_sheets(user_id: int = Depends(get_current_user_id)):
     - **401**: User not authenticated.
       - **detail**: `{"detail": "User not authenticated"}`
     """
-    if not user_id:
-        raise HTTPException(status_code=401, detail="User not authenticated")
+    # Check AI consent
+    ai_consent = UsersDbCore.check_ai_consent(user_id)
+    if ai_consent is False:
+        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
     
     flow = get_flow()
     authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
@@ -121,8 +123,10 @@ async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: int = Depen
       - **detail**: Error message detailing what went wrong.
     """
     
-    if not user_id:
-        raise HTTPException(status_code=401, detail="User not authenticated")
+    # Check AI consent
+    ai_consent = UsersDbCore.check_ai_consent(user_id)
+    if ai_consent is False:
+        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
 
     file_path = RunsDbCore.get_run_file_url(req_sheets.run_id)
     source_filename = RunsDbCore.get_source_filename(req_sheets.run_id)
@@ -157,8 +161,10 @@ async def list_sheets(search_name: Optional[str] = "", page: Optional[int] = 1, 
     - **200**: Successfully retrieved list of sheets.
       - **content**: `{"sheets": [{"spreadsheet_id": "<ID>", "sheet_name": "<Name>", "worksheets": ["<worksheet1>", "<worksheet2>"]}], "nextPageToken": "<Token>"}`
     """
-    if not user_id:
-        raise HTTPException(status_code=401, detail="User not authenticated")
+    # Check AI consent
+    ai_consent = UsersDbCore.check_ai_consent(user_id)
+    if ai_consent is False:
+        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
 
     handler = GoogleSheetsHandler(user_id)
     page_token = None if page == 1 else page
@@ -180,8 +186,10 @@ async def get_sheet_data(sheet_id: str, worksheet_name: str = None, user_id: int
     - **200**: Successfully retrieved the Google Sheet's data.
       - **content**: ``
     """
-    if not user_id:
-        raise HTTPException(status_code=401, detail="User not authenticated")
+    # Check AI consent
+    ai_consent = UsersDbCore.check_ai_consent(user_id)
+    if ai_consent is False:
+        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
     
     handler = GoogleSheetsHandler(user_id)
     try:

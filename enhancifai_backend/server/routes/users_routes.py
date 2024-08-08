@@ -17,11 +17,14 @@ from enhancifai_backend.server.utils import clean_user_data, create_jwt_token, g
 
 router = APIRouter()
 
-@router.post("/users/profile/", tags=["Users"])
+@router.post("/users/profile", tags=["Users"])
 async def update_user_profile(profile: Profile, user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
     try:
+        ai_consent = UsersDbCore.check_ai_consent(user_id)
+        if ai_consent is False:
+            raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
         UsersDbCore.update_user_profile(
-            user_id=user_id, 
+            user_id=user_id,
             name=profile.name,
         )
     except HTTPException as e:
@@ -32,9 +35,12 @@ async def update_user_profile(profile: Profile, user_id: int = Depends(get_curre
     return JSONResponse(status_code=200, content={"message": "Profile updated successfully."})
 
 
-@router.get("/users/profile/", tags=["Users"])
+@router.get("/users/profile", tags=["Users"])
 async def get_user_profile(user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
     try:
+        ai_consent = UsersDbCore.check_ai_consent(user_id)
+        if ai_consent is False:
+            raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
         user_details = UsersDbCore.get_user_by_id(user_id)
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
@@ -46,6 +52,9 @@ async def get_user_profile(user_id: int = Depends(get_current_user_id), _api_key
 @router.post("/users/password/update", tags=["Users"])
 async def update_password(password: Password, user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
     try:
+        ai_consent = UsersDbCore.check_ai_consent(user_id)
+        if ai_consent is False:
+            raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
         user = UsersDbCore.get_user_by_id(user_id)
         email = user['email']
         if password.old_password == "":
@@ -282,9 +291,9 @@ async def session_check(user_id: int = Depends(get_current_user_id_unverified), 
         JSONResponse:
             A JSON response indicating the session's expiration and validity.
     """
-    if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session token. Please login again.")
-    
+    ai_consent = UsersDbCore.check_ai_consent(user_id)
+    if ai_consent is False:
+        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
     exp = UsersDbCore.get_session_expiration_by_user_id(user_id)['expires_at']
     if not exp:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session token. Please login again.")
