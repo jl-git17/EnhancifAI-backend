@@ -186,11 +186,12 @@ async def get_sheet_data(sheet_id: str, worksheet_name: str = None, user_id: int
     handler = GoogleSheetsHandler(user_id)
     try:
         result = handler.get_sheet_as_dataframe(sheet_id, worksheet_name)
-        records = result.to_dict(orient='records')
+        # Convert DataFrame to JSON-compatible format
+        records = result.astype(str).to_dict(orient='records')
         return JSONResponse(status_code=200, content={
-                "message": "Google Sheet data processed successfully.",
-                "records": json.dumps(records)
-            })
+            "message": "Google Sheet data processed successfully.",
+            "records": records
+        })
     except HTTPException as e:
         raise e
     except Exception as e:
