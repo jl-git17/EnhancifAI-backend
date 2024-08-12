@@ -245,6 +245,9 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
         prompt_file_suffix = file_suffix_map.get(prompt_file.content_type, None)
         file_name = data_file.filename
 
+        # Debugging: Log the content type
+        print(f"Received data file with content type: {data_file.content_type}")
+        
         if not data_file_suffix:
             raise HTTPException(status_code=400, detail="Invalid data file type")
         
@@ -255,8 +258,18 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
         with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
             temp_data_file_path = temp_data_file.name
             data_contents = await data_file.read()
+            
+            # Debugging: Check the size of the file contents
+            print(f"Data file contents size: {len(data_contents)} bytes")
+            
             temp_data_file.write(data_contents)
             temp_data_file.flush()
+
+            # Debugging: Verify the temporary file creation
+            if os.path.exists(temp_data_file_path):
+                print(f"Temporary data file created successfully at {temp_data_file_path}")
+            else:
+                print(f"Failed to create temp file at {temp_data_file_path}")
     else:
         raise HTTPException(status_code=400, detail="Either data file or JSON data must be provided.")
 
