@@ -206,7 +206,7 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
     return JSONResponse(status_code=400, content={"detail": f"Run ID '{req_run.run_id}' not found after {retries} attempts."})
 
 @router.post("/execution/upload", tags=["Execution"])
-async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFile = File(None),
+async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFile = File(...),
                        json_data: str = Body(None), max_records: bool = Form(False),
                        _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
     """
@@ -242,11 +242,16 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx'
         }
         data_file_suffix = file_suffix_map.get(data_file.content_type, None)
+        prompt_file_suffix = file_suffix_map.get(prompt_file.content_type, None)
         file_name = data_file.filename
 
         if not data_file_suffix:
             raise HTTPException(status_code=400, detail="Invalid data file type")
+        
+        if not prompt_file_suffix:
+            raise HTTPException(status_code=400, detail="Invalid prompt file type")
 
+        # Handling Data File
         with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
             temp_data_file_path = temp_data_file.name
             data_contents = await data_file.read()
@@ -256,12 +261,12 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
         raise HTTPException(status_code=400, detail="Either data file or JSON data must be provided.")
 
     # Handle Prompt File
-    with NamedTemporaryFile(delete=False, dir='/tmp') as temp_prompt_file:
+    with NamedTemporaryFile(delete=False, dir='/tmp', suffix=prompt_file_suffix) as temp_prompt_file:
         temp_prompt_file_path = temp_prompt_file.name
         prompt_contents = await prompt_file.read()
         temp_prompt_file.write(prompt_contents)
         temp_prompt_file.flush()
-        prompt_format = 'csv' if prompt_file.filename.endswith('.csv') else 'excel'
+        prompt_format = 'csv' if prompt_file_suffix == '.csv' else 'excel'
         prompts = PromptsProcessor.read_prompt_file(temp_prompt_file_path, file_format=prompt_format)
 
     # Proceed with existing logic after preparing the data file and prompt file
@@ -304,7 +309,7 @@ async def cancel_run(req_run: RunCancelsRequest, _: str = Depends(verify_secret_
     
 
 @router.post("/execution/direct", tags=["Execution"])
-async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile = File(None),
+async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile = File(...),
                                json_data: str = Body(None), max_records: bool = Form(...),
                                _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
     """
