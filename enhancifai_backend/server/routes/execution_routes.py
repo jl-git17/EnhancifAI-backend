@@ -397,7 +397,7 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
     save_to_cache(temp_data_file_path, user_id, file_name)
 
     Thread(target=start_async_run, args=(run_id, temp_data_file_path, read_prompts, max_recs, user_id, file_name)).start()
-
+    time.sleep(1)
     cleanup_temp_files(None, temp_data_file_path)
 
     return JSONResponse(status_code=200, content={'run_id': run_id, "data_columns": extracted_columns})
