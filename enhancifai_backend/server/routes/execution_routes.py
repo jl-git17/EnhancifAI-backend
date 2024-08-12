@@ -204,8 +204,9 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
             return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
     # If we get here, it means all retries have failed
     return JSONResponse(status_code=400, content={"detail": f"Run ID '{req_run.run_id}' not found after {retries} attempts."})
+
 @router.post("/execution/upload", tags=["Execution"])
-async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFile = File(...),
+async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFile = File(...),
                        json_data: str = Body(None), max_records: bool = Form(False),
                        _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
     """
@@ -329,7 +330,7 @@ async def cancel_run(req_run: RunCancelsRequest, _: str = Depends(verify_secret_
     
 
 @router.post("/execution/direct", tags=["Execution"])
-async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile = File(...),
+async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile = File(None),
                                json_data: str = Body(None), max_records: bool = Form(...),
                                _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
     """
