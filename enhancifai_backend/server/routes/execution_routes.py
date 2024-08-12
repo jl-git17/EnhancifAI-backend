@@ -204,7 +204,6 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
             return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
     # If we get here, it means all retries have failed
     return JSONResponse(status_code=400, content={"detail": f"Run ID '{req_run.run_id}' not found after {retries} attempts."})
-
 @router.post("/execution/upload", tags=["Execution"])
 async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFile = File(...),
                        json_data: str = Body(None), max_records: bool = Form(False),
@@ -296,8 +295,16 @@ async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFil
     save_to_cache(temp_data_file_path, user_id, file_name)
     save_to_cache(temp_prompt_file_path, user_id, prompt_file.filename)
 
-    Thread(target=start_async_run, args=(run_id, temp_data_file_path, prompts, max_recs, user_id, file_name)).start()
+    # Threading issues might arise if files are cleaned up too early, consider alternatives or move cleanup to a more appropriate place
+    try:
+        Thread(target=start_async_run, args=(run_id, temp_data_file_path, prompts, max_recs, user_id, file_name)).start()
+    except Exception as e:
+        print(f"Error starting async run: {str(e)}")
+        time.sleep(1)
+        cleanup_temp_files(temp_prompt_file_path, temp_data_file_path)
+        raise HTTPException(status_code=500, detail="Failed to start the asynchronous process.")
 
+    # Ensure files are cleaned up at the right time to avoid premature deletion
     cleanup_temp_files(temp_prompt_file_path, None)
 
     return JSONResponse(status_code=200, content={'run_id': run_id, "data_columns": extracted_columns})
