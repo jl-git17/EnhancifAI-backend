@@ -334,13 +334,16 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
     temp_data_file_path = None
     data_file_suffix = None
     file_name = None
+    sheet_name = None
 
     if data_file and json_data:
         raise HTTPException(status_code=400, detail="Cannot upload both a file and JSON data. Provide either one.")
 
     if json_data:
         try:
-            data_json = json.loads(json_data)
+            _json_data = json.loads(json_data)
+            sheet_name = _json_data['sheet_name']
+            data_json = _json_data['data']
             unique_filename = f"uploaded_data_{uuid.uuid4().hex}.xlsx"
             with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx', prefix=unique_filename) as temp_data_file:
                 temp_data_file_path = temp_data_file.name
@@ -384,7 +387,10 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
     extracted_columns = extract_columns_from_file(temp_data_file_path)
 
     run_type = 'csv' if data_file_suffix == '.csv' else 'excel'
-    source_filename = str(file_name).replace(data_file_suffix, '')
+    if sheet_name:
+        source_filename = sheet_name
+    else:
+        source_filename = str(file_name).replace(data_file_suffix, '')
     run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
     runs_progress.add_run(run_id, None)
 
