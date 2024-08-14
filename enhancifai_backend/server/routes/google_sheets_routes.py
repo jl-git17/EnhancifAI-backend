@@ -2,9 +2,8 @@ import os
 import json
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import RedirectResponse, JSONResponse
+from fastapi.responses import JSONResponse
 from google_auth_oauthlib.flow import Flow
-from starlette.middleware.cors import CORSMiddleware
 
 from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.sheets import SheetsDbCore
