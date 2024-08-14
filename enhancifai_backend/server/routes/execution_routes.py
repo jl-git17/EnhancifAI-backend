@@ -214,6 +214,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
         try:
             _json_data = json.loads(json_data)
             sheet_name = _json_data['sheet_name']
+            print(f"Sheet name: {sheet_name}")
             data_json = _json_data['data']
             unique_filename = f"uploaded_data_{uuid.uuid4().hex}.xlsx"
             with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx', prefix=unique_filename) as temp_data_file:
@@ -343,6 +344,7 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
         try:
             _json_data = json.loads(json_data)
             sheet_name = _json_data['sheet_name']
+            print(f"Sheet name: {sheet_name}")
             data_json = _json_data['data']
             unique_filename = f"uploaded_data_{uuid.uuid4().hex}.xlsx"
             with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx', prefix=unique_filename) as temp_data_file:
