@@ -7,7 +7,6 @@ import os
 from tempfile import NamedTemporaryFile
 from threading import Thread
 import time
-from typing import Optional
 import uuid
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse
@@ -19,44 +18,31 @@ from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.prompts import PromptsProcessor
 from enhancifai_backend.engine.runs_progress import runs_progress
 from enhancifai_backend.server.hooks import handle_csv_file, handle_excel_file
-from enhancifai_backend.server.models.execution import PromptObject, RunCancelsRequest, RunProgressRequest, RunDataRequest
+from enhancifai_backend.server.models.execution import (
+    PromptObject, RunCancelsRequest, RunProgressRequest, RunDataRequest)
 from enhancifai_backend.server.routes.files_routes import save_to_cache
-from enhancifai_backend.server.utils import STATIC_FILES_DIRECTORY, get_current_user_id, verify_secret_key
+from enhancifai_backend.server.utils import (
+    STATIC_FILES_DIRECTORY, get_current_user_id, verify_secret_key)
 
 MAX_RECORDS = 10
-GLOBAL_MAX_ROWS = int(os.getenv('GLOBAL_MAX_ROWS', 0))
-GLOBAL_MAX_PROMPTS = int(os.getenv('GLOBAL_MAX_PROMPTS', 0))
+GLOBAL_MAX_ROWS = int(os.getenv('GLOBAL_MAX_ROWS', "0"))
+GLOBAL_MAX_PROMPTS = int(os.getenv('GLOBAL_MAX_PROMPTS', "0"))
+EXCEL_MIME_TYPES = ['application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
 
 class EngineType(str, Enum):
     gpt_4_o = "gpt-4o"
     gpt_4_o_mini = "gpt-4-turbo-preview"
     gpt_3_5_turbo = "gpt-3.5-turbo"
-    
+
 router = APIRouter()
 
 def read_prompt_file(prompt_file_path: str):
     """
     Reads and validates prompts from a CSV file.
     """
-    def validate_and_parse_float(value, default, min_value=0.0, max_value=2.0):
-        """
-        Validates and parses a float value ensuring it has exactly one decimal place.
-        Falls back to a default value if the input is invalid.
-        """
-        try:
-            # Attempt to convert to float and check the decimal place constraint
-            num = float(value)
-            if min_value <= num <= max_value and len(str(value).split('.')[-1]) == 1:
-                return num
-        except ValueError:
-            pass
-        return default
     valid_prompts = []
     errors = []
-    # Default values fetched from environment variables
-    #default_temperature = validate_and_parse_float(os.getenv('DEFAULT_OPENAI_TEMPERATURE'), 0.0)
-    #default_top_p = validate_and_parse_float(os.getenv('DEFAULT_OPENAI_TOP_P'), 0.0)
-    
     with open(prompt_file_path, newline='', encoding='utf-8') as csvfile:
         i = 1
         reader = csv.DictReader(csvfile)
@@ -66,18 +52,19 @@ def read_prompt_file(prompt_file_path: str):
                 columns = row['Columns being Referenced']
                 prompt = row['The Prompt']
                 output_heading = row['Output Heading']
-                #temperature = validate_and_parse_float(row.get('Temperature', default_temperature), default_temperature)
-                #top_p = validate_and_parse_float(row.get('Top_P', default_top_p), default_top_p)
-            
 
                 if not prompt_number.isdigit():
                     errors.append(f"Row {i} >> Invalid prompt number: {prompt_number}")
                     continue
 
                 columns = columns.replace(" ", "").upper()
-                if columns != '*' and not all(c.isalpha() and len(c) == 1 for c in columns.split('+')):
+                if (columns != '*' and not all(c.isalpha() and
+                            len(c) == 1 for c in columns.split('+'))):
                     if '+' not in columns:
-                        errors.append(f"'Columns being Referenced' must be separated by a '+' (plus) character.\nSubmitted columns: ({columns})")
+                        errors.append(
+                            "'Columns being Referenced' must be separated "
+                            "by a '+' (plus) character."
+                            f"\nSubmitted columns: ({columns})")
                     else:
                         errors.append(f"Invalid 'Columns being Referenced' format: ({columns})")
                     continue
@@ -92,8 +79,6 @@ def read_prompt_file(prompt_file_path: str):
                         'columns': columns,
                         'prompt': prompt,
                         'output_heading': output_heading
-                        #'temperature': temperature,
-                        #'top_p': top_p
                     }
                 )
                 i += 1
@@ -129,7 +114,7 @@ def start_async_run(run_id, data_file, prompts, max_recs, user_id, file_name):
 async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name):
     # Guess the MIME type based on the file extension
     mime_type, _ = mimetypes.guess_type(data_file)
-    
+
     if mime_type == 'text/csv':
         results = await handle_csv_file(
             run_id=run_id,
@@ -139,7 +124,7 @@ async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name):
             user_id=user_id,
             filename=file_name
         )
-    elif mime_type in ['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel']:
+    elif mime_type in EXCEL_MIME_TYPES:
         results = await handle_excel_file(
             run_id=run_id,
             excel_file=data_file,
@@ -151,7 +136,7 @@ async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name):
     else:
         # Handle unsupported file types or add more conditions for other types
         results = f"Unsupported file type: {mime_type}"
-    
+
     # Assuming runs_progress is defined elsewhere to track the progress of runs
     runs_progress.update_details(run_id=run_id, details=results)
 
@@ -220,21 +205,24 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
     temp_prompt_file_path = None
     data_file_suffix = None
     file_name = None
+    sheet_name = None
 
     if data_file and json_data:
         raise HTTPException(status_code=400, detail="Cannot upload both a file and JSON data. Provide either one.")
 
     if json_data:
         try:
-            data_json = json.loads(json_data)
+            _json_data = json.loads(json_data)
+            sheet_name = _json_data['sheet_name']
+            data_json = _json_data['data']
             unique_filename = f"uploaded_data_{uuid.uuid4().hex}.xlsx"
             with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx', prefix=unique_filename) as temp_data_file:
                 temp_data_file_path = temp_data_file.name
                 json_to_excel(data_json, temp_data_file_path)
             file_name = unique_filename
             data_file_suffix = '.xlsx'
-        except json.JSONDecodeError:
-            raise HTTPException(status_code=400, detail="Invalid JSON data.")
+        except Exception as err:
+            raise HTTPException(status_code=400, detail="Invalid JSON data.") from err
     elif data_file:
         file_suffix_map = {
             'text/csv': '.csv',
@@ -289,7 +277,10 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
     extracted_columns = extract_columns_from_file(temp_data_file_path)
 
     run_type = 'csv' if data_file_suffix == '.csv' else 'excel'
-    source_filename = str(file_name).replace(data_file_suffix, '')
+    if sheet_name:
+        source_filename = sheet_name
+    else:
+        source_filename = str(file_name).replace(data_file_suffix, '')
     run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
     runs_progress.add_run(run_id, None)
 
@@ -303,7 +294,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
         print(f"Error starting async run: {str(e)}")
         time.sleep(1)
         cleanup_temp_files(temp_prompt_file_path, temp_data_file_path)
-        raise HTTPException(status_code=500, detail="Failed to start the asynchronous process.")
+        raise HTTPException(status_code=500, detail="Failed to start the asynchronous process.") from e
 
     # Ensure files are cleaned up at the right time to avoid premature deletion
     cleanup_temp_files(temp_prompt_file_path, None)
@@ -322,7 +313,7 @@ async def cancel_run(req_run: RunCancelsRequest, _: str = Depends(verify_secret_
             raise HTTPException(status_code=400, detail="User not owner of provided run_id.")
         RunsDbCore.cancel_run(req_run.run_id)
     except HTTPException as e:
-            return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+        return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
     except Exception as e:
         # Catch-all for unexpected errors
         return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
@@ -356,8 +347,8 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
                 json_to_excel(data_json, temp_data_file_path)
             file_name = unique_filename
             data_file_suffix = '.xlsx'
-        except json.JSONDecodeError:
-            raise HTTPException(status_code=400, detail="Invalid JSON data.")
+        except Exception as err:
+            raise HTTPException(status_code=400, detail="Invalid JSON data.") from err
     elif data_file:
         file_suffix_map = {
             'text/csv': '.csv',
@@ -381,9 +372,11 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
     # Handle Prompts
     try:
         prompt_list = json.loads(prompts)
-    except json.JSONDecodeError:
-        raise HTTPException(status_code=400, detail="Invalid prompts payload.")
-    read_prompts = PromptsProcessor.read_prompt_objects([PromptObject(**prompt) for prompt in prompt_list])
+    except Exception as err:
+        raise HTTPException(status_code=400, detail="Invalid prompts payload.") from err
+    read_prompts = PromptsProcessor.read_prompt_objects(
+        [PromptObject(**prompt) for prompt in prompt_list]
+    )
 
     max_recs = MAX_RECORDS if max_records else GLOBAL_MAX_ROWS
 
@@ -472,7 +465,7 @@ async def download_prompts(prompts: str = Form(...), _: str = Depends(verify_sec
         file_path = os.path.join(STATIC_FILES_DIRECTORY, "prompts_template.xlsx")
         unique_filename = f"prompts_{uuid.uuid4()}_{int(time.time()*1000)}.xlsx"
         processed_excel_path = os.path.join('/tmp', unique_filename)
-        
+
         try:
             prompt_list = json.loads(prompts)
             wb = openpyxl.load_workbook(file_path)
@@ -486,27 +479,14 @@ async def download_prompts(prompts: str = Form(...), _: str = Depends(verify_sec
 
             wb.save(processed_excel_path)
             return FileResponse(processed_excel_path, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename="prompts.xlsx")
-        
-        except json.JSONDecodeError:
-            raise HTTPException(status_code=400, detail="Invalid prompts payload.")
-        
+
+        except Exception as err:
+            raise HTTPException(status_code=400, detail="Invalid prompts payload.") from err
+
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
-
-"""
-@router.post("/execution/google-sheets/", tags=["Execution"])
-async def upload_files(data_file: UploadFile = File(...), prompt_file: UploadFile = File(...),
-                       max_records: bool = Form(...), engine: EngineType = Form(...),
-                       openai_api_key: str = Form(...), _: str = Depends(verify_secret_key)):
-    "
-    Google Sheets submission.
-    "
-    
-    
-    return JSONResponse(status_code=200, content=response_data)
-"""
 
 @router.post("/execution/get-data", tags=["Execution"])
 async def get_data(req_data: RunDataRequest, _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
