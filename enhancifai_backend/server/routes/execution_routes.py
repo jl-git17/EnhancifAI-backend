@@ -216,11 +216,10 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
             sheet_name = _json_data['sheet_name']
             print(f"Sheet name: {sheet_name}")
             data_json = _json_data['data']
-            unique_filename = f"uploaded_data_{uuid.uuid4().hex}.xlsx"
-            with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx', prefix=unique_filename) as temp_data_file:
+            with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx') as temp_data_file:
                 temp_data_file_path = temp_data_file.name
                 json_to_excel(data_json, temp_data_file_path)
-            file_name = unique_filename
+            file_name = f"{sheet_name}.xlsx"
             data_file_suffix = '.xlsx'
         except Exception as err:
             raise HTTPException(status_code=400, detail="Invalid JSON data.") from err
@@ -346,11 +345,10 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
             sheet_name = _json_data['sheet_name']
             print(f"Sheet name: {sheet_name}")
             data_json = _json_data['data']
-            unique_filename = f"uploaded_data_{uuid.uuid4().hex}.xlsx"
-            with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx', prefix=unique_filename) as temp_data_file:
+            with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx') as temp_data_file:
                 temp_data_file_path = temp_data_file.name
                 json_to_excel(data_json, temp_data_file_path)
-            file_name = unique_filename
+            file_name = f"{sheet_name}.xlsx"
             data_file_suffix = '.xlsx'
         except Exception as err:
             raise HTTPException(status_code=400, detail="Invalid JSON data.") from err
