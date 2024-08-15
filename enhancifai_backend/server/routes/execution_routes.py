@@ -212,7 +212,9 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
 
     if json_data:
         try:
+            print(json_data)
             _json_data = json.loads(json_data)
+            print(_json_data)
             sheet_name = _json_data['sheet_name']
             print(f"Sheet name: {sheet_name}")
             data_json = _json_data['data']
@@ -342,7 +344,9 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
 
     if json_data:
         try:
+            print(json_data)
             _json_data = json.loads(json_data)
+            print(_json_data)
             sheet_name = _json_data['sheet_name']
             print(f"Sheet name: {sheet_name}")
             data_json = _json_data['data']
