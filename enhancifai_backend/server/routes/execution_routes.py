@@ -222,6 +222,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
             file_name = f"{sheet_name}.xlsx"
             data_file_suffix = '.xlsx'
         except Exception as err:
+            print(err)
             raise HTTPException(status_code=400, detail="Invalid JSON data.") from err
     elif data_file:
         file_suffix_map = {
@@ -351,6 +352,7 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
             file_name = f"{sheet_name}.xlsx"
             data_file_suffix = '.xlsx'
         except Exception as err:
+            print(err)
             raise HTTPException(status_code=400, detail="Invalid JSON data.") from err
     elif data_file:
         file_suffix_map = {
