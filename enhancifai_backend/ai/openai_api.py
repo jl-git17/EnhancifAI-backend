@@ -132,3 +132,72 @@ class OpenAIConnector:
         else:
             print("Failed to get answer from OpenAI API after 3 attempts.")
             return {'content': _err, 'tokens': 0}
+
+    def improve_prompts(self, prompts:list):
+        for attempt in range(3):
+            try:
+                messages = [
+                    {
+                        "role": "system",
+                        "content": (
+                            "- You are an expert OpenAI prompt engineer You take JSON input of an array of prompts, improve them and respond with an array of the new and improved prompts.\n"
+                            "- Rules: respect the brevity of original prompts, optimize and improve the prompts for clarity, respect original intent of prompts."
+                        )
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "Ready to assist with your prompts. Please provide your JSON data."
+                    }
+                ]
+
+                # User's query and payload are appended here
+                messages.append(
+                    {
+                        "role": "user",
+                        "content": f"```{json.dumps(prompts)}```"
+                    }
+                )
+
+                completion = self.client.chat.completions.create(
+                    model=self.engine,
+                    messages=messages,
+                    temperature=0.7,
+                    #temperature=self.temperature,
+                    #top_p=self.top_p
+                )
+
+                data = completion.choices[0].message.content
+                tokens_used = completion.usage.total_tokens
+
+                return {"content": data.strip(), "tokens": tokens_used, 'engine_used': self.engine}
+
+            except Exception as e:
+                print(e)
+                if e.status_code == 429: # pylint: disable=no-member
+                    try:
+                        # Use the compiled pattern to search the string
+                        match = RATE_LIMIT_PATTERN.search(e.body['message']) # pylint: disable=no-member
+                        # Extract the number of seconds
+                        if match:
+                            delay = float(match.group(1))
+                        else:
+                            delay = 5
+                    except (ValueError, IndexError):
+                        delay = 5  # Default to 5 seconds if parsing fails
+
+                    sleep_time = delay * BUFFER_MULTIPLIER  # Add a buffer time
+                    print(f"Rate limit exceeded. Waiting for {sleep_time} seconds before retrying...")
+                    time.sleep(sleep_time)
+                else:
+                    print(f"OpenAI API error on attempt {attempt + 1}: {e}")
+                    _err = e
+                    if attempt < 2:
+                        # Exponential backoff with a base delay of 1 second
+                        time.sleep(1 * (2 ** attempt))
+
+        if _err is None:
+            raise RuntimeError("Failed to get answer from OpenAI API after 3 attempts.")
+        else:
+            print("Failed to get answer from OpenAI API after 3 attempts.")
+            print(_err)
+            return None

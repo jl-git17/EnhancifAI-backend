@@ -17,9 +17,9 @@ from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.prompts import PromptsProcessor
 from enhancifai_backend.engine.runs_progress import runs_progress
-from enhancifai_backend.server.hooks import handle_csv_file, handle_excel_file
+from enhancifai_backend.server.hooks import handle_csv_file, handle_excel_file, pi_ai_connection
 from enhancifai_backend.server.models.execution import (
-    PromptObject, RunCancelsRequest, RunProgressRequest, RunDataRequest)
+    PromptImproveRequest, PromptObject, RunCancelsRequest, RunProgressRequest, RunDataRequest)
 from enhancifai_backend.server.routes.files_routes import save_to_cache
 from enhancifai_backend.server.utils import (
     STATIC_FILES_DIRECTORY, get_current_user_id, verify_secret_key)
@@ -536,3 +536,15 @@ async def get_data(req_data: RunDataRequest, _: str = Depends(verify_secret_key)
 
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
+
+@router.post("/execution/tools/ai-prompt-improver", tags=["Execution"])
+async def ai_prompt_improver(prompt_data: PromptImproveRequest, _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
+    """
+    TODO
+    """
+    # will use user_id in future to log usage
+    new_prompts = pi_ai_connection.improve_prompts(prompt_data.prompt_data)
+    return JSONResponse(status_code=200, content={
+            "message": "Data file retrieved successfully.",
+            "new_prompts": new_prompts
+    })

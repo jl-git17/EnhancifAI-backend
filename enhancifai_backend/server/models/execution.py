@@ -22,3 +22,6 @@ class RunDataRequest(BaseModel):
 
 class CacheRequest(BaseModel):
     filename: str
+
+class PromptImproveRequest(BaseModel):
+    prompt_data: str
