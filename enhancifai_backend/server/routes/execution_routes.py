@@ -540,11 +540,25 @@ async def get_data(req_data: RunDataRequest, _: str = Depends(verify_secret_key)
 @router.post("/execution/tools/ai-prompt-improver", tags=["Execution"])
 async def ai_prompt_improver(prompt_data: PromptImproveRequest, _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
     """
-    TODO
+    Enhance the provided prompt data using AI tools.
+
+    This endpoint takes in a list of prompts and processes them using an AI-driven prompt improver. 
+    The AI model aims to refine and optimize the prompts for better clarity, focus, or effectiveness.
+    
+    Args:
+        prompt_data (PromptImproveRequest): The request body containing a list of prompt strings.
+        _ (str): Secret key for verification (handled by FastAPI's dependency injection).
+        user_id (int): The ID of the current user (handled by FastAPI's dependency injection).
+
+    Returns:
+        JSONResponse: A JSON response containing a message and the improved prompts.
+
+    Note:
+        The user_id is not currently utilized but will be logged for usage tracking in future updates.
     """
     # will use user_id in future to log usage
     new_prompts = pi_ai_connection.improve_prompts(prompt_data.prompt_data)
     return JSONResponse(status_code=200, content={
-            "message": "Data file retrieved successfully.",
+            "message": "Prompts improved successfully.",
             "new_prompts": new_prompts
     })
