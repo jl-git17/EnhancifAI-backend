@@ -2,6 +2,7 @@ import json
 import os
 import re
 import time
+from fastapi import HTTPException
 from openai import OpenAI
 
 from enhancifai_backend.database.handlers.runs import RunsDbCore
@@ -133,20 +134,20 @@ class OpenAIConnector:
             print("Failed to get answer from OpenAI API after 3 attempts.")
             return {'content': _err, 'tokens': 0}
 
-    def improve_prompts(self, prompts:list):
+    def improve_prompt(self, prompt: str):
         for attempt in range(3):
             try:
                 messages = [
                     {
                         "role": "system",
                         "content": (
-                            "- You are an expert OpenAI prompt engineer You take JSON input of an array of prompts, improve them and respond with an array of the new and improved prompts.\n"
-                            "- Rules: respect the brevity of original prompts, optimize and improve the prompts for clarity, respect original intent of prompts, respond with a valid JSON codeblock only."
+                            "- You are an expert OpenAI prompt engineer You take a string input of the prompt, improve it and respond with the new and improved prompt. Do not add anything else.\n"
+                            "- Rules: respect the brevity of original prompt, optimize and improve the prompts for clarity, respect original intent of prompts."
                         )
                     },
                     {
                         "role": "assistant",
-                        "content": "Ready to assist with your prompts. Please provide your JSON data."
+                        "content": "Ready to assist with your prompts. Please provide your prompt to improve."
                     }
                 ]
 
@@ -154,7 +155,7 @@ class OpenAIConnector:
                 messages.append(
                     {
                         "role": "user",
-                        "content": f"```{json.dumps(prompts)}```"
+                        "content": f"```{prompt}```"
                     }
                 )
 
@@ -168,14 +169,14 @@ class OpenAIConnector:
 
                 data = completion.choices[0].message.content
                 tokens_used = completion.usage.total_tokens
-                new_prompts = data.replace("```json", "").replace("```", "").strip()
+                print(data)
+                new_prompt = data.replace("```", "").strip()
 
-                return {"content": json.loads(new_prompts), "tokens": tokens_used, 'engine_used': self.engine}
+                return {"content": new_prompt, "tokens": tokens_used, 'engine_used': self.engine}
 
             except json.JSONDecodeError:
                 # Handle the case where the response is not a valid JSON string
-                return {"error": "Failed to parse JSON from assistant response.", "content": data.strip(), "tokens": tokens_used, 'engine_used': self.engine}
-
+                raise HTTPException(status_code=500, detail="Failed to parse JSON from assistant response.")
             except Exception as e:
                 print(e)
                 if e.status_code == 429: # pylint: disable=no-member
@@ -205,4 +206,4 @@ class OpenAIConnector:
         else:
             print("Failed to get answer from OpenAI API after 3 attempts.")
             print(_err)
-            return None
+            raise HTTPException(status_code=500, detail="Failed to get answer from OpenAI API after 3 attempts.")

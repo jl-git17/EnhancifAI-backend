@@ -556,9 +556,16 @@ async def ai_prompt_improver(prompt_data: PromptImproveRequest, _: str = Depends
     Note:
         The user_id is not currently utilized but will be logged for usage tracking in future updates.
     """
-    # will use user_id in future to log usage
-    new_prompts = pi_ai_connection.improve_prompts(prompt_data.prompt_data)
-    return JSONResponse(status_code=200, content={
-            "message": "Prompts improved successfully.",
-            "new_prompts": new_prompts
-    })
+    try:
+        # will use user_id in future to log usage
+        new_prompt = pi_ai_connection.improve_prompt(prompt_data.prompt)
+        if not new_prompt or not isinstance(new_prompt,dict):
+            raise HTTPException(status_code=404, detail="Error in processing request.")
+        return JSONResponse(status_code=200, content={
+                "message": "Prompts improved successfully.",
+                "new_prompt": new_prompt
+        })
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
