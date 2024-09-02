@@ -162,7 +162,7 @@ class OpenAIConnector:
                 completion = self.client.chat.completions.create(
                     model=self.engine,
                     messages=messages,
-                    temperature=0.7,
+                    temperature=1,
                     #temperature=self.temperature,
                     #top_p=self.top_p
                 )
