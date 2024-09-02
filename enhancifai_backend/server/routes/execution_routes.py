@@ -563,7 +563,7 @@ async def ai_prompt_improver(prompt_data: PromptImproveRequest, _: str = Depends
             raise HTTPException(status_code=404, detail="Error in processing request.")
         return JSONResponse(status_code=200, content={
                 "message": "Prompts improved successfully.",
-                "new_prompt": new_prompt
+                "new_prompt": new_prompt['content']
         })
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
