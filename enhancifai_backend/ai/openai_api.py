@@ -168,8 +168,9 @@ class OpenAIConnector:
 
                 data = completion.choices[0].message.content
                 tokens_used = completion.usage.total_tokens
+                new_prompts = data.replace("```json", "").replace("```", "").strip()
 
-                return {"content": json.loads(data.strip()), "tokens": tokens_used, 'engine_used': self.engine}
+                return {"content": json.loads(new_prompts), "tokens": tokens_used, 'engine_used': self.engine}
 
             except json.JSONDecodeError:
                 # Handle the case where the response is not a valid JSON string
