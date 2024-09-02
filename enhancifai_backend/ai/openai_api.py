@@ -141,7 +141,7 @@ class OpenAIConnector:
                         "role": "system",
                         "content": (
                             "- You are an expert OpenAI prompt engineer You take JSON input of an array of prompts, improve them and respond with an array of the new and improved prompts.\n"
-                            "- Rules: respect the brevity of original prompts, optimize and improve the prompts for clarity, respect original intent of prompts, respond in valid JSON only."
+                            "- Rules: respect the brevity of original prompts, optimize and improve the prompts for clarity, respect original intent of prompts, respond with a valid JSON codeblock only."
                         )
                     },
                     {
