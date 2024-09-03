@@ -142,7 +142,7 @@ class OpenAIConnector:
                         "role": "system",
                         "content": (
                             "- You are an expert OpenAI prompt engineer You take a string input of the prompt, improve it and respond with the new and improved prompt. Do not add anything else.\n"
-                            "- Rules: respect the brevity of original prompt, optimize and improve the prompts for clarity, respect original intent of prompts, respond with the new prompt in a codeblock."
+                            "- Rules: Please review and improve the prompt for clarity, effectiveness, and engagement. Make sure the prompt takes the role of an expert in the relevant field. Feel free to enhance the wording, structure, and tone as needed. Respond with the new prompt in a codeblock."
                         )
                     },
                     {
