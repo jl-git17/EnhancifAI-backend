@@ -13,7 +13,11 @@ BUFFER_MULTIPLIER = 2
 
 RATE_LIMIT_PATTERN = re.compile(r'Please try again in ([\d\.]+)s')
 
-PI_PROMPT = "Please review and improve the prompt for clarity, effectiveness, and engagement. Make sure the prompt takes the role of an expert in the relevant field. Feel free to enhance the wording, structure, and tone as needed."
+PI_PROMPT = (
+    "Please review and improve the prompt for clarity, effectiveness, and engagement. "
+    "Make sure the prompt takes the role of an expert in the relevant field. "
+    "Feel free to enhance the wording, structure, and tone as needed."
+)
 
 class PromptImproverSettings:
     def __init__(self, prompt: str, ai_engine: str):
@@ -71,7 +75,6 @@ class OpenAIConnector:
         }
         print(f"payload:  {payload}")
 
-        initial_delay = 1  # Initial delay in seconds
         max_attempts = 3
         _err = None
 

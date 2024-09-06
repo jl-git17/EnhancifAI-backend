@@ -1,5 +1,5 @@
 import csv
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 import io
 import os
 from typing import Optional
@@ -33,7 +33,7 @@ async def is_user_admin(user_id):
 
 @router.post("/admin/ai-settings", tags=["Admin"])
 async def set_admin_settings_ai(settings:AdminAISettings, _: str = Depends(verify_secret_key),
-                                user_id: int = Depends(get_current_user_id)):
+                                __: int = Depends(get_current_user_id)):
     """Set the Admin settings for AI."""
     # TODO: check if user is an admin
     AdminSettings.set_ai_settings(engine=settings.ai_engine.value, api_key=settings.api_key)
@@ -66,7 +66,7 @@ async def get_settings(credentials: HTTPBasicCredentials = Depends(security)):
 
 @router.post("/admin/prompt-improver/settings", tags=["Admin"])
 async def update_settings(
-    data: dict = Body(...), 
+    data: dict = Body(...),
     credentials: HTTPBasicCredentials = Depends(security)
 ):
     if credentials.username == USERNAME and credentials.password == PASSWORD:
