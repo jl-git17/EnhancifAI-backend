@@ -15,47 +15,117 @@
       align-items: center;
       min-height: 100vh;
     }
+
     .container {
-      max-width: 400px;
+      width: 90%; /* Adjust width to be flexible */
+      max-width: 600px; /* Max width for larger screens */
       margin: 20px;
       padding: 20px;
-      border-radius: 5px;
+      border-radius: 10px;
       background-color: #fff;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
+
     h1 {
       margin-top: 0;
+      text-align: center;
+      font-size: 1.8rem;
     }
+
     label {
       display: block;
-      margin-bottom: 5px;
+      margin-bottom: 8px;
+      font-weight: bold;
+      font-size: 1rem;
     }
-    input[type="text"], select {
-      width: calc(100% - 22px); /* Adjusted width for better alignment */
+
+    textarea {
+      width: 100%; /* Full width for responsiveness */
       padding: 10px;
-      margin-bottom: 10px;
+      height: 140px; /* Taller textarea */
+      margin-bottom: 15px;
       border: 1px solid #ccc;
-      border-radius: 3px;
+      border-radius: 5px;
+      resize: vertical; /* Allow vertical resizing */
+      font-size: 1rem;
     }
+
+    select {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      font-size: 1rem;
+    }
+
     button {
       width: 100%;
       background-color: #3498db;
       color: #fff;
-      padding: 10px;
+      padding: 12px;
       border: none;
-      border-radius: 3px;
+      border-radius: 5px;
+      font-size: 1.2rem;
       cursor: pointer;
+      transition: background-color 0.3s ease;
     }
+
     button:hover {
       background-color: #2980b9;
     }
+
     .alert {
       color: red;
       display: none;
+      text-align: center;
+      margin-bottom: 10px;
     }
+
     .success {
       color: green;
       display: none;
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    /* Media query for smaller screens */
+    @media (max-width: 600px) {
+      .container {
+        padding: 15px;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+      }
+
+      textarea {
+        height: 120px;
+      }
+
+      button {
+        font-size: 1rem;
+        padding: 10px;
+      }
+    }
+
+    /* Media query for larger screens */
+    @media (min-width: 900px) {
+      .container {
+        max-width: 700px;
+      }
+
+      h1 {
+        font-size: 2rem;
+      }
+
+      textarea {
+        height: 160px;
+      }
+
+      button {
+        font-size: 1.4rem;
+      }
     }
   </style>
 </head>
@@ -65,7 +135,7 @@
     <form id="settings-form">
       <div class="form-group">
         <label for="prompt">Prompt:</label>
-        <input type="text" id="prompt" name="prompt" required>
+        <textarea id="prompt" name="prompt" required></textarea>
       </div>
       <div class="form-group">
         <label for="ai_engine">AI Engine:</label>
