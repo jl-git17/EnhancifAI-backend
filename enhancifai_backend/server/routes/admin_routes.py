@@ -3,10 +3,11 @@ from datetime import datetime, timedelta, timezone
 import io
 import os
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
+from enhancifai_backend.ai.openai_api import pi_settings
 from enhancifai_backend.database.handlers.run_logs import RunLogsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.server.models.admin import AdminAISettings, RunLogsRequest
@@ -38,8 +39,61 @@ async def set_admin_settings_ai(settings:AdminAISettings, _: str = Depends(verif
     AdminSettings.set_ai_settings(engine=settings.ai_engine.value, api_key=settings.api_key)
     return JSONResponse(status_code=200, content={"message": "Success."})
 
+@router.get("/admin/prompt-improver", tags=["Admin"])
+async def admin_prompt_improver(credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        return FileResponse(os.path.join(STATIC_PAGES_DIRECTORY, "pi_admin.html"))
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+@router.get("/admin/prompt-improver/settings", tags=["Admin"])
+async def get_settings(credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        return {
+            "prompt": pi_settings.prompt,
+            "ai_engine": pi_settings.ai_engine
+        }
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+@router.post("/admin/prompt-improver/settings", tags=["Admin"])
+async def update_settings(
+    data: dict = Body(...), 
+    credentials: HTTPBasicCredentials = Depends(security)
+):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        prompt = data.get('prompt')
+        ai_engine = data.get('ai_engine')
+
+        if not prompt or not ai_engine:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Prompt and AI Engine are required."
+            )
+        
+        # Update the settings
+        pi_settings.prompt = prompt
+        pi_settings.ai_engine = ai_engine
+
+        return {"message": "Settings updated successfully"}
+
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
 @router.get("/admin/logs", tags=["Admin"])
-async def root(credentials: HTTPBasicCredentials = Depends(security)):
+async def admin_logs(credentials: HTTPBasicCredentials = Depends(security)):
     if credentials.username == USERNAME and credentials.password == PASSWORD:
         return FileResponse(os.path.join(STATIC_PAGES_DIRECTORY, "download_logs.html"))
     else:
