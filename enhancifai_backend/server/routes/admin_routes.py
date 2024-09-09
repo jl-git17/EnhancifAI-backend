@@ -7,7 +7,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
-from enhancifai_backend.ai.openai_api import PI_DEFAULT_AI_ENGINE, PI_DEFAULT_PROMPT, pi_settings
+from enhancifai_backend.ai.openai_api import PI_DEFAULT_AI_ENGINE, PI_DEFAULT_PROMPT
 from enhancifai_backend.database.handlers.admin import PromptsDbCore
 from enhancifai_backend.database.handlers.run_logs import RunLogsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
@@ -118,7 +118,7 @@ async def get_prompt_by_version(version: int, credentials: HTTPBasicCredentials 
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Basic"},
         )
-    
+
 
 @router.post("/admin/prompt-improver/settings", tags=["Admin"])
 async def update_settings(
@@ -137,7 +137,7 @@ async def update_settings(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Prompt and AI Engine are required."
             )
-        
+
         # Save the new prompt version
         user_id = int(os.getenv("ADMIN_USER_ID"))
         PromptsDbCore.save_new_prompt(user_id, prompt, ai_engine)
@@ -179,17 +179,20 @@ async def get_logs_runs_csv(
     start_date: datetime,
     end_date: datetime
 ):
-    """Download run logs as CSV for a particular date/time range, all times in UTC, with default values for the start and end dates."""
+    """
+        Download run logs as CSV for a particular date/time range, 
+        all times in UTC, with default values for the start and end dates.
+    """
     #if not user_id or not await is_user_admin(user_id):
         #raise HTTPException(status_code=403, detail="Unauthorized Access")
 
     logs = RunLogsDbCore.retrieve_logs_by_date_range(
         start_date, end_date
     )
-    
+
     output = io.StringIO()
     writer = csv.writer(output)
-    
+
     if logs:
         writer.writerow(logs[0].keys())
         for log in logs:
@@ -199,13 +202,13 @@ async def get_logs_runs_csv(
             if log['errors'] == []:
                 log['errors'] = ""
             writer.writerow(log.values())
-    
+
     output.seek(0)
-    
+
     response = StreamingResponse(
         iter([output.getvalue()]),
         media_type="text/csv"
     )
     response.headers["Content-Disposition"] = "attachment; filename=run_logs.csv"
-    
+
     return response

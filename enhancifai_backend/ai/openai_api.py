@@ -128,7 +128,7 @@ class OpenAIConnector:
 
                 if 'SYS:NONE' in data:
                     data = data.replace('SYS:NONE', '').strip()
-                
+
                 # Save token usage entry
                 user_id = RunsDbCore.get_user_id(run_id)
                 UsersDbCore.add_token_usage(user_id, self.engine, tokens_used)
