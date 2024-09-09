@@ -190,105 +190,140 @@
     </div>
 
     <script>
-        const promptField = document.getElementById('prompt');
-        const aiEngineField = document.getElementById('ai_engine');
-        const promptHistoryTable = document.getElementById('prompt-history');
-        const settingsForm = document.getElementById('settings-form');
-        const successMessage = document.getElementById('success-message');
-        const loadingMessage = document.getElementById('loading-message');
-        const saveButton = settingsForm.querySelector('button');
-
-        async function fetchPromptHistory() {
-            loadingMessage.style.display = 'block';  // Show loading message
-            promptHistoryTable.innerHTML = '';  // Clear the table while loading
-
-            try {
-                const response = await fetch('/admin/prompt-improver/prompts');
-                
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-
-                const data = await response.json();
-
-                if (data.prompts && Array.isArray(data.prompts)) {
-                    promptHistoryTable.innerHTML = data.prompts.map(prompt => `
-                        <tr>
-                            <td>${prompt.version}</td>
-                            <td>${prompt.prompt}</td>
-                            <td>${prompt.ai_engine}</td>
-                            <td>${prompt.created_at}</td>
-                            <td><button class="restore-btn" onclick="restorePrompt(${prompt.version})">Restore</button></td>
-                        </tr>
-                    `).join('');
-                } else {
-                    promptHistoryTable.innerHTML = '<tr><td colspan="5">No prompt history available</td></tr>';
-                }
-            } catch (error) {
-                console.error("Failed to fetch prompt history:", error);
-                promptHistoryTable.innerHTML = '<tr><td colspan="5">Error loading prompt history</td></tr>';
-            } finally {
-                loadingMessage.style.display = 'none';  // Hide loading message
-            }
-        }
-
-        async function restorePrompt(version) {
-            const response = await fetch(`/admin/prompt-improver/prompts/${version}`);
-            const data = await response.json();
-            
-            promptField.value = data.prompt;
-            aiEngineField.value = data.ai_engine;
-        }
-
-        async function loadSettings() {
-            const response = await fetch('/admin/prompt-improver/settings');
-            const data = await response.json();
-
-            promptField.value = data.prompt;
-            aiEngineField.value = data.ai_engine;
-        }
-
-        settingsForm.addEventListener('submit', async function(event) {
-            event.preventDefault();  // Prevent default form submission
-            saveButton.disabled = true;  // Disable the button while submitting
-
-            const formData = {
-                prompt: promptField.value,
-                ai_engine: aiEngineField.value,
-            };
-
-            try {
-                const response = await fetch('/admin/prompt-improver/settings', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(formData),
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to save settings');
-                }
-
-                const result = await response.json();
-                successMessage.style.display = 'block';  // Show success message
-                fetchPromptHistory();  // Reload the prompt history
-                promptField.value = '';  // Clear the prompt field
-                aiEngineField.value = 'gpt-4o';  // Reset the AI engine dropdown
-
-                setTimeout(() => {
-                    successMessage.style.display = 'none';  // Hide success message after a few seconds
-                }, 3000);
-            } catch (error) {
-                console.error('Error saving settings:', error);
-                alert('Error saving settings. Please try again.');
-            } finally {
-                saveButton.disabled = false;  // Re-enable the button after submission
-            }
-        });
-
-        loadSettings();
-        fetchPromptHistory();
+      const promptField = document.getElementById('prompt');
+      const aiEngineField = document.getElementById('ai_engine');
+      const promptHistoryTable = document.getElementById('prompt-history');
+      const settingsForm = document.getElementById('settings-form');
+      const successMessage = document.getElementById('success-message');
+      const loadingMessage = document.getElementById('loading-message');
+      const saveButton = settingsForm.querySelector('button');
+      const restoredLabel = document.getElementById('restored-label');
+  
+      // Debugging function to log errors and data
+      function logResponse(response) {
+          console.log('Server Response:', response);
+      }
+  
+      async function fetchPromptHistory() {
+          loadingMessage.style.display = 'block';  // Show loading message
+          promptHistoryTable.innerHTML = '';  // Clear the table while loading
+  
+          try {
+              const response = await fetch('/admin/prompt-improver/prompts', {
+                  headers: {
+                      'Cache-Control': 'no-cache'
+                  }
+              });
+              
+              if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+              }
+  
+              const data = await response.json();
+              logResponse(data);  // Log the prompt history response for debugging
+  
+              if (data.prompts && Array.isArray(data.prompts)) {
+                  promptHistoryTable.innerHTML = data.prompts.map(prompt => `
+                      <tr>
+                          <td>${prompt.version}</td>
+                          <td>${prompt.prompt}</td>
+                          <td>${prompt.ai_engine}</td>
+                          <td>${prompt.created_at}</td>
+                          <td><button class="restore-btn" onclick="restorePrompt(${prompt.version})">Restore</button></td>
+                      </tr>
+                  `).join('');
+              } else {
+                  promptHistoryTable.innerHTML = '<tr><td colspan="5">No prompt history available</td></tr>';
+              }
+          } catch (error) {
+              console.error("Failed to fetch prompt history:", error);
+              promptHistoryTable.innerHTML = '<tr><td colspan="5">Error loading prompt history</td></tr>';
+          } finally {
+              loadingMessage.style.display = 'none';  // Hide loading message
+          }
+      }
+  
+      async function restorePrompt(version) {
+          try {
+              const response = await fetch(`/admin/prompt-improver/prompts/${version}`, {
+                  headers: {
+                      'Cache-Control': 'no-cache'
+                  }
+              });
+  
+              const data = await response.json();
+              logResponse(data);  // Log the restored data response for debugging
+  
+              // Update the form with restored values
+              promptField.value = data.prompt;
+              aiEngineField.value = data.ai_engine;
+  
+              // Show restored label to indicate this is from history
+              restoredLabel.style.display = 'block';
+          } catch (error) {
+              console.error('Error restoring prompt:', error);
+          }
+      }
+  
+      async function loadSettings() {
+          try {
+              const response = await fetch('/admin/prompt-improver/settings', {
+                  headers: {
+                      'Cache-Control': 'no-cache'
+                  }
+              });
+  
+              const data = await response.json();
+              logResponse(data);  // Log the settings response for debugging
+  
+              // Update the form with the loaded settings
+              promptField.value = data.prompt;
+              aiEngineField.value = data.ai_engine;
+              restoredLabel.style.display = 'none';  // Hide the restored label when settings are loaded
+          } catch (error) {
+              console.error('Error loading settings:', error);
+          }
+      }
+  
+      settingsForm.addEventListener('submit', async function(event) {
+          event.preventDefault();  // Prevent default form submission
+          saveButton.disabled = true;  // Disable the button while submitting
+  
+          const formData = {
+              prompt: promptField.value,
+              ai_engine: aiEngineField.value,
+          };
+  
+          try {
+              const response = await fetch('/admin/prompt-improver/settings', {
+                  method: 'POST',
+                  headers: {
+                      'Content-Type': 'application/json',
+                      'Cache-Control': 'no-cache'
+                  },
+                  body: JSON.stringify(formData),
+              });
+  
+              if (!response.ok) {
+                  throw new Error('Failed to save settings');
+              }
+  
+              const result = await response.json();
+              logResponse(result);  // Log the save response for debugging
+  
+              successMessage.style.display = 'block';  // Show success message
+  
+          } catch (error) {
+              console.error('Error saving settings:', error);
+              alert('Error saving settings. Please try again.');
+          } finally {
+              saveButton.disabled = false;  // Re-enable the button after submission
+          }
+      });
+  
+      loadSettings();
+      fetchPromptHistory();
     </script>
+  
 </body>
 </html>
