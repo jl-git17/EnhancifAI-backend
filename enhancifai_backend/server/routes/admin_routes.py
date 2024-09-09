@@ -8,6 +8,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from enhancifai_backend.ai.openai_api import pi_settings
+from enhancifai_backend.database.handlers.admin import PromptsDbCore
 from enhancifai_backend.database.handlers.run_logs import RunLogsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.server.models.admin import AdminAISettings, RunLogsRequest
@@ -50,13 +51,17 @@ async def admin_prompt_improver(credentials: HTTPBasicCredentials = Depends(secu
             headers={"WWW-Authenticate": "Basic"},
         )
 
-@router.get("/admin/prompt-improver/settings", tags=["Admin"])
-async def get_settings(credentials: HTTPBasicCredentials = Depends(security)):
+
+
+@router.get("/admin/prompt-improver/prompts", tags=["Admin"])
+async def get_prompt_versions(credentials: HTTPBasicCredentials = Depends(security)):
+    """
+    Fetch all versions of prompts for the current user.
+    """
     if credentials.username == USERNAME and credentials.password == PASSWORD:
-        return {
-            "prompt": pi_settings.prompt,
-            "ai_engine": pi_settings.ai_engine
-        }
+        user_id = get_current_user_id()  # Assuming there's a way to get current user ID
+        prompts = PromptsDbCore.get_prompt_versions_by_user(user_id)
+        return {"prompts": prompts}
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -64,11 +69,35 @@ async def get_settings(credentials: HTTPBasicCredentials = Depends(security)):
             headers={"WWW-Authenticate": "Basic"},
         )
 
+
+@router.get("/admin/prompt-improver/prompts/{version}", tags=["Admin"])
+async def get_prompt_by_version(version: int, credentials: HTTPBasicCredentials = Depends(security)):
+    """
+    Fetch a specific version of a prompt.
+    """
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        user_id = get_current_user_id()
+        prompt = PromptsDbCore.get_prompt_by_version(user_id, version)
+        if prompt:
+            return prompt
+        else:
+            raise HTTPException(status_code=404, detail="Prompt not found.")
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+    
+
 @router.post("/admin/prompt-improver/settings", tags=["Admin"])
 async def update_settings(
     data: dict = Body(...),
     credentials: HTTPBasicCredentials = Depends(security)
 ):
+    """
+    Save the current prompt as a new version.
+    """
     if credentials.username == USERNAME and credentials.password == PASSWORD:
         prompt = data.get('prompt')
         ai_engine = data.get('ai_engine')
@@ -79,18 +108,18 @@ async def update_settings(
                 detail="Prompt and AI Engine are required."
             )
         
-        # Update the settings
-        pi_settings.prompt = prompt
-        pi_settings.ai_engine = ai_engine
+        # Save the new prompt version
+        user_id = get_current_user_id()
+        PromptsDbCore.save_new_prompt(user_id, prompt, ai_engine)
 
         return {"message": "Settings updated successfully"}
-
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Basic"},
         )
+
 
 @router.get("/admin/logs", tags=["Admin"])
 async def admin_logs(credentials: HTTPBasicCredentials = Depends(security)):

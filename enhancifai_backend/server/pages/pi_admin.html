@@ -1,208 +1,95 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>EnhancifAI - Prompt Improver Admin</title>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f5f5f5;
-      margin: 0;
-      padding: 0;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EnhancifAI - Prompt Improver Admin</title>
+    <style>
+        /* Your existing styles */
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+        }
 
-    .container {
-      width: 90%; /* Adjust width to be flexible */
-      max-width: 600px; /* Max width for larger screens */
-      margin: 20px;
-      padding: 20px;
-      border-radius: 10px;
-      background-color: #fff;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    }
+        table, th, td {
+            border: 1px solid #ddd;
+        }
 
-    h1 {
-      margin-top: 0;
-      text-align: center;
-      font-size: 1.8rem;
-    }
+        th, td {
+            padding: 12px;
+            text-align: left;
+        }
 
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: bold;
-      font-size: 1rem;
-    }
-
-    textarea {
-      width: 100%; /* Full width for responsiveness */
-      padding: 10px;
-      height: 140px; /* Taller textarea */
-      margin-bottom: 15px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      resize: vertical; /* Allow vertical resizing */
-      font-size: 1rem;
-    }
-
-    select {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 15px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-      font-size: 1rem;
-    }
-
-    button {
-      width: 100%;
-      background-color: #3498db;
-      color: #fff;
-      padding: 12px;
-      border: none;
-      border-radius: 5px;
-      font-size: 1.2rem;
-      cursor: pointer;
-      transition: background-color 0.3s ease;
-    }
-
-    button:hover {
-      background-color: #2980b9;
-    }
-
-    .alert {
-      color: red;
-      display: none;
-      text-align: center;
-      margin-bottom: 10px;
-    }
-
-    .success {
-      color: green;
-      display: none;
-      text-align: center;
-      margin-bottom: 10px;
-    }
-
-    /* Media query for smaller screens */
-    @media (max-width: 600px) {
-      .container {
-        padding: 15px;
-      }
-
-      h1 {
-        font-size: 1.5rem;
-      }
-
-      textarea {
-        height: 120px;
-      }
-
-      button {
-        font-size: 1rem;
-        padding: 10px;
-      }
-    }
-
-    /* Media query for larger screens */
-    @media (min-width: 900px) {
-      .container {
-        max-width: 700px;
-      }
-
-      h1 {
-        font-size: 2rem;
-      }
-
-      textarea {
-        height: 160px;
-      }
-
-      button {
-        font-size: 1.4rem;
-      }
-    }
-  </style>
+        th {
+            background-color: #f4f4f4;
+        }
+    </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Settings</h1>
-    <form id="settings-form">
-      <div class="form-group">
-        <label for="prompt">Prompt:</label>
-        <textarea id="prompt" name="prompt" required></textarea>
-      </div>
-      <div class="form-group">
-        <label for="ai_engine">AI Engine:</label>
-        <select id="ai_engine" name="ai_engine" required>
-          <option value="gpt-4o">GPT-4o</option>
-          <option value="gpt-4o-mini">GPT-4o Mini</option>
-          <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-        </select>
-      </div>
-      <div class="alert" id="error-message">Error updating settings. Please try again.</div>
-      <div class="success" id="success-message">Settings updated successfully!</div>
-      <button type="submit">Save Settings</button>
-    </form>
-  </div>
+    <div class="container">
+        <h1>Settings</h1>
+        <form id="settings-form">
+            <div class="form-group">
+                <label for="prompt">Prompt:</label>
+                <textarea id="prompt" name="prompt" required></textarea>
+            </div>
+            <div class="form-group">
+                <label for="ai_engine">AI Engine:</label>
+                <select id="ai_engine" name="ai_engine" required>
+                    <option value="gpt-4o">GPT-4o</option>
+                    <option value="gpt-4o-mini">GPT-4o Mini</option>
+                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                </select>
+            </div>
+            <button type="submit">Save Settings</button>
+        </form>
 
-  <script>
-    const form = document.getElementById('settings-form');
-    const errorMessage = document.getElementById('error-message');
-    const successMessage = document.getElementById('success-message');
-    const promptInput = document.getElementById('prompt');
-    const aiEngineInput = document.getElementById('ai_engine');
+        <h2>Prompt History</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Version</th>
+                    <th>Prompt</th>
+                    <th>AI Engine</th>
+                    <th>Created At</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody id="prompt-history">
+                <!-- Prompt versions will be populated here -->
+            </tbody>
+        </table>
+    </div>
 
-    // Function to load settings on page load
-    async function loadSettings() {
-      try {
-        const response = await fetch('/admin/prompt-improver/settings', { method: 'GET' });
-        if (response.ok) {
-          const data = await response.json();
-          promptInput.value = data.prompt;
-          aiEngineInput.value = data.ai_engine;
-        } else {
-          errorMessage.style.display = 'block';
+    <script>
+        const promptHistoryTable = document.getElementById('prompt-history');
+
+        async function fetchPromptHistory() {
+            const response = await fetch('/admin/prompt-improver/prompts');
+            const data = await response.json();
+
+            promptHistoryTable.innerHTML = data.prompts.map(prompt => `
+                <tr>
+                    <td>${prompt.version}</td>
+                    <td>${prompt.prompt}</td>
+                    <td>${prompt.ai_engine}</td>
+                    <td>${prompt.created_at}</td>
+                    <td><button onclick="restorePrompt(${prompt.version})">Restore</button></td>
+                </tr>
+            `).join('');
         }
-      } catch (error) {
-        errorMessage.style.display = 'block';
-      }
-    }
 
-    // Call loadSettings on page load
-    window.onload = loadSettings;
+        async function restorePrompt(version) {
+            const response = await fetch(`/admin/prompt-improver/prompts/${version}`);
+            const data = await response.json();
+            
+            document.getElementById('prompt').value = data.prompt;
+            document.getElementById('ai_engine').value = data.ai_engine;
+        }
 
-    // Handle form submission to update settings
-    form.addEventListener('submit', async (event) => {
-      event.preventDefault();
-
-      const promptValue = document.getElementById('prompt').value;
-      const aiEngineValue = document.getElementById('ai_engine').value;
-
-      const response = await fetch('/admin/prompt-improver/settings', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          prompt: promptValue,
-          ai_engine: aiEngineValue
-        })
-      });
-
-      if (response.ok) {
-        successMessage.style.display = 'block';
-        errorMessage.style.display = 'none';
-      } else {
-        errorMessage.style.display = 'block';
-        successMessage.style.display = 'none';
-      }
-    });
-  </script>
+        fetchPromptHistory();
+    </script>
 </body>
 </html>

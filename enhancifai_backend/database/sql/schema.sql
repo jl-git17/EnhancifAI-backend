@@ -108,3 +108,13 @@ CREATE TABLE IF NOT EXISTS enhancifai.run_logs (
     overflow BOOLEAN,
     batched BOOLEAN
 );
+
+CREATE TABLE IF NOT EXISTS enhancifai.prompts (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES enhancifai.users(user_id),  -- Associate each prompt with a user
+    prompt TEXT NOT NULL,  -- The actual prompt
+    ai_engine VARCHAR(50),  -- The AI engine used for this prompt
+    version INT NOT NULL,  -- Version number to track changes
+    created_at TIMESTAMP DEFAULT now(),  -- When the prompt was created
+    updated_at TIMESTAMP DEFAULT now()  -- When the prompt was last updated
+);
