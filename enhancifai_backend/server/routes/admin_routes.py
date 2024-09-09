@@ -7,7 +7,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
-from enhancifai_backend.ai.openai_api import pi_settings
+from enhancifai_backend.ai.openai_api import PI_DEFAULT_AI_ENGINE, PI_DEFAULT_PROMPT, pi_settings
 from enhancifai_backend.database.handlers.admin import PromptsDbCore
 from enhancifai_backend.database.handlers.run_logs import RunLogsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
@@ -17,6 +17,7 @@ from enhancifai_backend.server.utils import STATIC_PAGES_DIRECTORY, get_current_
 
 USERNAME = os.getenv('ADMIN_USERNAME')
 PASSWORD = os.getenv('ADMIN_PASSWORD')
+
 
 router = APIRouter()
 security = HTTPBasic()
@@ -51,7 +52,36 @@ async def admin_prompt_improver(credentials: HTTPBasicCredentials = Depends(secu
             headers={"WWW-Authenticate": "Basic"},
         )
 
+@router.get("/admin/prompt-improver/settings", tags=["Admin"])
+async def get_settings(credentials: HTTPBasicCredentials = Depends(security)):
+    """
+    Fetch the current settings for the prompt and AI engine.
+    Return default values if none are found.
+    """
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        user_id = get_current_user_id()  # Get the user ID from the session
 
+        # Fetch the latest prompt for the user
+        latest_prompt = PromptsDbCore.get_latest_prompt_by_user(user_id)
+
+        # If no prompt is found, return the default prompt and AI engine
+        if not latest_prompt:
+            return {
+                "prompt": PI_DEFAULT_PROMPT,
+                "ai_engine": PI_DEFAULT_AI_ENGINE
+            }
+
+        # Return the latest saved prompt and AI engine
+        return {
+            "prompt": latest_prompt['prompt'],
+            "ai_engine": latest_prompt['ai_engine']
+        }
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
 
 @router.get("/admin/prompt-improver/prompts", tags=["Admin"])
 async def get_prompt_versions(credentials: HTTPBasicCredentials = Depends(security)):

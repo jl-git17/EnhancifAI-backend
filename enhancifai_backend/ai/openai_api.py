@@ -13,11 +13,12 @@ BUFFER_MULTIPLIER = 2
 
 RATE_LIMIT_PATTERN = re.compile(r'Please try again in ([\d\.]+)s')
 
-PI_PROMPT = (
+PI_DEFAULT_PROMPT = (
     "Please review and improve the prompt for clarity, effectiveness, and engagement. "
     "Make sure the prompt takes the role of an expert in the relevant field. "
     "Feel free to enhance the wording, structure, and tone as needed."
 )
+PI_DEFAULT_AI_ENGINE = "gpt-4o-mini"
 
 class PromptImproverSettings:
     def __init__(self, prompt: str, ai_engine: str):
@@ -44,7 +45,7 @@ class PromptImproverSettings:
     def ai_engine(self, value: str):
         self._ai_engine = value
 
-pi_settings = PromptImproverSettings(prompt=PI_PROMPT, ai_engine="gpt-4o-mini")
+pi_settings = PromptImproverSettings(prompt=PI_DEFAULT_PROMPT, ai_engine=PI_DEFAULT_AI_ENGINE)
 
 
 class OpenAIConnector:
