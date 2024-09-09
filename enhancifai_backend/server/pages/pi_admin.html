@@ -70,8 +70,20 @@
             transition: background-color 0.3s ease;
         }
 
-        button:hover {
+        button[disabled] {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+
+        button:hover:not([disabled]) {
             background-color: #2980b9;
+        }
+
+        .success-message {
+            color: #2ecc71;
+            font-size: 1.1rem;
+            margin-top: 10px;
+            text-align: center;
         }
 
         h2 {
@@ -79,6 +91,13 @@
             color: #333;
             margin-top: 40px;
             margin-bottom: 20px;
+        }
+
+        .loading {
+            font-size: 1.1rem;
+            color: #3498db;
+            text-align: center;
+            margin: 20px 0;
         }
 
         table {
@@ -149,9 +168,11 @@
                 </select>
             </div>
             <button type="submit">Save Settings</button>
+            <div id="success-message" class="success-message" style="display:none;">Settings saved successfully!</div>
         </form>
 
         <h2>Prompt History</h2>
+        <div id="loading-message" class="loading" style="display:none;">Loading prompt history...</div>
         <table>
             <thead>
                 <tr>
@@ -172,37 +193,44 @@
         const promptField = document.getElementById('prompt');
         const aiEngineField = document.getElementById('ai_engine');
         const promptHistoryTable = document.getElementById('prompt-history');
+        const settingsForm = document.getElementById('settings-form');
+        const successMessage = document.getElementById('success-message');
+        const loadingMessage = document.getElementById('loading-message');
+        const saveButton = settingsForm.querySelector('button');
 
         async function fetchPromptHistory() {
-          try {
-              const response = await fetch('/admin/prompt-improver/prompts');
-              
-              if (!response.ok) {
-                  throw new Error(`HTTP error! status: ${response.status}`);
-              }
+            loadingMessage.style.display = 'block';  // Show loading message
+            promptHistoryTable.innerHTML = '';  // Clear the table while loading
 
-              const data = await response.json();
+            try {
+                const response = await fetch('/admin/prompt-improver/prompts');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
-              // Check if the data has prompts
-              if (data.prompts && Array.isArray(data.prompts)) {
-                  promptHistoryTable.innerHTML = data.prompts.map(prompt => `
-                      <tr>
-                          <td>${prompt.version}</td>
-                          <td>${prompt.prompt}</td>
-                          <td>${prompt.ai_engine}</td>
-                          <td>${prompt.created_at}</td>
-                          <td><button class="restore-btn" onclick="restorePrompt(${prompt.version})">Restore</button></td>
-                      </tr>
-                  `).join('');
-              } else {
-                  promptHistoryTable.innerHTML = '<tr><td colspan="5">No prompt history available</td></tr>';
-              }
-          } catch (error) {
-              console.error("Failed to fetch prompt history:", error);
-              promptHistoryTable.innerHTML = '<tr><td colspan="5">Error loading prompt history</td></tr>';
-          }
+                const data = await response.json();
+
+                if (data.prompts && Array.isArray(data.prompts)) {
+                    promptHistoryTable.innerHTML = data.prompts.map(prompt => `
+                        <tr>
+                            <td>${prompt.version}</td>
+                            <td>${prompt.prompt}</td>
+                            <td>${prompt.ai_engine}</td>
+                            <td>${prompt.created_at}</td>
+                            <td><button class="restore-btn" onclick="restorePrompt(${prompt.version})">Restore</button></td>
+                        </tr>
+                    `).join('');
+                } else {
+                    promptHistoryTable.innerHTML = '<tr><td colspan="5">No prompt history available</td></tr>';
+                }
+            } catch (error) {
+                console.error("Failed to fetch prompt history:", error);
+                promptHistoryTable.innerHTML = '<tr><td colspan="5">Error loading prompt history</td></tr>';
+            } finally {
+                loadingMessage.style.display = 'none';  // Hide loading message
+            }
         }
-
 
         async function restorePrompt(version) {
             const response = await fetch(`/admin/prompt-improver/prompts/${version}`);
@@ -213,14 +241,51 @@
         }
 
         async function loadSettings() {
-            // Fetch the current settings (or defaults if none exist)
             const response = await fetch('/admin/prompt-improver/settings');
             const data = await response.json();
 
-            // Set the fields with either the default or the saved values
             promptField.value = data.prompt;
             aiEngineField.value = data.ai_engine;
         }
+
+        settingsForm.addEventListener('submit', async function(event) {
+            event.preventDefault();  // Prevent default form submission
+            saveButton.disabled = true;  // Disable the button while submitting
+
+            const formData = {
+                prompt: promptField.value,
+                ai_engine: aiEngineField.value,
+            };
+
+            try {
+                const response = await fetch('/admin/prompt-improver/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save settings');
+                }
+
+                const result = await response.json();
+                successMessage.style.display = 'block';  // Show success message
+                fetchPromptHistory();  // Reload the prompt history
+                promptField.value = '';  // Clear the prompt field
+                aiEngineField.value = 'gpt-4o';  // Reset the AI engine dropdown
+
+                setTimeout(() => {
+                    successMessage.style.display = 'none';  // Hide success message after a few seconds
+                }, 3000);
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                alert('Error saving settings. Please try again.');
+            } finally {
+                saveButton.disabled = false;  // Re-enable the button after submission
+            }
+        });
 
         loadSettings();
         fetchPromptHistory();

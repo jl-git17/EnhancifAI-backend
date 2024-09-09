@@ -59,7 +59,7 @@ async def get_settings(credentials: HTTPBasicCredentials = Depends(security)):
     Return default values if none are found.
     """
     if credentials.username == USERNAME and credentials.password == PASSWORD:
-        user_id = get_current_user_id()  # Get the user ID from the session
+        user_id = int(os.getenv("ADMIN_USER_ID"))  # Get the user ID from the session
 
         # Fetch the latest prompt for the user
         latest_prompt = PromptsDbCore.get_latest_prompt_by_user(user_id)
@@ -89,7 +89,7 @@ async def get_prompt_versions(credentials: HTTPBasicCredentials = Depends(securi
     Fetch all versions of prompts for the current user.
     """
     if credentials.username == USERNAME and credentials.password == PASSWORD:
-        user_id = get_current_user_id()  # Assuming there's a way to get current user ID
+        user_id = int(os.getenv("ADMIN_USER_ID"))  # Assuming there's a way to get current user ID
         prompts = PromptsDbCore.get_prompt_versions_by_user(user_id)
         return {"prompts": prompts}
     else:
@@ -139,7 +139,7 @@ async def update_settings(
             )
         
         # Save the new prompt version
-        user_id = get_current_user_id()
+        user_id = int(os.getenv("ADMIN_USER_ID"))
         PromptsDbCore.save_new_prompt(user_id, prompt, ai_engine)
 
         return {"message": "Settings updated successfully"}
