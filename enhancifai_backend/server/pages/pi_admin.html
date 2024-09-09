@@ -174,19 +174,35 @@
         const promptHistoryTable = document.getElementById('prompt-history');
 
         async function fetchPromptHistory() {
-            const response = await fetch('/admin/prompt-improver/prompts');
-            const data = await response.json();
+          try {
+              const response = await fetch('/admin/prompt-improver/prompts');
+              
+              if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+              }
 
-            promptHistoryTable.innerHTML = data.prompts.map(prompt => `
-                <tr>
-                    <td>${prompt.version}</td>
-                    <td>${prompt.prompt}</td>
-                    <td>${prompt.ai_engine}</td>
-                    <td>${prompt.created_at}</td>
-                    <td><button class="restore-btn" onclick="restorePrompt(${prompt.version})">Restore</button></td>
-                </tr>
-            `).join('');
+              const data = await response.json();
+
+              // Check if the data has prompts
+              if (data.prompts && Array.isArray(data.prompts)) {
+                  promptHistoryTable.innerHTML = data.prompts.map(prompt => `
+                      <tr>
+                          <td>${prompt.version}</td>
+                          <td>${prompt.prompt}</td>
+                          <td>${prompt.ai_engine}</td>
+                          <td>${prompt.created_at}</td>
+                          <td><button class="restore-btn" onclick="restorePrompt(${prompt.version})">Restore</button></td>
+                      </tr>
+                  `).join('');
+              } else {
+                  promptHistoryTable.innerHTML = '<tr><td colspan="5">No prompt history available</td></tr>';
+              }
+          } catch (error) {
+              console.error("Failed to fetch prompt history:", error);
+              promptHistoryTable.innerHTML = '<tr><td colspan="5">Error loading prompt history</td></tr>';
+          }
         }
+
 
         async function restorePrompt(version) {
             const response = await fetch(`/admin/prompt-improver/prompts/${version}`);
