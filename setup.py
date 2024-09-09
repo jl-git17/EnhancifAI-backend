@@ -14,7 +14,7 @@ assert sys.version_info[0] == 3 and sys.version_info[1] >= 10, \
 
 setup(
     name='enhancifai_backend',
-    version='1.1.0',
+    version='1.2.0',
     description="EnhancifAI Backend.",
     long_description=open('README.md', 'r', encoding='UTF-8').read(),
     packages=find_packages(exclude=['scripts']),
