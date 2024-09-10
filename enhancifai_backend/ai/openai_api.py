@@ -89,13 +89,18 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            "- You are an assistant with expertise in data analysis and can use your general knowledge to answer.\n"
-                            "- Focus on providing direct answers to the user's queries based on the JSON data. Do not repeat or mention the JSON data or provide introductory statements in your responses.\n"
+                            "- You are an assistant with expertise in data analysis and can use your general knowledge "
+                            "to answer.\n"
+                            "- Focus on providing direct answers to the user's queries based on the JSON data. "
+                            "Do not repeat or mention the JSON data or provide introductory statements in your responses.\n"
                             "- Keep responses brief, relevant, and focused on the query at hand.\n"
-                            "- If unable to process a row or if the query requires information beyond the data, respond appropriately.\n"
+                            "- If unable to process a row or if the query requires information beyond the data, "
+                            "respond appropriately.\n"
                             "- Avoid referring to yourself as AI.\n"
-                            "- Example of a good response: 'OFEV 100mg is commonly prescribed for treating idiopathic pulmonary fibrosis.'"
-                            "- Another example of a good response: 'Unfortunately, I do not have enough information about the symptoms for which the drug Lyrica Caps 50mg 90s is prescribed.'"
+                            "- Example of a good response: 'OFEV 100mg is commonly prescribed for treating idiopathic "
+                            "pulmonary fibrosis.'"
+                            "- Another example of a good response: 'Unfortunately, I do not have enough information "
+                            "about the symptoms for which the drug Lyrica Caps 50mg 90s is prescribed.'"
                         )
                     },
                     {
@@ -167,13 +172,15 @@ class OpenAIConnector:
             return {'content': _err, 'tokens': 0}
 
     def improve_prompt(self, prompt: str):
+        print(pi_settings.prompt)
         for attempt in range(3):
             try:
                 messages = [
                     {
                         "role": "system",
                         "content": (
-                            "- You are an expert OpenAI prompt engineer You take a string input of the prompt, improve it and respond with the new and improved prompt. Do not add anything else.\n"
+                            "- You are an expert OpenAI prompt engineer You take a string input of the prompt, "
+                            "improve it and respond with the new and improved prompt. Do not add anything else.\n"
                             f"- Rules: {pi_settings.prompt} Respond with the new prompt in a codeblock."
                         )
                     },
