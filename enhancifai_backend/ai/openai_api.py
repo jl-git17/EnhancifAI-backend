@@ -7,6 +7,7 @@ from openai import OpenAI
 
 from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
+from enhancifai_backend.database.handlers.admin import PromptsDbCore
 from enhancifai_backend.engine.rate_limit_manager import rate_limit_manager
 
 BUFFER_MULTIPLIER = 2
@@ -19,11 +20,17 @@ PI_DEFAULT_PROMPT = (
     "Feel free to enhance the wording, structure, and tone as needed."
 )
 PI_DEFAULT_AI_ENGINE = "gpt-4o-mini"
+ADMIN_USER_ID = int(os.getenv('ADMIN_USER_ID'))
 
 class PromptImproverSettings:
-    def __init__(self, prompt: str, ai_engine: str):
+    def __init__(self, prompt: str=PI_DEFAULT_PROMPT, ai_engine: str=PI_DEFAULT_AI_ENGINE):
         self._prompt = prompt
         self._ai_engine = ai_engine
+        # fetch from DB
+        from_db = PromptsDbCore.get_latest_prompt_by_user(ADMIN_USER_ID)
+        if from_db:
+            self._prompt = from_db['prompt']
+            self._ai_engine = from_db['ai_engine']
 
     # Getter for prompt
     @property
@@ -74,7 +81,7 @@ class OpenAIConnector:
             'columns': columns,
             'rows': rows,
         }
-        print(f"payload:  {payload}")
+        #print(f"payload:  {payload}")
 
         max_attempts = 3
         _err = None
