@@ -27,7 +27,7 @@ class PromptImproverSettings:
         self._prompt = prompt
         self._ai_engine = ai_engine
         self._update_from_db()
-    
+
     def _update_from_db(self):
         from_db = PromptsDbCore.get_latest_prompt_by_user(ADMIN_USER_ID)
         if from_db:
