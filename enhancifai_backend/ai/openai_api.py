@@ -26,7 +26,9 @@ class PromptImproverSettings:
     def __init__(self, prompt: str=PI_DEFAULT_PROMPT, ai_engine: str=PI_DEFAULT_AI_ENGINE):
         self._prompt = prompt
         self._ai_engine = ai_engine
-        # fetch from DB
+        self._update_from_db()
+    
+    def _update_from_db(self):
         from_db = PromptsDbCore.get_latest_prompt_by_user(ADMIN_USER_ID)
         if from_db:
             self._prompt = from_db['prompt']
@@ -35,6 +37,7 @@ class PromptImproverSettings:
     # Getter for prompt
     @property
     def prompt(self):
+        self._update_from_db()
         return self._prompt
 
     # Setter for prompt
@@ -45,6 +48,7 @@ class PromptImproverSettings:
     # Getter for ai_engine
     @property
     def ai_engine(self):
+        self._update_from_db()
         return self._ai_engine
 
     # Setter for ai_engine

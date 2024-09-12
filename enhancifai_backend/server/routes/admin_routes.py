@@ -106,7 +106,7 @@ async def get_prompt_by_version(version: int, credentials: HTTPBasicCredentials 
     Fetch a specific version of a prompt.
     """
     if credentials.username == USERNAME and credentials.password == PASSWORD:
-        user_id = get_current_user_id()
+        user_id = int(os.getenv("ADMIN_USER_ID"))
         prompt = PromptsDbCore.get_prompt_by_version(user_id, version)
         if prompt:
             return prompt
