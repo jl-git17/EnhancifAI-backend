@@ -29,10 +29,13 @@ class PromptImproverSettings:
         self._update_from_db()
 
     def _update_from_db(self):
-        from_db = PromptsDbCore.get_latest_prompt_by_user(ADMIN_USER_ID)
-        if from_db:
-            self._prompt = from_db['prompt']
-            self._ai_engine = from_db['ai_engine']
+        try:
+            from_db = PromptsDbCore.get_latest_prompt_by_user(ADMIN_USER_ID)
+            if from_db:
+                self._prompt = from_db['prompt']
+                self._ai_engine = from_db['ai_engine']
+        except Exception as e:
+            print(e)
 
     # Getter for prompt
     @property
