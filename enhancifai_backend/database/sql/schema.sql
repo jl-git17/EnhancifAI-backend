@@ -118,3 +118,18 @@ CREATE TABLE IF NOT EXISTS enhancifai.prompts (
     created_at TIMESTAMP DEFAULT now(),  -- When the prompt was created
     updated_at TIMESTAMP DEFAULT now()  -- When the prompt was last updated
 );
+
+CREATE TABLE IF NOT EXISTS enhancifai.users_additional_credits (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES enhancifai.users(user_id),
+    credits INT NOT NULL,  -- Number of additional credits purchased
+    created_at TIMESTAMP DEFAULT now() NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS enhancifai.stripe_invoices (
+    invoice_id VARCHAR(255) PRIMARY KEY,  -- Stripe invoice ID
+    user_id INT REFERENCES enhancifai.users(user_id),
+    amount INT NOT NULL,
+    status VARCHAR(50),  -- e.g., paid, open, etc.
+    created_at TIMESTAMP DEFAULT now()
+);

@@ -8,3 +8,4 @@ tests/
 client_secret*
 ~$*
 .pylintrc
+.project/

@@ -39,7 +39,8 @@ setup(
         'gspread-dataframe',
         'oauth2client',
         'google-generativeai',
-        'aiofiles'
+        'aiofiles',
+        'stripe'
     ],
     entry_points={
         'console_scripts': [

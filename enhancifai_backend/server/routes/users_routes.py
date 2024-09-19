@@ -17,21 +17,28 @@ from enhancifai_backend.server.utils import clean_user_data, create_jwt_token, g
 
 router = APIRouter()
 
+def handle_exception(e: Exception):
+    if isinstance(e, HTTPException):
+        return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+    else:
+        # Log unexpected error
+        return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
+
+def require_ai_consent(func):
+    async def wrapper(user_id: int = Depends(get_current_user_id)):
+        ai_consent = UsersDbCore.check_ai_consent(user_id)
+        if not ai_consent:
+            raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
+        return await func(user_id)
+    return wrapper
+
 @router.post("/users/profile", tags=["Users"])
+@require_ai_consent
 async def update_user_profile(profile: Profile, user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
     try:
-        ai_consent = UsersDbCore.check_ai_consent(user_id)
-        if ai_consent is False:
-            raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
-        UsersDbCore.update_user_profile(
-            user_id=user_id,
-            name=profile.name,
-        )
-    except HTTPException as e:
-        return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+        UsersDbCore.update_user_profile(user_id=user_id, name=profile.name)
     except Exception as e:
-        # Catch-all for unexpected errors
-        return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
+        return handle_exception(e)
     return JSONResponse(status_code=200, content={"message": "Profile updated successfully."})
 
 

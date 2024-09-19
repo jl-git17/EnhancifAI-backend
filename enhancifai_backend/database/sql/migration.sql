@@ -55,3 +55,11 @@ ADD COLUMN IF NOT EXISTS current_tier_id INT DEFAULT 1 REFERENCES enhancifai.acc
 
 ALTER TABLE enhancifai.users
 ADD COLUMN IF NOT EXISTS ai_consent TIMESTAMP;
+
+-- Add Stripe-related fields to users table
+ALTER TABLE enhancifai.users
+ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(255),
+ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(255),
+ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50),  -- active, trialing, canceled, etc.
+ADD COLUMN IF NOT EXISTS subscription_start TIMESTAMP,
+ADD COLUMN IF NOT EXISTS subscription_end TIMESTAMP;
