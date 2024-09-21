@@ -12,6 +12,10 @@ from enhancifai_backend.server.serve import run_server
 logging.basicConfig(level=logging.INFO)
 
 SOURCE_DIR = os.path.join(os.path.dirname(__file__), "database", "sql")
+STRIPE_PLAN_ID_FREE = "sys"
+STRIPE_PLAN_ID_BASIC = os.getenv('STRIPE_PLAN_ID_BASIC')
+STRIPE_PLAN_ID_PRO = os.getenv('STRIPE_PLAN_ID_PRO')
+STRIPE_PLAN_ID_ENTERPRISE = "sys"
 
 def process_sql_file(db: DbSession, filename: str) -> None:
     """Reads an SQL file, schemafies it, and executes it on the database."""
@@ -34,6 +38,17 @@ def prepare_database(db: DbSession) -> None:
     db.do('execute', f"CREATE SCHEMA IF NOT EXISTS {schema_name};")
     for sql_file in ['schema.sql', 'migration.sql']:
         process_sql_file(db, sql_file)
+    
+    # Populate account_tiers table with Stripe Plan IDs
+    sql_cmds = [
+        f"UPDATE enhancifai.account_tiers SET stripe_plan_id = '{STRIPE_PLAN_ID_FREE}' WHERE tier_name = 'Free';",
+        f"UPDATE enhancifai.account_tiers SET stripe_plan_id = '{STRIPE_PLAN_ID_BASIC}' WHERE tier_name = 'Basic';",
+        f"UPDATE enhancifai.account_tiers SET stripe_plan_id = '{STRIPE_PLAN_ID_PRO}' WHERE tier_name = 'Pro';",
+        f"UPDATE enhancifai.account_tiers SET stripe_plan_id = '{STRIPE_PLAN_ID_ENTERPRISE}' WHERE tier_name = 'Enterprise';"
+    ]
+    for _sql in sql_cmds:
+        db.do('execute', schemafy(_sql))
+
     db.do('commit')
 
 def run() -> NoReturn:
