@@ -77,20 +77,48 @@ async def create_payment_intent(amount: int, currency: str = "usd", user_id: int
 
 @router.post("/stripe/webhook", tags=["Stripe"])
 async def stripe_webhook(payload: dict):
-    event = None
     try:
-        event = stripe.Webhook.construct_event(payload['data'], payload['signature'], os.getenv("STRIPE_WEBHOOK_SECRET"))
+        event = stripe.Webhook.construct_event(
+            payload['data'], payload['signature'], os.getenv("STRIPE_WEBHOOK_SECRET")
+        )
+
         if event['type'] == 'customer.subscription.updated':
             subscription = event['data']['object']
-            # Handle subscription update in your database
+            # Update subscription status and user's tier
             StripeDbCore.update_subscription_status(subscription['id'], subscription['status'])
+
         elif event['type'] == 'customer.subscription.deleted':
             subscription = event['data']['object']
             # Handle subscription cancellation
             StripeDbCore.cancel_stripe_subscription(subscription['id'])
+
     except ValueError as e:
         return JSONResponse(status_code=400, content={"detail": "Invalid payload"})
     except stripe.error.SignatureVerificationError as e:
         return JSONResponse(status_code=400, content={"detail": "Invalid signature"})
-    
+
     return JSONResponse(status_code=200, content={"message": "Webhook received!"})
+
+@router.get("/stripe/check-subscription", tags=["Stripe"])
+async def check_subscription(user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
+    """
+    Check if the user has an active subscription.
+    
+    Returns:
+    JSONResponse: The current subscription status of the user.
+    """
+    try:
+        # Retrieve the user's subscription status from the database
+        subscription_status = StripeDbCore.get_subscription_status(user_id)
+
+        if subscription_status is None:
+            return JSONResponse(status_code=404, content={"detail": "No subscription found for user."})
+
+        # Check if the subscription is active
+        if subscription_status == 'active':
+            return JSONResponse(status_code=200, content={"subscription_status": "active"})
+        else:
+            return JSONResponse(status_code=200, content={"subscription_status": subscription_status})
+
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
