@@ -79,6 +79,8 @@ class CSVHandler:
             query=prompt_config['prompt'],
             run_id=self.run_id
         )
+        # Save token usage
+        UsersDbCore.add_token_usage(self.user_id, self.engine, data.get('tokens', 0))
         if data['engine_used'] != self.engine:
             self.overflow = True
         #result[f"tokens_{output_heading}"] = data.get("tokens", "")
