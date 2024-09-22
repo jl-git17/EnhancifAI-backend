@@ -41,10 +41,10 @@ def prepare_database(db: DbSession) -> None:
     
     # Populate account_tiers table with Stripe Plan IDs
     sql_cmds = [
-        f"UPDATE enhancifai.account_tiers SET max_tokens = 10000, stripe_plan_id = '{STRIPE_PLAN_ID_FREE}' WHERE tier_name = 'Free';",
-        f"UPDATE enhancifai.account_tiers SET max_tokens = 20000, stripe_plan_id = '{STRIPE_PLAN_ID_BASIC}' WHERE tier_name = 'Basic';",
-        f"UPDATE enhancifai.account_tiers SET max_tokens = 100000, stripe_plan_id = '{STRIPE_PLAN_ID_PRO}' WHERE tier_name = 'Pro';",
-        f"UPDATE enhancifai.account_tiers SET max_tokens = 1000000, stripe_plan_id = '{STRIPE_PLAN_ID_ENTERPRISE}' WHERE tier_name = 'Enterprise';"
+        f"UPDATE enhancifai.account_tiers SET max_tokens = 100000 stripe_plan_id = '{STRIPE_PLAN_ID_FREE}' WHERE tier_name = 'Free';",
+        f"UPDATE enhancifai.account_tiers SET max_tokens = 200000, stripe_plan_id = '{STRIPE_PLAN_ID_BASIC}' WHERE tier_name = 'Basic';",
+        f"UPDATE enhancifai.account_tiers SET max_tokens = 1000000, stripe_plan_id = '{STRIPE_PLAN_ID_PRO}' WHERE tier_name = 'Pro';",
+        f"UPDATE enhancifai.account_tiers SET max_tokens = 10000000, stripe_plan_id = '{STRIPE_PLAN_ID_ENTERPRISE}' WHERE tier_name = 'Enterprise';"
     ]
     for _sql in sql_cmds:
         db.do('execute', schemafy(_sql))
