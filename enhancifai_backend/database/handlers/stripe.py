@@ -1,5 +1,10 @@
+import os
+import stripe
 from enhancifai_backend.database.access import read_db, write_db
 from enhancifai_backend.database.handlers.utils import schemafy
+
+# Initialize Stripe
+stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 class StripeDbCore:
     """
@@ -80,21 +85,6 @@ class StripeDbCore:
         sql = schemafy("UPDATE enhancifai.users SET stripe_subscription_id = NULL WHERE user_id = %s;")
         write_db.do('execute', sql=sql, data=(user_id,))
 
-    @classmethod
-    def update_subscription_status(cls, subscription_id, status):
-        """
-        Update the subscription status for a given subscription ID.
-
-        Parameters:
-        subscription_id (str): The ID of the subscription.
-        status (str): The new status of the subscription.
-
-        Returns:
-        None
-        """
-        sql = schemafy("UPDATE enhancifai.users SET subscription_status = %s WHERE stripe_subscription_id = %s;")
-        write_db.do('execute', sql=sql, data=(status, subscription_id))
-    
     @classmethod
     def get_subscription_status(cls, user_id):
         """

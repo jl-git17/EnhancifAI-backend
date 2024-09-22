@@ -3,6 +3,7 @@ import stripe
 from fastapi import APIRouter, Depends, Form, HTTPException, status
 from fastapi.responses import JSONResponse
 from enhancifai_backend.database.handlers.stripe import StripeDbCore
+from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.server.utils import get_current_user_id, verify_secret_key
 
 # Initialize Stripe

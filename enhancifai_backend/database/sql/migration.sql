@@ -65,3 +65,11 @@ ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(255),
 ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50),  -- active, trialing, canceled, etc.
 ADD COLUMN IF NOT EXISTS subscription_start TIMESTAMP,
 ADD COLUMN IF NOT EXISTS subscription_end TIMESTAMP;
+
+-- Insert the 'Free' tier for users who do not have an assigned tier
+INSERT INTO enhancifai.user_account_tiers (user_id, tier_id, assigned_at)
+SELECT u.user_id, at.tier_id, NOW()
+FROM enhancifai.users u
+LEFT JOIN enhancifai.user_account_tiers uat ON u.user_id = uat.user_id
+JOIN enhancifai.account_tiers at ON at.tier_name = 'Free'
+WHERE uat.user_id IS NULL;
