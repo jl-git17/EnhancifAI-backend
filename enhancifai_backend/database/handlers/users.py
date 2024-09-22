@@ -508,6 +508,7 @@ class UsersDbCore:
         Check if the user has a positive token balance. Raises an error if not.
         """
         remaining_tokens = cls.calculate_user_token_quota(user_id)
+        print(f"UserID: {user_id}   Balance: {remaining_tokens}")
         if remaining_tokens <= 0:
             raise ValueError("User has insufficient tokens to run processes.")
     
