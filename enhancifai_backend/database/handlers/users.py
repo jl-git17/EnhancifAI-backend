@@ -1,8 +1,8 @@
 import time
+from datetime import datetime
+
 from enhancifai_backend.database.access import read_db, write_db
 from enhancifai_backend.database.handlers.utils import schemafy
-
-from psycopg2.extras import Json
 
 class UsersDbCore:
     """
@@ -438,6 +438,7 @@ class UsersDbCore:
         """
         Calculate the user's remaining token quota based on their tier, token usage, and additional purchased credits.
         """
+
         # Get the user's tier
         tier = cls.get_user_tier(user_id)
         if not tier:
@@ -445,19 +446,61 @@ class UsersDbCore:
 
         # Get the base token limit from the tier
         base_token_quota = tier.get('max_tokens', 0)
+        tier_name = tier.get('tier_name', 'free').lower()
 
-        # Calculate tokens used by the user
-        sql = schemafy("SELECT COALESCE(SUM(tokens), 0) AS tokens_used FROM enhancifai.users_token_usage WHERE user_id = %s;")
-        tokens_used = read_db.do('select_one', sql=sql, data=(user_id,))['tokens_used']
+        # Get current date for the window calculation
+        current_date = datetime.now()
+
+        # Calculate tokens used in the current month
+        if tier_name == 'free':
+            # For the free tier, calculate tokens used in the current month only
+            start_of_month = current_date.replace(day=1)
+            sql = schemafy("""
+                SELECT COALESCE(SUM(tokens), 0) AS tokens_used 
+                FROM enhancifai.users_token_usage 
+                WHERE user_id = %s AND created_at >= %s;
+            """)
+            tokens_used = read_db.do('select_one', sql=sql, data=(user_id, start_of_month))['tokens_used']
+            
+            # For 'free' users, no rollover, calculate based on current month usage
+            return max(0, base_token_quota - tokens_used)
+
+        # For 'Basic' and 'Pro' tiers, calculate monthly allocation with rollover
+        # Calculate total token usage over the last N months, based on when the user subscribed
+        # Assume the subscription started when the user was assigned to this tier
+        sql = schemafy("""
+            SELECT assigned_at FROM enhancifai.user_account_tiers WHERE user_id = %s AND tier_id = %s;
+        """)
+        tier_assignment = read_db.do('select_one', sql=sql, data=(user_id, tier['tier_id']))
+        assigned_at = tier_assignment.get('assigned_at', current_date)
+
+        # Find out how many months have passed since assignment to this tier
+        months_passed = (current_date.year - assigned_at.year) * 12 + current_date.month - assigned_at.month + 1
+
+        # Total possible allocation so far, considering the month we're in
+        total_quota = base_token_quota * months_passed
+
+        # Get the total tokens used since the user was assigned to this tier
+        sql = schemafy("""
+            SELECT COALESCE(SUM(tokens), 0) AS total_tokens_used 
+            FROM enhancifai.users_token_usage 
+            WHERE user_id = %s AND created_at >= %s;
+        """)
+        tokens_used = read_db.do('select_one', sql=sql, data=(user_id, assigned_at))['total_tokens_used']
 
         # Get any additional credits the user has purchased
-        sql = schemafy("SELECT COALESCE(SUM(credits), 0) AS additional_credits FROM enhancifai.users_additional_credits WHERE user_id = %s;")
+        sql = schemafy("""
+            SELECT COALESCE(SUM(credits), 0) AS additional_credits 
+            FROM enhancifai.users_additional_credits 
+            WHERE user_id = %s;
+        """)
         additional_credits = read_db.do('select_one', sql=sql, data=(user_id,))['additional_credits']
 
-        # Total available tokens: base quota + additional credits - tokens used
-        remaining_tokens = (base_token_quota + additional_credits) - tokens_used
+        # Total available tokens: base quota for all months passed + additional credits - total tokens used
+        remaining_tokens = (total_quota + additional_credits) - tokens_used
 
         return max(0, remaining_tokens)  # Ensure no negative balance
+
 
     @classmethod
     def check_user_token_balance(cls, user_id):
