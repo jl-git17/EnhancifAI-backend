@@ -432,6 +432,55 @@ class UsersDbCore:
         """
         sql = schemafy("SELECT expires_at FROM enhancifai.users_sessions WHERE user_id = %s ORDER BY created_at DESC LIMIT 1;")
         return read_db.do('select_one', sql=sql, data=(user_id,))
+    
+    @classmethod
+    def calculate_user_token_quota(cls, user_id):
+        """
+        Calculate the user's remaining token quota based on their tier, token usage, and additional purchased credits.
+        """
+        # Get the user's tier
+        tier = cls.get_user_tier(user_id)
+        if not tier:
+            raise ValueError("User tier not found")
+
+        # Get the base token limit from the tier
+        base_token_quota = tier.get('max_tokens', 0)
+
+        # Calculate tokens used by the user
+        sql = schemafy("SELECT COALESCE(SUM(tokens), 0) AS tokens_used FROM enhancifai.users_token_usage WHERE user_id = %s;")
+        tokens_used = read_db.do('select_one', sql=sql, data=(user_id,))['tokens_used']
+
+        # Get any additional credits the user has purchased
+        sql = schemafy("SELECT COALESCE(SUM(credits), 0) AS additional_credits FROM enhancifai.users_additional_credits WHERE user_id = %s;")
+        additional_credits = read_db.do('select_one', sql=sql, data=(user_id,))['additional_credits']
+
+        # Total available tokens: base quota + additional credits - tokens used
+        remaining_tokens = (base_token_quota + additional_credits) - tokens_used
+
+        return max(0, remaining_tokens)  # Ensure no negative balance
+
+    @classmethod
+    def check_user_token_balance(cls, user_id):
+        """
+        Check if the user has a positive token balance. Raises an error if not.
+        """
+        remaining_tokens = cls.calculate_user_token_quota(user_id)
+        if remaining_tokens <= 0:
+            raise ValueError("User has insufficient tokens to run processes.")
+    
+    @classmethod
+    def get_user_limits(cls, user_id):
+        """
+        Fetch the user's account limits for max_rows and max_prompts based on their tier.
+        """
+        sql = schemafy("""
+            SELECT at.max_rows, at.max_prompts
+            FROM enhancifai.account_tiers at
+            JOIN enhancifai.users u ON u.current_tier_id = at.tier_id
+            WHERE u.user_id = %s;
+        """)
+        return read_db.do('select_one', sql=sql, data=(user_id,))
+
 
 class UsersDbRegisterTokens:
     """
