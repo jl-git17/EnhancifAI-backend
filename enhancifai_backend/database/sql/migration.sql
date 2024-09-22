@@ -39,16 +39,16 @@ ALTER TABLE enhancifai.account_tiers ADD COLUMN IF NOT EXISTS stripe_plan_id VAR
 
 -- Create default account tiers (Free, Basic, Pro, Enterprise) if not already present
 INSERT INTO enhancifai.account_tiers (tier_name, max_tokens, max_rows, max_prompts)
-SELECT 'Free', 1000, 20, 4
+SELECT 'Free', 10000, 20, 4
 WHERE NOT EXISTS (SELECT 1 FROM enhancifai.account_tiers)
 UNION ALL
-SELECT 'Basic', 2000, 0, 0
+SELECT 'Basic', 20000, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM enhancifai.account_tiers WHERE tier_name = 'Free')
 UNION ALL
-SELECT 'Pro', 10000, 0, 0
+SELECT 'Pro', 100000, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM enhancifai.account_tiers WHERE tier_name = 'Basic')
 UNION ALL
-SELECT 'Enterprise', 100000, 0, 0
+SELECT 'Enterprise', 1000000, 0, 0
 WHERE NOT EXISTS (SELECT 1 FROM enhancifai.account_tiers WHERE tier_name = 'Pro');
 
 -- Update the users table to add a reference to the current tier
