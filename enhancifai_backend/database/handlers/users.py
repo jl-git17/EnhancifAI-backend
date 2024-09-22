@@ -461,6 +461,8 @@ class UsersDbCore:
                 WHERE user_id = %s AND created_at >= %s;
             """)
             tokens_used = read_db.do('select_one', sql=sql, data=(user_id, start_of_month))['tokens_used']
+            print(user_id)
+            print(tokens_used)
             
             # For 'free' users, no rollover, calculate based on current month usage
             return max(0, base_token_quota - tokens_used)
