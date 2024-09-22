@@ -21,6 +21,7 @@ from enhancifai_backend.server.routes.google_sheets_routes import router as rout
 from enhancifai_backend.server.routes.admin_routes import router as router_admin
 from enhancifai_backend.server.routes.google_sheets_routes import router as router_google_sheets
 from enhancifai_backend.server.routes.files_routes import router as router_files
+from enhancifai_backend.server.routes.stripe_routes import router as router_stripe
 from enhancifai_backend.server.utils import STATIC_FILES_DIRECTORY
 
 
@@ -50,6 +51,7 @@ app.include_router(router_sheets)
 app.include_router(router_admin)
 app.include_router(router_google_sheets)
 app.include_router(router_files)
+app.include_router(router_stripe)
 
 security = HTTPBasic()
 

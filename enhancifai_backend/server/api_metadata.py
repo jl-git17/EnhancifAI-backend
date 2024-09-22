@@ -46,5 +46,9 @@ TAGS_METADATA = [
     {
         "name": "Cache",
         "description": "Cache endpoints"
+    },
+    {
+        "name": "Stripe",
+        "description": "Stripe endpoints"
     }
 ]
