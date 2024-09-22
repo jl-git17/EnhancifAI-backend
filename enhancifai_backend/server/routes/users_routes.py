@@ -313,4 +313,28 @@ async def session_check(user_id: int = Depends(get_current_user_id_unverified), 
     valid = exp > datetime.now(timezone.utc)
     
     return JSONResponse(content={"expires": exp.isoformat(), "valid": valid})
-    
+
+@router.get("/users/acc/limits", tags=["Users"])
+async def get_user_limits(user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
+    """
+    Get the token limits and tier for the user.
+    """
+    try:
+        limits = UsersDbCore.get_user_limits(user_id)
+        if not limits:
+            raise HTTPException(status_code=404, detail="User limits not found.")
+        return JSONResponse(status_code=200, content=limits)
+    except Exception as e:
+        return handle_exception(e)
+
+
+@router.get("/users/acc/quota", tags=["Users"])
+async def get_user_quota(user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
+    """
+    Get the remaining token quota for the user.
+    """
+    try:
+        remaining_tokens = UsersDbCore.calculate_user_token_quota(user_id)
+        return JSONResponse(status_code=200, content={"remaining_tokens": remaining_tokens})
+    except Exception as e:
+        return handle_exception(e)
