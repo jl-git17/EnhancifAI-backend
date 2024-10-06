@@ -1,6 +1,7 @@
 import os
 import stripe
-from fastapi import APIRouter, Depends, Form, HTTPException, status
+from datetime import datetime
+from fastapi import APIRouter, Depends, Form, HTTPException, Header, status
 from fastapi.responses import JSONResponse
 from enhancifai_backend.database.handlers.stripe import StripeDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
@@ -26,42 +27,6 @@ async def create_customer(email: str, user_id: int = Depends(get_current_user_id
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
-@router.post("/stripe/create-subscription", tags=["Stripe"])
-async def create_subscription(user_id: int = Depends(get_current_user_id), plan_id: str = Form(...), _api_key: str = Depends(verify_secret_key)):
-    try:
-        customer_id = StripeDbCore.get_stripe_customer_id(user_id)
-        subscription = StripeDbCore.get_stripe_subscription(user_id)
-        
-        if subscription:
-            return JSONResponse(status_code=400, content={"detail": "User is already subscribed."})
-
-        subscription = stripe.Subscription.create(
-            customer=customer_id,
-            items=[{"plan": plan_id}],
-        )
-        StripeDbCore.save_stripe_subscription(user_id, subscription.id)
-        return JSONResponse(status_code=200, content={"subscription_id": subscription.id})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
-
-@router.post("/stripe/cancel-subscription", tags=["Stripe"])
-async def cancel_subscription(user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
-    try:
-        subscription_id = StripeDbCore.get_stripe_subscription(user_id)
-        stripe.Subscription.delete(subscription_id)
-
-        # Retrieve the Stripe subscription ID from the database
-        subscription_id = StripeDbCore.get_stripe_subscription(user_id)
-        if not subscription_id:
-            return JSONResponse(status_code=404, content={"detail": "Subscription not found."})
-        # Cancel the subscription via Stripe API
-        stripe.Subscription.delete(subscription_id)
-        
-        StripeDbCore.cancel_stripe_subscription(user_id)
-        return JSONResponse(status_code=200, content={"message": "Subscription canceled."})
-    except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": str(e)})
-
 @router.post("/stripe/payment-intent", tags=["Stripe"])
 async def create_payment_intent(amount: int, currency: str = "usd", user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
     try:
@@ -76,50 +41,93 @@ async def create_payment_intent(amount: int, currency: str = "usd", user_id: int
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
-@router.post("/stripe/webhook", tags=["Stripe"])
-async def stripe_webhook(payload: dict):
+@router.post("/stripe/generate-invoice", tags=["Stripe"])
+async def generate_invoice(user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
+    """
+    Generate a Stripe invoice based on the user's token usage for the current month.
+    """
     try:
-        event = stripe.Webhook.construct_event(
-            payload['data'], payload['signature'], os.getenv("STRIPE_WEBHOOK_SECRET")
+        # Calculate total tokens used by the user this month
+        tokens_used = UsersDbCore.get_user_token_usage(user_id)
+        
+        # Define your pricing logic here, e.g., $0.01 per token
+        PRICE_PER_TOKEN = 1  # in cents, adjust as needed
+        amount_due = tokens_used * PRICE_PER_TOKEN
+        
+        if amount_due <= 0:
+            return JSONResponse(status_code=200, content={"message": "No charges due for this month."})
+        
+        customer_id = StripeDbCore.get_stripe_customer_id(user_id)
+        if not customer_id:
+            raise HTTPException(status_code=400, detail="Stripe customer not found.")
+        
+        # Create an invoice item
+        stripe.InvoiceItem.create(
+            customer=customer_id,
+            amount=amount_due,
+            currency="usd",
+            description=f"Token usage for {datetime.now().strftime('%B %Y')}",
         )
-
-        if event['type'] == 'customer.subscription.updated':
-            subscription = event['data']['object']
-            # Update subscription status and user's tier
-            StripeDbCore.update_subscription_status(subscription['id'], subscription['status'])
-
-        elif event['type'] == 'customer.subscription.deleted':
-            subscription = event['data']['object']
-            # Handle subscription cancellation
-            StripeDbCore.cancel_stripe_subscription(subscription['id'])
-
-    except ValueError as e:
-        return JSONResponse(status_code=400, content={"detail": "Invalid payload"})
-    except stripe.error.SignatureVerificationError as e:
-        return JSONResponse(status_code=400, content={"detail": "Invalid signature"})
-
-    return JSONResponse(status_code=200, content={"message": "Webhook received!"})
-
-@router.get("/stripe/check-subscription", tags=["Stripe"])
-async def check_subscription(user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
-    """
-    Check if the user has an active subscription.
-    
-    Returns:
-    JSONResponse: The current subscription status of the user.
-    """
-    try:
-        # Retrieve the user's subscription status from the database
-        subscription_status = StripeDbCore.get_subscription_status(user_id)
-
-        if subscription_status is None:
-            return JSONResponse(status_code=404, content={"detail": "No subscription found for user."})
-
-        # Check if the subscription is active
-        if subscription_status == 'active':
-            return JSONResponse(status_code=200, content={"subscription_status": "active"})
-        else:
-            return JSONResponse(status_code=200, content={"subscription_status": subscription_status})
-
+        
+        # Create the invoice
+        invoice = stripe.Invoice.create(
+            customer=customer_id,
+            auto_advance=True,  # Auto-finalize the invoice
+        )
+        
+        # Optionally, you can send the invoice to the customer
+        stripe.Invoice.send_invoice(invoice.id)
+        
+        # Save the invoice details in the database
+        StripeDbCore.save_stripe_invoice(invoice.id, user_id, amount_due, invoice.status)
+        
+        return JSONResponse(status_code=200, content={"invoice_id": invoice.id, "amount_due": amount_due})
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
+
+@router.get("/stripe/payment-history", tags=["Stripe"])
+async def payment_history(user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
+    """
+    Retrieve the payment history for the user.
+    """
+    try:
+        invoices = StripeDbCore.get_user_invoices(user_id)
+        return JSONResponse(status_code=200, content={"invoices": invoices})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+
+@router.post("/stripe/webhook", tags=["Stripe"])
+async def stripe_webhook(payload: dict, sig_header: str = Header(None)):
+    """
+    Handle Stripe webhooks for invoice payment events.
+    """
+    endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+    if not endpoint_secret:
+        raise HTTPException(status_code=500, detail="Webhook secret not configured.")
+    
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, endpoint_secret
+        )
+    except ValueError:
+        # Invalid payload
+        return JSONResponse(status_code=400, content={"detail": "Invalid payload"})
+    except stripe.error.SignatureVerificationError:
+        # Invalid signature
+        return JSONResponse(status_code=400, content={"detail": "Invalid signature"})
+    
+    # Handle the event
+    if event['type'] == 'invoice.payment_succeeded':
+        invoice = event['data']['object']
+        # Update invoice status in the database
+        StripeDbCore.update_invoice_status(invoice.id, invoice.status)
+    elif event['type'] == 'invoice.payment_failed':
+        invoice = event['data']['object']
+        # Handle payment failure
+        StripeDbCore.update_invoice_status(invoice.id, invoice.status)
+    # ... handle other event types as needed
+    
+    return JSONResponse(status_code=200, content={"message": "Webhook received!"})
+
