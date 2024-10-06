@@ -73,3 +73,17 @@ FROM enhancifai.users u
 LEFT JOIN enhancifai.user_account_tiers uat ON u.user_id = uat.user_id
 JOIN enhancifai.account_tiers at ON at.tier_name = 'Free'
 WHERE uat.user_id IS NULL;
+
+-- Remove tier-related tables if they exist
+DROP TABLE IF EXISTS enhancifai.user_account_tiers CASCADE;
+DROP TABLE IF EXISTS enhancifai.account_tiers CASCADE;
+
+-- Remove Stripe subscription-related columns from users table
+ALTER TABLE enhancifai.users
+    DROP COLUMN IF EXISTS stripe_subscription_id,
+    DROP COLUMN IF EXISTS subscription_status,
+    DROP COLUMN IF EXISTS subscription_start,
+    DROP COLUMN IF EXISTS subscription_end;
+
+ALTER TABLE enhancifai.users_token_usage
+ADD COLUMN IF NOT EXISTS run_id INT REFERENCES enhancifai.runs(id);

@@ -150,7 +150,7 @@ class OpenAIConnector:
 
                 # Save token usage entry
                 user_id = RunsDbCore.get_user_id(run_id)
-                UsersDbCore.add_token_usage(user_id, self.engine, tokens_used)
+                UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
 
                 return {"content": data.strip(), "tokens": tokens_used, 'engine_used': self.engine}
 

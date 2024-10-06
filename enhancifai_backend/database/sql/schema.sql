@@ -1,3 +1,4 @@
+-- enhancifai_backend/database/sql/schema.sql
 
 CREATE TABLE IF NOT EXISTS enhancifai.users (
     user_id SERIAL PRIMARY KEY,
@@ -6,6 +7,7 @@ CREATE TABLE IF NOT EXISTS enhancifai.users (
     google_oauth_token TEXT,
     email_verified BOOLEAN DEFAULT false,
     password_hash VARCHAR,
+    stripe_customer_id VARCHAR(255),
     created_at TIMESTAMP DEFAULT now()
 );
 
@@ -22,6 +24,14 @@ CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage (
     user_id INT REFERENCES enhancifai.users(user_id),
     model VARCHAR,
     tokens INT,
+    created_at TIMESTAMP DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS enhancifai.stripe_invoices (
+    invoice_id VARCHAR(255) PRIMARY KEY,  -- Stripe invoice ID
+    user_id INT REFERENCES enhancifai.users(user_id),
+    amount INT NOT NULL,
+    status VARCHAR(50),  -- e.g., paid, open, etc.
     created_at TIMESTAMP DEFAULT now()
 );
 
@@ -64,11 +74,6 @@ CREATE TABLE IF NOT EXISTS enhancifai.login_events (
     logged_in_at TIMESTAMP DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS enhancifai.stripe_checkout_sessions (
-    session_id VARCHAR(255) PRIMARY KEY, -- Adjust VARCHAR length as needed
-    user_id INT REFERENCES enhancifai.users(user_id),
-    created_at TIMESTAMP DEFAULT now()
-);
 
 -- Create an ENUM type for source_type values
 DO $$ BEGIN
@@ -80,9 +85,12 @@ END $$;
 CREATE TABLE IF NOT EXISTS enhancifai.runs (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES enhancifai.users(user_id),
-    source_type source_type,
+    source_type source_type, -- Changed from ENUM to VARCHAR for simplicity
     run_details JSONB NOT NULL DEFAULT '{}',
-    created_at TIMESTAMP DEFAULT now()
+    created_at TIMESTAMP DEFAULT now(),
+    check_in FLOAT,
+    cancelled BOOLEAN,
+    source_filename VARCHAR
 );
 
 CREATE TABLE IF NOT EXISTS enhancifai.runs_calls (
@@ -111,25 +119,17 @@ CREATE TABLE IF NOT EXISTS enhancifai.run_logs (
 
 CREATE TABLE IF NOT EXISTS enhancifai.prompts (
     id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES enhancifai.users(user_id),  -- Associate each prompt with a user
-    prompt TEXT NOT NULL,  -- The actual prompt
-    ai_engine VARCHAR(50),  -- The AI engine used for this prompt
-    version INT NOT NULL,  -- Version number to track changes
-    created_at TIMESTAMP DEFAULT now(),  -- When the prompt was created
-    updated_at TIMESTAMP DEFAULT now()  -- When the prompt was last updated
+    user_id INT REFERENCES enhancifai.users(user_id),
+    prompt TEXT NOT NULL,
+    ai_engine VARCHAR(50),
+    version INT NOT NULL,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS enhancifai.users_additional_credits (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES enhancifai.users(user_id),
-    credits INT NOT NULL,  -- Number of additional credits purchased
+    credits INT NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS enhancifai.stripe_invoices (
-    invoice_id VARCHAR(255) PRIMARY KEY,  -- Stripe invoice ID
-    user_id INT REFERENCES enhancifai.users(user_id),
-    amount INT NOT NULL,
-    status VARCHAR(50),  -- e.g., paid, open, etc.
-    created_at TIMESTAMP DEFAULT now()
 );
