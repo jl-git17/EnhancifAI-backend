@@ -55,7 +55,8 @@ class ExcelHandler:
 
         # Check user's token balance before processing (only check if balance > 0)
         try:
-            UsersDbCore.check_user_token_balance(self.user_id)
+            #UsersDbCore.check_user_token_balance(self.user_id) TODO: check for unpaid invoices
+            pass
         except ValueError as e:
             self.errors.append(f"Row {idx}: {str(e)}")
             return None

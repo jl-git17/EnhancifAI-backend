@@ -10,522 +10,167 @@ class UsersDbCore:
     """
 
     @classmethod
-    def get_user_by_id(cls, user_id):
-        """
-        Retrieve a user by their ID.
-
-        Parameters:
-        user_id (str): The ID of the user.
-
-        Returns:
-        Any: The user data.
-        """
-        sql = schemafy("SELECT * FROM enhancifai.users WHERE user_id = %s;")
-        return read_db.do('select_one', sql=sql, data=(user_id,))
-    
-    @classmethod
-    def get_user_name_by_id(cls, user_id):
-        """
-        Retrieve a user's name by their ID.
-
-        Parameters:
-        user_id (str): The ID of the user.
-
-        Returns:
-        Any: The user's name.
-        """
-        sql = schemafy("SELECT name FROM enhancifai.users WHERE user_id = %s;")
-        return read_db.do('select_one', sql=sql, data=(user_id,))
-    
-    @classmethod
     def get_user_by_email(cls, email):
         """
-        Retrieve a user by their email if the email is verified.
-
-        Parameters:
-        email (str): The email of the user.
-
-        Returns:
-        Any: The user data.
-        """
-        sql = schemafy("SELECT * FROM enhancifai.users WHERE email = %s AND email_verified = true;")
-        return read_db.do('select_one', sql=sql, data=(email,))
-    
-    @classmethod
-    def get_user_id_by_email(cls, email):
-        """
-        Retrieve a user's ID by their email.
-
-        Parameters:
-        email (str): The email of the user.
-
-        Returns:
-        Any: The user ID.
-        """
-        sql = schemafy("SELECT user_id FROM enhancifai.users WHERE email = %s;")
-        return read_db.do('select_one', sql=sql, data=(email,))
-    
-    @classmethod
-    def get_user_by_email_unverified(cls, email):
-        """
-        Retrieve a user by their email if the email is verified.
-
-        Parameters:
-        email (str): The email of the user.
-
-        Returns:
-        Any: The user data.
+        Retrieve user details by email.
         """
         sql = schemafy("SELECT * FROM enhancifai.users WHERE email = %s;")
         return read_db.do('select_one', sql=sql, data=(email,))
-    
+
     @classmethod
-    def get_all_users_with_creds(cls):
+    def get_user_by_id(cls, user_id):
         """
-        Retrieve a list of all users and their credentials.
+        Retrieve user details by user_id.
+        """
+        sql = schemafy("SELECT * FROM enhancifai.users WHERE user_id = %s;")
+        return read_db.do('select_one', sql=sql, data=(user_id,))
 
-        Returns:
-        Any: The list of user credentials.
-        """
-        sql = schemafy("""
-            SELECT u.user_id, gsc.credentials
-            FROM enhancifai.users u
-            INNER JOIN enhancifai.google_sheets_credentials gsc
-            ON u.user_id = gsc.user_id;
-        """)
-        return read_db.do('select', sql=sql)
-    
     @classmethod
-    def check_user_exists_email(cls, email):
+    def create_user_by_email(cls, email, name, password_hash):
         """
-        Check if a user exists by their email.
-
-        Parameters:
-        email (str): The email of the user.
-
-        Returns:
-        bool: True if the user exists, False otherwise.
+        Create a new user with the given email, name, and password hash.
         """
-        sql = schemafy("SELECT * FROM enhancifai.users WHERE email = %s")
-        return read_db.do('select_exists', sql=sql, data=(email,))
-    
+        sql = schemafy("INSERT INTO enhancifai.users (email, name, password_hash) VALUES (%s, %s, %s) RETURNING user_id;")
+        return write_db.do('execute', sql=sql, data=(email, name, password_hash,))
+
     @classmethod
-    def check_user_verified_email(cls, email) -> bool:
+    def set_user_password(cls, user_id, new_password_hash):
         """
-        Check if a user account has verified their email address.
-
-        Parameters:
-        email (str): The email of the user.
-
-        Returns:
-        bool: True if the user has verified their email address, False otherwise.
+        Update the user's password hash.
         """
-        sql = schemafy("SELECT * FROM enhancifai.users WHERE email_verified = true AND email = %s")
-        return read_db.do('select_exists', sql=sql, data=(email,))
-    
+        sql = schemafy("UPDATE enhancifai.users SET password_hash = %s WHERE user_id = %s;")
+        write_db.do('execute', sql=sql, data=(new_password_hash, user_id,))
+
     @classmethod
-    def check_user_password(cls, email, password_hash) -> bool:
+    def check_user_password(cls, email, password_hash):
         """
-        Check if the provided password hash matches the stored password hash for the user.
-
-        Parameters:
-        email (str): The email of the user.
-        password_hash (str): The password hash to check.
-
-        Returns:
-        bool: True if the password matches, False otherwise.
+        Check if the provided password hash matches the user's password.
         """
-        sql = schemafy("SELECT * FROM enhancifai.users WHERE email = %s AND (password_hash IS NULL OR password_hash = %s)")
+        sql = schemafy("SELECT * FROM enhancifai.users WHERE email = %s AND password_hash = %s;")
         return read_db.do('select_exists', sql=sql, data=(email, password_hash,))
 
     @classmethod
-    def set_user_password(cls, user_id, password_hash):
+    def check_user_verified_email(cls, email):
         """
-        Set a new password hash for the user.
-
-        Parameters:
-        user_id (str): The ID of the user.
-        password_hash (str): The new password hash.
-
-        Returns:
-        None
+        Check if the user's email is verified.
         """
-        sql = schemafy("UPDATE enhancifai.users SET password_hash = %s WHERE user_id = %s;")
-        write_db.do('execute', sql=sql, data=(password_hash, user_id, ))
-    
-    @classmethod
-    def create_user_by_email(cls, email, name, password_hash=None):
-        """
-        Create a new user with email and optional password hash.
+        sql = schemafy("SELECT email_verified FROM enhancifai.users WHERE email = %s;")
+        result = read_db.do('select_one', sql=sql, data=(email,))
+        return result['email_verified'] if result else False
 
-        Parameters:
-        email (str): The email of the user.
-        name (str): The name of the user.
-        password_hash (str, optional): The password hash. Defaults to None.
-
-        Returns:
-        None
-        """
-        sql = schemafy("INSERT INTO enhancifai.users (email, name, password_hash) VALUES (%s,%s,%s);")
-        write_db.do('execute', sql=sql, data=(email, name, password_hash,))
-    
-    @classmethod
-    def create_user_by_apple(cls, email):
-        """
-        Create a new user using Apple login.
-
-        Parameters:
-        email (str): The email of the user.
-
-        Returns:
-        None
-        """
-        sql = schemafy("INSERT INTO enhancifai.users (email) VALUES (%s);")
-        write_db.do('execute', sql=sql, data=(email,))
-    
-    @classmethod
-    def create_user_by_google(cls, email, google_oauth_token):
-        """
-        Create a new user using Google login.
-
-        Parameters:
-        email (str): The email of the user.
-        google_oauth_token (str): The Google OAuth token.
-
-        Returns:
-        None
-        """
-        sql = schemafy("INSERT INTO enhancifai.users (email, google_oauth_token) VALUES (%s, %s);")
-        write_db.do('execute', sql=sql, data=(email, google_oauth_token,))
-    
-    @classmethod
-    def update_google_login(cls, user_id, google_oauth_token):
-        """
-        Update Google OAuth token for a user.
-
-        Parameters:
-        user_id (str): The ID of the user.
-        google_oauth_token (str): The new Google OAuth token.
-
-        Returns:
-        None
-        """
-        sql = schemafy("UPDATE enhancifai.users SET google_oauth_token = %s WHERE user_id = %s;")
-        write_db.do('execute', sql=sql, data=(google_oauth_token, user_id,))
-    
     @classmethod
     def verify_email(cls, email):
         """
-        Verify a user's email.
-
-        Parameters:
-        email (str): The email of the user.
-
-        Returns:
-        None
+        Set the user's email as verified.
         """
-        sql = schemafy("UPDATE enhancifai.users SET email_verified = true WHERE email = %s;")
+        sql = schemafy("UPDATE enhancifai.users SET email_verified = TRUE WHERE email = %s;")
         write_db.do('execute', sql=sql, data=(email,))
-    
+
+    @classmethod
+    def check_ai_consent(cls, user_id):
+        """
+        Check if the user has consented to AI usage.
+        """
+        sql = schemafy("SELECT ai_consent FROM enhancifai.users WHERE user_id = %s;")
+        result = read_db.do('select_one', sql=sql, data=(user_id,))
+        return result['ai_consent'] if result else False
+
+    @classmethod
+    def update_ai_consent(cls, user_id):
+        """
+        Update the user's AI consent status to True.
+        """
+        sql = schemafy("UPDATE enhancifai.users SET ai_consent = TRUE WHERE user_id = %s;")
+        write_db.do('execute', sql=sql, data=(user_id,))
+
     @classmethod
     def update_user_profile(cls, user_id, name):
         """
-        Update a user's profile information.
-
-        Parameters:
-        user_id (str): The ID of the user.
-        name (str): The new name of the user.
-
-        Returns:
-        None
+        Update the user's profile information.
         """
-        sql = schemafy(
-            "UPDATE enhancifai.users SET name = %s WHERE user_id = %s;"
-        )
+        sql = schemafy("UPDATE enhancifai.users SET name = %s WHERE user_id = %s;")
         write_db.do('execute', sql=sql, data=(name, user_id,))
-
-    @classmethod
-    def get_user_pending_jobs(cls, user_id):
-        """
-        Get the count of pending jobs for a user.
-
-        Parameters:
-        user_id (str): The ID of the user.
-
-        Returns:
-        int: The count of pending jobs.
-        """
-        sql = schemafy(
-            "SELECT COUNT(*) FROM enhancifai.runs "
-            "WHERE user_id = %s AND run_details->>'status' NOT IN ('completed', 'timed out', 'cancelled');"
-        )
-        return read_db.do('select_one', sql=sql, data=(user_id,))['count']
-    
-    @classmethod
-    def cleanup_timed_out_jobs(cls):
-        """
-        Clean up jobs that have timed out.
-
-        Returns:
-        None
-        """
-        # Time-based timeout
-        sql_time_based = schemafy("""
-            UPDATE enhancifai.runs 
-            SET run_details = jsonb_set(run_details, '{status}', '"timed out"')
-            WHERE run_details->>'status' = 'pending'
-            AND created_at < current_timestamp - interval '1 hour'
-            AND cancelled IS NOT TRUE;
-        """)
-        write_db.do('execute', sql=sql_time_based)
-
-        # Jobs in status 'new' but older than 1 minute (created_at)
-        sql_new_jobs_timeout = schemafy("""
-            UPDATE enhancifai.runs 
-            SET run_details = jsonb_set(run_details, '{status}', '"timed out"')
-            WHERE run_details->>'status' = 'new'
-            AND created_at < current_timestamp - interval '1 minute'
-            AND cancelled IS NOT TRUE;
-        """)
-        write_db.do('execute', sql=sql_new_jobs_timeout)
-
-        # Check-in based timeout
-        current_time = time.time()
-        timeout_threshold = current_time - 30
-        sql_check_in_based = schemafy("""
-            UPDATE enhancifai.runs 
-            SET run_details = jsonb_set(run_details, '{status}', '"timed out"')
-            WHERE run_details->>'status' = 'pending'
-            AND check_in IS NOT NULL 
-            AND check_in < %s
-            AND cancelled IS NOT TRUE;
-        """)
-        write_db.do('execute', sql=sql_check_in_based, data=(timeout_threshold,))
-    
-    @classmethod
-    def add_token_usage(cls, user_id, model, tokens):
-        """
-        Add a token usage entry for a user.
-
-        Parameters:
-        user_id (int): The ID of the user.
-        model (str): The model used.
-        tokens (int): The number of tokens used.
-
-        Returns:
-        None
-        """
-        sql = schemafy("INSERT INTO enhancifai.users_token_usage (user_id, model, tokens) VALUES (%s, %s, %s);")
-        write_db.do('execute', sql=sql, data=(user_id, model, tokens))
-    
-    @classmethod
-    def assign_tier_to_user(cls, user_id, tier_id):
-        """
-        Assign a tier to a user.
-
-        Parameters:
-        user_id (int): The ID of the user.
-        tier_id (int): The ID of the tier.
-
-        Returns:
-        None
-        """
-        sql = schemafy("INSERT INTO enhancifai.user_account_tiers (user_id, tier_id, assigned_at) VALUES (%s, %s, now()) ON CONFLICT (user_id) DO UPDATE SET tier_id = EXCLUDED.tier_id, assigned_at = now();")
-        write_db.do('execute', sql=sql, data=(user_id, tier_id))
-        cls.update_user_current_tier(user_id, tier_id)
-    
-    @classmethod
-    def get_user_tier(cls, user_id):
-        """
-        Get the tier of a user.
-
-        Parameters:
-        user_id (int): The ID of the user.
-
-        Returns:
-        Any: The tier data.
-        """
-        sql = schemafy("SELECT t.* FROM enhancifai.account_tiers t JOIN enhancifai.user_account_tiers uat ON t.tier_id = uat.tier_id WHERE uat.user_id = %s;")
-        return read_db.do('select_one', sql=sql, data=(user_id,))
-    
-    @classmethod
-    def get_all_tiers(cls):
-        """
-        Get all available tiers.
-
-        Returns:
-        Any: The list of all tiers.
-        """
-        sql = schemafy("SELECT * FROM enhancifai.account_tiers;")
-        return read_db.do('select_all', sql=sql)
-    
-    @classmethod
-    def update_user_current_tier(cls, user_id, tier_id):
-        """
-        Update the user's current tier in the users table.
-
-        Parameters:
-        user_id (int): The ID of the user.
-        tier_id (int): The ID of the tier.
-
-        Returns:
-        None
-        """
-        sql = schemafy("UPDATE enhancifai.users SET current_tier_id = %s WHERE user_id = %s;")
-        write_db.do('execute', sql=sql, data=(tier_id, user_id))
-    
-    @classmethod
-    def is_user_admin(cls, user_id) -> bool:
-        sql = schemafy("SELECT * FROM enhancifai.users WHERE is_admin IS TRUE AND user_id = %s")
-        return write_db.do('select_exists', sql=sql, data=(user_id,))
-    
-    @classmethod
-    def check_ai_consent(cls, user_id) -> bool:
-        sql = schemafy("SELECT * FROM enhancifai.users WHERE ai_consent IS NOT NULL AND user_id = %s")
-        return write_db.do('select_exists', sql=sql, data=(user_id,))
-    
-    @classmethod
-    def update_ai_consent(cls, user_id) -> bool:
-        sql = schemafy("UPDATE enhancifai.users SET ai_consent = NOW() WHERE user_id = %s;")
-        return write_db.do('execute', sql=sql, data=(user_id,))
-    
-    @classmethod
-    def create_session(cls, user_id, token, expires_at):
-        """
-        Create a new session for a user.
-
-        Parameters:
-        user_id (int): The ID of the user.
-        token (str): The session token (JWT).
-        expires_at (str): The expiration timestamp of the session.
-
-        Returns:
-        None
-        """
-        sql = schemafy("INSERT INTO enhancifai.users_sessions (user_id, token, expires_at) VALUES (%s, %s, %s);")
-        write_db.do('execute', sql=sql, data=(user_id, token, expires_at,))
-
-    @classmethod
-    def is_token_expired(cls, token):
-        """
-        Check if the provided token is expired.
-
-        Parameters:
-        token (str): The session token (JWT).
-
-        Returns:
-        bool: True if the token is expired, False otherwise.
-        """
-        sql = schemafy("SELECT expires_at < now() FROM enhancifai.users_sessions WHERE token = %s;")
-        return read_db.do('select_one', sql=sql, data=(token,))
 
     @classmethod
     def get_session_expiration_by_user_id(cls, user_id):
         """
         Get the session expiration timestamp for a user by their ID.
-
-        Parameters:
-        user_id (int): The ID of the user.
-
-        Returns:
-        str: The expiration timestamp of the session.
         """
         sql = schemafy("SELECT expires_at FROM enhancifai.users_sessions WHERE user_id = %s ORDER BY created_at DESC LIMIT 1;")
-        return read_db.do('select_one', sql=sql, data=(user_id,))
-    
+        result = read_db.do('select_one', sql=sql, data=(user_id,))
+        return result['expires_at'] if result else None
+
     @classmethod
-    def calculate_user_token_quota(cls, user_id):
+    def get_user_token_usage(cls, user_id: int, start_date: datetime, end_date: datetime) -> int:
         """
-        Calculate the user's remaining token quota based on their tier, token usage, and additional purchased credits.
+        Calculate the total tokens used by the user within a specific date range.
+        
+        Args:
+            user_id (int): The ID of the user.
+            start_date (datetime): The start datetime of the range.
+            end_date (datetime): The end datetime of the range.
+        
+        Returns:
+            int: Total tokens used within the specified range.
         """
-
-        # Get the user's tier
-        tier = cls.get_user_tier(user_id)
-        if not tier:
-            raise ValueError("User tier not found")
-
-        # Get the base token limit from the tier
-        base_token_quota = tier.get('max_tokens', 0)
-        tier_name = tier.get('tier_name', 'free').lower()
-
-        # Get current date for the window calculation
-        current_date = datetime.now()
-
-        # Calculate tokens used in the current month
-        if tier_name == 'free':
-            # For the free tier, calculate tokens used in the current month only
-            start_of_month = current_date.replace(day=1)
-            sql = schemafy("""
-                SELECT COALESCE(SUM(tokens), 0) AS tokens_used 
-                FROM enhancifai.users_token_usage 
-                WHERE user_id = %s AND created_at >= %s;
-            """)
-            tokens_used = read_db.do('select_one', sql=sql, data=(user_id, start_of_month))['tokens_used']
-            print(user_id)
-            print(tokens_used)
-            
-            # For 'free' users, no rollover, calculate based on current month usage
-            return max(0, base_token_quota - tokens_used)
-
-        # For 'Basic' and 'Pro' tiers, calculate monthly allocation with rollover
-        # Calculate total token usage over the last N months, based on when the user subscribed
-        # Assume the subscription started when the user was assigned to this tier
         sql = schemafy("""
-            SELECT assigned_at FROM enhancifai.user_account_tiers WHERE user_id = %s AND tier_id = %s;
-        """)
-        tier_assignment = read_db.do('select_one', sql=sql, data=(user_id, tier['tier_id']))
-        assigned_at = tier_assignment.get('assigned_at', current_date)
-
-        # Find out how many months have passed since assignment to this tier
-        months_passed = (current_date.year - assigned_at.year) * 12 + current_date.month - assigned_at.month + 1
-
-        # Total possible allocation so far, considering the month we're in
-        total_quota = base_token_quota * months_passed
-
-        # Get the total tokens used since the user was assigned to this tier
-        sql = schemafy("""
-            SELECT COALESCE(SUM(tokens), 0) AS total_tokens_used 
+            SELECT COALESCE(SUM(tokens), 0) AS tokens_used 
             FROM enhancifai.users_token_usage 
-            WHERE user_id = %s AND created_at >= %s;
+            WHERE user_id = %s 
+              AND created_at >= %s 
+              AND created_at < %s;
         """)
-        tokens_used = read_db.do('select_one', sql=sql, data=(user_id, assigned_at))['total_tokens_used']
-
-        # Get any additional credits the user has purchased
-        sql = schemafy("""
-            SELECT COALESCE(SUM(credits), 0) AS additional_credits 
-            FROM enhancifai.users_additional_credits 
-            WHERE user_id = %s;
-        """)
-        additional_credits = read_db.do('select_one', sql=sql, data=(user_id,))['additional_credits']
-
-        # Total available tokens: base quota for all months passed + additional credits - total tokens used
-        remaining_tokens = (total_quota + additional_credits) - tokens_used
-
-        return max(0, remaining_tokens)  # Ensure no negative balance
-
+        result = read_db.do('select_one', sql=sql, data=(user_id, start_date, end_date))
+        return result['tokens_used'] if result else 0
 
     @classmethod
-    def check_user_token_balance(cls, user_id):
+    def add_user_token_usage(cls, user_id, run_id, model, tokens):
         """
-        Check if the user has a positive token balance. Raises an error if not.
-        """
-        remaining_tokens = cls.calculate_user_token_quota(user_id)
-        print(f"UserID: {user_id}   Balance: {remaining_tokens}")
-        if remaining_tokens <= 0:
-            raise ValueError("User has insufficient tokens to run processes.")
-    
-    @classmethod
-    def get_user_limits(cls, user_id):
-        """
-        Fetch the user's account limits for max_rows and max_prompts based on their tier.
+        Add token usage for the user.
         """
         sql = schemafy("""
-            SELECT at.max_rows, at.max_prompts
-            FROM enhancifai.account_tiers at
-            JOIN enhancifai.users u ON u.current_tier_id = at.tier_id
-            WHERE u.user_id = %s;
+            INSERT INTO enhancifai.users_token_usage (user_id, run_id, model, tokens)
+            VALUES (%s, %s, %s);
         """)
-        return read_db.do('select_one', sql=sql, data=(user_id,))
+        write_db.do('execute', sql=sql, data=(user_id, run_id, model, tokens,))
+
+    @classmethod
+    def create_session(cls, user_id, token, expires_at):
+        """
+        Create a new session for the user.
+        """
+        sql = schemafy("INSERT INTO enhancifai.users_sessions (user_id, token, expires_at) VALUES (%s, %s, %s);")
+        write_db.do('execute', sql=sql, data=(user_id, token, expires_at,))
+
+    @classmethod
+    def get_user_invoices(cls, user_id):
+        """
+        Retrieve all invoices for the user.
+        """
+        sql = schemafy("""
+            SELECT * FROM enhancifai.stripe_invoices 
+            WHERE user_id = %s 
+            ORDER BY created_at DESC;
+        """)
+        return read_db.do('select', sql=sql, data=(user_id,)) or []
+
+    @classmethod
+    def get_user_by_email_unverified(cls, email):
+        """
+        Retrieve user details by email without verifying email status.
+        """
+        sql = schemafy("SELECT * FROM enhancifai.users WHERE email = %s;")
+        return read_db.do('select_one', sql=sql, data=(email,))
+
+    @classmethod
+    def cleanup_timed_out_jobs(cls):
+        """
+        Clean up any timed-out jobs or sessions if necessary.
+        Implement as per your requirements.
+        """
+        # Example: Remove expired sessions
+        sql = schemafy("DELETE FROM enhancifai.users_sessions WHERE expires_at < NOW();")
+        write_db.do('execute', sql=sql)
 
 
 class UsersDbRegisterTokens:
