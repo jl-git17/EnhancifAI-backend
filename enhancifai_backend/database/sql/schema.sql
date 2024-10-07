@@ -33,8 +33,8 @@ CREATE TABLE IF NOT EXISTS enhancifai.stripe_invoices (
     amount INT NOT NULL,
     status VARCHAR(50),  -- e.g., paid, open, etc.
     created_at TIMESTAMP DEFAULT now(),
-    billing_period_start TIMESTAMP,   -- New field
-    billing_period_end TIMESTAMP,     -- New field
+    billing_period_start DATE,   -- New field
+    billing_period_end DATE,     -- New field
     metadata JSONB                     -- Optional: To store additional metadata
 );
 
