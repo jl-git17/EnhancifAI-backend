@@ -220,4 +220,4 @@ class StripeDbCore:
             invoice.status,      # e.g., 'draft', 'open', 'paid', etc.
             datetime.fromtimestamp(invoice.created),
         )
-        write_db.do('insert', sql=sql, data=data)
+        write_db.do('execute', sql=sql, data=data)
