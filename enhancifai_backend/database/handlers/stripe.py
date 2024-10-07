@@ -85,7 +85,6 @@ class StripeDbCore:
                 days_until_due=30,  # Adjust as per your billing terms
                 description=description,
                 metadata={
-                    'user_id': str(user_id),
                     'billing_period_start': billing_period_start.isoformat(),
                     'billing_period_end': billing_period_end.isoformat(),
                 },
