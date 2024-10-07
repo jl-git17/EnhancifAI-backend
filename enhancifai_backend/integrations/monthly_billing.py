@@ -76,7 +76,9 @@ def generate_monthly_invoices():
                 )
 
                 # Create and send the invoice
-                invoice = StripeDbCore.create_invoice(user_id, amount, description)
+                invoice = StripeDbCore.create_invoice(
+                    user_id, amount, description, first_day_of_previous_month, first_day_of_current_month
+                )
                 logger.info(
                     f"Created invoice {invoice['id']} for user {user_id}: ${amount / 100:.2f}"
                 )

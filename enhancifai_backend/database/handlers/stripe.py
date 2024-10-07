@@ -18,19 +18,20 @@ class StripeDbCore:
     """
 
     @classmethod
-    def get_stripe_customer_id(cls, user_id: int) -> str:
+    def get_stripe_customer_id(cls, user_id: int) -> Optional[str]:
         """
-        Retrieve the Stripe customer ID associated with a given user.
-
+        Retrieve the Stripe Customer ID for a given user.
+        
         Args:
             user_id (int): The ID of the user.
-
+        
         Returns:
-            str: The Stripe customer ID if exists, else None.
+            Optional[str]: Stripe Customer ID or None if not found.
         """
         sql = schemafy("SELECT stripe_customer_id FROM enhancifai.users WHERE user_id = %s;")
         result = read_db.do('select_one', sql=sql, data=(user_id,))
-        return result['stripe_customer_id'] if result else None
+        return result['stripe_customer_id'] if result and 'stripe_customer_id' in result else None
+
 
     @classmethod
     def save_stripe_customer_id(cls, user_id: int, customer_id: str) -> None:
@@ -93,55 +94,61 @@ class StripeDbCore:
         return read_db.do('select', sql=sql, data=(user_id,)) or []
 
     @classmethod
-    def create_invoice(cls, user_id: int, amount: int, description: str) -> dict:
+    def create_invoice(cls, user_id: int, amount: int, description: str, billing_period_start: datetime, billing_period_end: datetime) -> dict:
         """
-        Create a Stripe invoice for the user based on token usage.
-
+        Create a new invoice for the user with collection_method set to 'send_invoice'.
+        
         Args:
             user_id (int): The ID of the user.
-            amount (int): The amount due in cents.
-            description (str): Description of the charge.
-
+            amount (int): The amount in cents.
+            description (str): Description of the invoice.
+            billing_period_start (datetime): Start of the billing period.
+            billing_period_end (datetime): End of the billing period.
+        
         Returns:
-            dict: The created invoice object.
+            dict: Created invoice details.
         """
-        customer_id = cls.get_stripe_customer_id(user_id)
-        user = UsersDbCore.get_user_by_id(user_id)
-        if not customer_id:
-            # Create a new customer if one does not exist
-            customer = stripe.Customer.create(email=user['email'])
-            StripeDbCore.save_stripe_customer_id(user_id, customer.id)
-            customer_id = customer.id
-
         try:
-            # Create an InvoiceItem for the user
+            # Retrieve the Stripe Customer ID associated with the user
+            customer_id = cls.get_stripe_customer_id(user_id)
+            if not customer_id:
+                raise ValueError(f"No Stripe customer found for user_id {user_id}")
+
+            # Create an invoice item (e.g., a one-time fee)
             invoice_item = stripe.InvoiceItem.create(
                 customer=customer_id,
                 amount=amount,
-                currency='usd',
+                currency='usd',  # Adjust currency as needed
                 description=description,
             )
 
-            # Create the Invoice
+            # Create the invoice with collection_method 'send_invoice'
             invoice = stripe.Invoice.create(
                 customer=customer_id,
-                auto_advance=True,  # Auto-finalize the invoice
+                collection_method='send_invoice',
+                days_until_due=30,  # Adjust as per your billing terms
+                description=description,
+                metadata={
+                    'user_id': user_id,
+                    'billing_period_start': billing_period_start.isoformat(),
+                    'billing_period_end': billing_period_end.isoformat(),
+                },
             )
+            
+            invoice.send_invoice()
 
-            # Optionally, you can send the invoice to the customer
-            stripe.Invoice.send_invoice(invoice.id)
-
-            # Save the invoice details in the database
-            cls.save_stripe_invoice(invoice.id, user_id, amount, invoice.status)
+            # Record the invoice in your local database
+            cls.record_invoice(invoice, user_id)
 
             return invoice
 
         except stripe.error.StripeError as e:
             # Handle Stripe-specific errors
-            raise e
+            raise Exception(f"Stripe error: {e.user_message}") from e
         except Exception as e:
-            # Handle generic errors
-            raise e
+            # Handle general errors
+            raise Exception(f"Failed to create invoice: {str(e)}") from e
+
 
     @classmethod
     def cancel_stripe_subscription(cls, invoice_id: str) -> None:
@@ -192,3 +199,25 @@ class StripeDbCore:
         """)
         result: Optional[dict] = read_db.do('select_one', sql=sql, data=(user_id, start_date, end_date))
         return bool(result)
+    
+    @classmethod
+    def record_invoice(cls, invoice: stripe.Invoice, user_id: int):
+        """
+        Record the created invoice in the local database.
+        
+        Args:
+            invoice (stripe.Invoice): The created Stripe invoice object.
+            user_id (int): The ID of the user.
+        """
+        sql = schemafy("""
+            INSERT INTO enhancifai.stripe_invoices (invoice_id, user_id, amount, status, created_at)
+            VALUES (%s, %s, %s, %s, %s);
+        """)
+        data = (
+            invoice.id,
+            user_id,
+            invoice.amount_due,  # Amount in cents
+            invoice.status,      # e.g., 'draft', 'open', 'paid', etc.
+            datetime.fromtimestamp(invoice.created),
+        )
+        write_db.do('insert', sql=sql, data=data)
