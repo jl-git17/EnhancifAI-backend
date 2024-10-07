@@ -34,9 +34,9 @@ def generate_monthly_invoices():
     """
     try:
         # Determine the start and end of the previous month
-        today = datetime.today()
-        first_day_of_current_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        last_day_of_previous_month = first_day_of_current_month - timedelta(seconds=1)
+        today = datetime.today().date()
+        first_day_of_current_month = today.replace(day=1)
+        last_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
         first_day_of_previous_month = last_day_of_previous_month.replace(day=1)
 
         logger.info(f"Generating invoices for the period: {first_day_of_previous_month} to {first_day_of_current_month}")
