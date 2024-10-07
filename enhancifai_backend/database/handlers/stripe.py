@@ -1,8 +1,11 @@
 # enhancifai_backend/database/handlers/stripe.py
 
+from datetime import datetime
 import os
+from typing import Optional
 import stripe
 from enhancifai_backend.database.access import read_db, write_db
+from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.database.handlers.utils import schemafy
 
 # Initialize Stripe
@@ -103,8 +106,12 @@ class StripeDbCore:
             dict: The created invoice object.
         """
         customer_id = cls.get_stripe_customer_id(user_id)
+        user = UsersDbCore.get_user_by_id(user_id)
         if not customer_id:
-            raise ValueError("Stripe customer not found for user.")
+            # Create a new customer if one does not exist
+            customer = stripe.Customer.create(email=user['email'])
+            StripeDbCore.save_stripe_customer_id(user_id, customer.id)
+            customer_id = customer.id
 
         try:
             # Create an InvoiceItem for the user
@@ -161,3 +168,27 @@ class StripeDbCore:
         """
         # Placeholder for future subscription status updates
         pass
+
+    @classmethod
+    def invoice_exists(cls, user_id: int, start_date: datetime, end_date: datetime) -> bool:
+        """
+        Check if an invoice already exists for the user within the specified billing period.
+        
+        Args:
+            user_id (int): The ID of the user.
+            start_date (datetime): Start of the billing period.
+            end_date (datetime): End of the billing period.
+        
+        Returns:
+            bool: True if an invoice exists, False otherwise.
+        """
+        sql = schemafy("""
+            SELECT 1 
+            FROM enhancifai.stripe_invoices 
+            WHERE user_id = %s 
+              AND created_at >= %s 
+              AND created_at < %s
+            LIMIT 1;
+        """)
+        result: Optional[dict] = read_db.do('select_one', sql=sql, data=(user_id, start_date, end_date))
+        return bool(result)
