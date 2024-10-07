@@ -127,7 +127,6 @@ class StripeDbCore:
         """)
         result: Optional[dict] = read_db.do('select_one', sql=sql, data=(user_id, billing_period_start, billing_period_end))
         return bool(result)
-
     
     @classmethod
     def save_stripe_invoice(cls, invoice: stripe.Invoice, user_id: int) -> None:
@@ -146,14 +145,20 @@ class StripeDbCore:
             ON CONFLICT (user_id, billing_period_start, billing_period_end) 
             DO NOTHING;
         """)
+        
+        # Serialize metadata to JSON
+        metadata_json = json.dumps(invoice.metadata) if hasattr(invoice, 'metadata') and invoice.metadata else None
+        
         data = (
             invoice.id,
             user_id,
             invoice.amount_due,  # Amount in cents
             invoice.status,      # e.g., 'draft', 'open', 'paid', etc.
             datetime.fromtimestamp(invoice.created),
-            datetime.fromtimestamp(invoice.period_start) if hasattr(invoice, 'period_start') else None,
-            datetime.fromtimestamp(invoice.period_end) if hasattr(invoice, 'period_end') else None,
-            invoice.metadata if hasattr(invoice, 'metadata') else None
+            datetime.fromtimestamp(invoice.period_start) if hasattr(invoice, 'period_start') and invoice.period_start else None,
+            datetime.fromtimestamp(invoice.period_end) if hasattr(invoice, 'period_end') and invoice.period_end else None,
+            metadata_json
         )
+        
         write_db.do('execute', sql=sql, data=data)
+

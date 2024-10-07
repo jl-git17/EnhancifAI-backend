@@ -42,3 +42,7 @@ ALTER TABLE enhancifai.users
 
 ALTER TABLE enhancifai.users_token_usage
 ADD COLUMN IF NOT EXISTS run_id INT REFERENCES enhancifai.runs(id);
+
+ALTER TABLE enhancifai.stripe_invoices
+ADD CONSTRAINT unique_user_billing_period 
+UNIQUE (user_id, billing_period_start, billing_period_end);
