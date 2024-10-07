@@ -150,14 +150,19 @@ class StripeDbCore:
         # Serialize metadata to JSON
         metadata_json = json.dumps(invoice.metadata) if hasattr(invoice, 'metadata') and invoice.metadata else None
         
+        # Convert timestamps to datetime objects
+        created_at = datetime.fromtimestamp(invoice.created) if hasattr(invoice, 'created') and invoice.created else None
+        billing_period_start = datetime.fromtimestamp(invoice.period_start) if hasattr(invoice, 'period_start') and invoice.period_start else None
+        billing_period_end = datetime.fromtimestamp(invoice.period_end) if hasattr(invoice, 'period_end') and invoice.period_end else None
+        
         data = (
             invoice.id,
             user_id,
             invoice.amount_due,  # Amount in cents
             invoice.status,      # e.g., 'draft', 'open', 'paid', etc.
-            datetime.fromtimestamp(invoice.created),
-            datetime.fromtimestamp(invoice.period_start) if hasattr(invoice, 'period_start') and invoice.period_start else None,
-            datetime.fromtimestamp(invoice.period_end) if hasattr(invoice, 'period_end') and invoice.period_end else None,
+            created_at,
+            billing_period_start,
+            billing_period_end,
             metadata_json
         )
         
