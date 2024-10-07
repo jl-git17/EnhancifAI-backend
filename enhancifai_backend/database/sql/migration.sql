@@ -27,55 +27,10 @@ CREATE TABLE IF NOT EXISTS enhancifai.account_tiers (
     created_at TIMESTAMP DEFAULT now()
 );
 
--- Table to link users to their account tiers
-CREATE TABLE IF NOT EXISTS enhancifai.user_account_tiers (
-    user_id INT REFERENCES enhancifai.users(user_id),
-    tier_id INT REFERENCES enhancifai.account_tiers(tier_id),
-    assigned_at TIMESTAMP DEFAULT now(),
-    PRIMARY KEY (user_id, tier_id)
-);
-
-ALTER TABLE enhancifai.account_tiers ADD COLUMN IF NOT EXISTS stripe_plan_id VARCHAR(255);
-
--- Create default account tiers (Free, Basic, Pro, Enterprise) if not already present
-INSERT INTO enhancifai.account_tiers (tier_name, max_tokens, max_rows, max_prompts)
-SELECT 'Free', 10000, 20, 4
-WHERE NOT EXISTS (SELECT 1 FROM enhancifai.account_tiers)
-UNION ALL
-SELECT 'Basic', 20000, 0, 0
-WHERE NOT EXISTS (SELECT 1 FROM enhancifai.account_tiers WHERE tier_name = 'Free')
-UNION ALL
-SELECT 'Pro', 100000, 0, 0
-WHERE NOT EXISTS (SELECT 1 FROM enhancifai.account_tiers WHERE tier_name = 'Basic')
-UNION ALL
-SELECT 'Enterprise', 1000000, 0, 0
-WHERE NOT EXISTS (SELECT 1 FROM enhancifai.account_tiers WHERE tier_name = 'Pro');
-
--- Update the users table to add a reference to the current tier
-ALTER TABLE enhancifai.users
-ADD COLUMN IF NOT EXISTS current_tier_id INT DEFAULT 1 REFERENCES enhancifai.account_tiers(tier_id);
-
 ALTER TABLE enhancifai.users
 ADD COLUMN IF NOT EXISTS ai_consent TIMESTAMP;
 
--- Add Stripe-related fields to users table
-ALTER TABLE enhancifai.users
-ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(255),
-ADD COLUMN IF NOT EXISTS stripe_subscription_id VARCHAR(255),
-ADD COLUMN IF NOT EXISTS subscription_status VARCHAR(50),  -- active, trialing, canceled, etc.
-ADD COLUMN IF NOT EXISTS subscription_start TIMESTAMP,
-ADD COLUMN IF NOT EXISTS subscription_end TIMESTAMP;
-
--- Insert the 'Free' tier for users who do not have an assigned tier
-INSERT INTO enhancifai.user_account_tiers (user_id, tier_id, assigned_at)
-SELECT u.user_id, at.tier_id, NOW()
-FROM enhancifai.users u
-LEFT JOIN enhancifai.user_account_tiers uat ON u.user_id = uat.user_id
-JOIN enhancifai.account_tiers at ON at.tier_name = 'Free'
-WHERE uat.user_id IS NULL;
-
 -- Remove tier-related tables if they exist
-DROP TABLE IF EXISTS enhancifai.user_account_tiers CASCADE;
 DROP TABLE IF EXISTS enhancifai.account_tiers CASCADE;
 
 -- Remove Stripe subscription-related columns from users table
