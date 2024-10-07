@@ -1,16 +1,21 @@
 # enhancifai_backend/database/handlers/stripe.py
 
-from datetime import datetime
+from datetime import datetime, date
 import json
 import os
 from typing import Optional
 import stripe
+import logging
 from enhancifai_backend.database.access import read_db, write_db
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.database.handlers.utils import schemafy
 
+# Initialize logging
+logger = logging.getLogger(__name__)
+
 # Initialize Stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+
 
 class StripeDbCore:
     """
@@ -22,10 +27,10 @@ class StripeDbCore:
     def get_stripe_customer_id(cls, user_id: int) -> Optional[str]:
         """
         Retrieve the Stripe Customer ID for a given user.
-        
+
         Args:
             user_id (int): The ID of the user.
-        
+
         Returns:
             Optional[str]: Stripe Customer ID or None if not found.
         """
@@ -44,19 +49,20 @@ class StripeDbCore:
         """
         sql = schemafy("UPDATE enhancifai.stripe_invoices SET status = %s WHERE invoice_id = %s;")
         write_db.do('execute', sql=sql, data=(status, invoice_id,))
+        logger.debug(f"Updated Invoice Status: {invoice_id} to {status}")
 
     @classmethod
-    def create_invoice(cls, user_id: int, amount: int, description: str, billing_period_start: datetime, billing_period_end: datetime) -> dict:
+    def create_invoice(cls, user_id: int, amount: int, description: str, billing_period_start: date, billing_period_end: date) -> dict:
         """
         Create a new invoice for the user with collection_method set to 'send_invoice'.
-        
+
         Args:
             user_id (int): The ID of the user.
             amount (int): The amount in cents.
             description (str): Description of the invoice.
-            billing_period_start (datetime): Start of the billing period.
-            billing_period_end (datetime): End of the billing period.
-        
+            billing_period_start (date): Start of the billing period.
+            billing_period_end (date): End of the billing period.
+
         Returns:
             dict: Created invoice details.
         """
@@ -77,8 +83,9 @@ class StripeDbCore:
                 currency='usd',  # Adjust currency as needed
                 description=description,
             )
+            logger.debug(f"Created InvoiceItem: {invoice_item.id}")
 
-            # Create the invoice with collection_method 'send_invoice'
+            # Create the invoice with collection_method 'send_invoice' and expand 'lines'
             invoice = stripe.Invoice.create(
                 customer=customer_id,
                 collection_method='send_invoice',
@@ -88,32 +95,42 @@ class StripeDbCore:
                     'billing_period_start': billing_period_start.isoformat(),
                     'billing_period_end': billing_period_end.isoformat(),
                 },
+                expand=['lines']
             )
-            
+            logger.debug(f"Created Invoice: {invoice.id}")
+
+            # Verify the invoice includes the invoice item
+            if not any(line.description == description and line.amount == amount for line in invoice.lines.data):
+                raise Exception("Invoice item not found in the created invoice.")
+
+            # Send the invoice
             invoice.send_invoice()
+            logger.debug(f"Sent Invoice: {invoice.id}")
 
             # Record the invoice in your local database
             cls.save_stripe_invoice(invoice, user_id)
 
-            return invoice
+            return invoice.to_dict()
 
         except stripe.error.StripeError as e:
             # Handle Stripe-specific errors
+            logger.error(f"Stripe error: {e.user_message}")
             raise Exception(f"Stripe error: {e.user_message}") from e
         except Exception as e:
             # Handle general errors
+            logger.error(f"Failed to create invoice: {str(e)}")
             raise Exception(f"Failed to create invoice: {str(e)}") from e
 
     @classmethod
-    def invoice_exists(cls, user_id: int, billing_period_start: datetime, billing_period_end: datetime) -> bool:
+    def invoice_exists(cls, user_id: int, billing_period_start: date, billing_period_end: date) -> bool:
         """
         Check if an invoice already exists for the user within the specified billing period.
-        
+
         Args:
             user_id (int): The ID of the user.
-            billing_period_start (datetime): Start of the billing period.
-            billing_period_end (datetime): End of the billing period.
-        
+            billing_period_start (date): Start of the billing period.
+            billing_period_end (date): End of the billing period.
+
         Returns:
             bool: True if an invoice exists for the billing period, False otherwise.
         """
@@ -126,39 +143,52 @@ class StripeDbCore:
             LIMIT 1;
         """)
         result: Optional[dict] = read_db.do('select_one', sql=sql, data=(user_id, billing_period_start, billing_period_end))
+        logger.debug(f"Invoice Exists Check for User {user_id}, Period {billing_period_start} to {billing_period_end}: {bool(result)}")
         return bool(result)
-    
+
     @classmethod
     def save_stripe_invoice(cls, invoice: stripe.Invoice, user_id: int) -> None:
         """
         Save a new Stripe invoice record in the database.
         Handles unique constraint to prevent duplicates.
-        
+
         Args:
             invoice (stripe.Invoice): The Stripe invoice object.
             user_id (int): The ID of the user associated with the invoice.
         """
-        sql = schemafy("""
-            INSERT INTO enhancifai.stripe_invoices 
-            (invoice_id, user_id, amount, status, created_at, billing_period_start, billing_period_end, metadata)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
-            ON CONFLICT (user_id, billing_period_start, billing_period_end) 
-            DO NOTHING;
-        """)
-        
-        # Serialize metadata to JSON
-        metadata_json = json.dumps(invoice.metadata) if hasattr(invoice, 'metadata') and invoice.metadata else None
-        
-        data = (
-            invoice.id,
-            user_id,
-            invoice.amount_due,  # Amount in cents
-            invoice.status,      # e.g., 'draft', 'open', 'paid', etc.
-            datetime.fromtimestamp(invoice.created),
-            datetime.fromtimestamp(invoice.period_start) if hasattr(invoice, 'period_start') and invoice.period_start else None,
-            datetime.fromtimestamp(invoice.period_end) if hasattr(invoice, 'period_end') and invoice.period_end else None,
-            metadata_json
-        )
-        
-        write_db.do('execute', sql=sql, data=data)
+        try:
+            # Serialize metadata to JSON
+            metadata_json = json.dumps(invoice.metadata) if hasattr(invoice, 'metadata') and invoice.metadata else None
 
+            # Extract billing_period_start and billing_period_end from metadata
+            billing_period_start = invoice.metadata.get('billing_period_start')
+            billing_period_end = invoice.metadata.get('billing_period_end')
+
+            # Convert billing periods from ISO format to date
+            billing_period_start_dt = datetime.fromisoformat(billing_period_start).date() if billing_period_start else None
+            billing_period_end_dt = datetime.fromisoformat(billing_period_end).date() if billing_period_end else None
+
+            # Insert the main invoice record
+            sql = schemafy("""
+                INSERT INTO enhancifai.stripe_invoices 
+                (invoice_id, user_id, amount, currency, status, created_at, billing_period_start, billing_period_end, metadata)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                ON CONFLICT (user_id, billing_period_start, billing_period_end) 
+                DO NOTHING;
+            """)
+            data = (
+                invoice.id,
+                user_id,
+                invoice.amount_due,    # Amount in cents
+                invoice.currency,      # Currency, e.g., 'usd'
+                invoice.status,        # e.g., 'draft', 'open', 'paid', etc.
+                datetime.fromtimestamp(invoice.created),
+                billing_period_start_dt,
+                billing_period_end_dt,
+                metadata_json
+            )
+            write_db.do('execute', sql=sql, data=data)
+            logger.debug(f"Saved Invoice: {invoice.id}")
+        except Exception as e:
+            logger.error(f"Failed to save invoice {invoice.id} to DB: {str(e)}")
+            raise Exception(f"Failed to save invoice to DB: {str(e)}") from e

@@ -56,3 +56,6 @@ BEGIN
     END IF;
 END $$;
 
+ALTER TABLE enhancifai.stripe_invoices
+    ALTER COLUMN billing_period_start TYPE DATE USING billing_period_start::date,
+    ALTER COLUMN billing_period_end TYPE DATE USING billing_period_end::date;
