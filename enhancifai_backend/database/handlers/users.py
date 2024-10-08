@@ -130,7 +130,7 @@ class UsersDbCore:
         """
         sql = schemafy("""
             INSERT INTO enhancifai.users_token_usage (user_id, run_id, model, tokens)
-            VALUES (%s, %s, %s);
+            VALUES (%s, %s, %s, %s);
         """)
         write_db.do('execute', sql=sql, data=(user_id, run_id, model, tokens,))
 
