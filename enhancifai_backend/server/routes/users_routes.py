@@ -301,7 +301,7 @@ async def session_check(user_id: int = Depends(get_current_user_id_unverified), 
     ai_consent = UsersDbCore.check_ai_consent(user_id)
     if ai_consent is False:
         raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
-    exp = UsersDbCore.get_session_expiration_by_user_id(user_id)['expires_at']
+    exp = UsersDbCore.get_session_expiration_by_user_id(user_id)
     if not exp:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session token. Please login again.")
     
