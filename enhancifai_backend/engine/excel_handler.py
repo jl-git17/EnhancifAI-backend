@@ -121,7 +121,7 @@ class ExcelHandler:
                             end_time = time.time()
                             RunLogsDbCore.insert_log(
                                 run_id=self.run_id,
-                                user_name=UsersDbCore.get_user_name_by_id(self.user_id)['name'] or f"user_{self.user_id}",
+                                user_name=UsersDbCore.get_user_by_id(self.user_id)['name'] or f"user_{self.user_id}",
                                 engine_model=self.engine,
                                 log_timestamp=datetime.now(tz=timezone.utc),
                                 num_rows_processed=self.processed,
@@ -157,7 +157,7 @@ class ExcelHandler:
                         end_time = time.time()
                         RunLogsDbCore.insert_log(
                             run_id=self.run_id,
-                            user_name=UsersDbCore.get_user_name_by_id(self.user_id)['name'] or f"user_{self.user_id}",
+                            user_name=UsersDbCore.get_user_by_id(self.user_id)['name'] or f"user_{self.user_id}",
                             engine_model=self.engine,
                             log_timestamp=datetime.now(tz=timezone.utc),
                             num_rows_processed=self.processed,

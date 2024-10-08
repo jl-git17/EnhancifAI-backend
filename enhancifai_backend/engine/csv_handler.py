@@ -124,7 +124,7 @@ class CSVHandler:
                             end_time = time.time()
                             RunLogsDbCore.insert_log(
                                 run_id=self.run_id,
-                                user_name=UsersDbCore.get_user_name_by_id(self.user_id)['name'] or f"user_{self.user_id}",
+                                user_name=UsersDbCore.get_user_by_id(self.user_id)['name'] or f"user_{self.user_id}",
                                 engine_model=self.engine,
                                 log_timestamp=datetime.now(tz=timezone.utc),
                                 num_rows_processed=self.processed,
@@ -161,7 +161,7 @@ class CSVHandler:
                         end_time = time.time()
                         RunLogsDbCore.insert_log(
                             run_id=self.run_id,
-                            user_name=UsersDbCore.get_user_name_by_id(self.user_id)['name'] or f"user_{self.user_id}",
+                            user_name=UsersDbCore.get_user_by_id(self.user_id)['name'] or f"user_{self.user_id}",
                             engine_model=self.engine,
                             log_timestamp=datetime.now(tz=timezone.utc),
                             num_rows_processed=self.processed,
@@ -203,12 +203,12 @@ class CSVHandler:
         self.update_rows_with_results(results)
         total_tokens_sum = sum(int(row.get('Total Tokens', 0)) for row in self.data)
         end_time = time.time()
-        _name = UsersDbCore.get_user_name_by_id(self.user_id)['name'] or f"user_{self.user_id}"
+        _name = UsersDbCore.get_user_by_id(self.user_id)['name'] or f"user_{self.user_id}"
 
         if self._is_run_cancelled():
             RunLogsDbCore.insert_log(
                 run_id=self.run_id,
-                user_name=UsersDbCore.get_user_name_by_id(self.user_id)['name'] or f"user_{self.user_id}",
+                user_name=UsersDbCore.get_user_by_id(self.user_id)['name'] or f"user_{self.user_id}",
                 engine_model=self.engine,
                 log_timestamp=datetime.now(tz=timezone.utc),
                 num_rows_processed=self.processed,
@@ -233,7 +233,7 @@ class CSVHandler:
         self.save_csv()
 
         end_time = time.time()
-        _name = UsersDbCore.get_user_name_by_id(self.user_id)['name'] or f"user_{self.user_id}"
+        _name = UsersDbCore.get_user_by_id(self.user_id)['name'] or f"user_{self.user_id}"
         RunLogsDbCore.insert_log(
             run_id=self.run_id,
             user_name=_name,
