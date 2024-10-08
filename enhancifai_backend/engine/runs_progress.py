@@ -50,7 +50,7 @@ class RunsProgress:
         """
         _run_details = RunsDbCore.get_run_details(run_id)
         
-        if run_details is not None:
+        if _run_details is not None:
             run_details = _run_details['run_details']
             #print(run_details)
             if RunsDbCore.is_run_cancelled(run_id):
