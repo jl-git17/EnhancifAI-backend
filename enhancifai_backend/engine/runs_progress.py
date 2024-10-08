@@ -49,20 +49,24 @@ class RunsProgress:
         Checks the status of a specific run.
         """
         _run_details = RunsDbCore.get_run_details(run_id)
+        print(f"From DB: {_run_details}")
         
         if _run_details is not None:
             run_details = _run_details['run_details']
+            print(f"From funct1: {run_details}")
             #print(run_details)
             if RunsDbCore.is_run_cancelled(run_id):
                 return {'status': 'cancelled'}
             if run_details['status'] == 'completed':
                 response = run_details['details']
                 response['status'] = 'completed'
+                print(f"From funct response: {response}")
                 return response
             elif run_details['rows_processed'] > 0:
                 if run_details['rows_processed'] >= run_details['total_rows']:
                     response = run_details['details']
                     response['status'] = 'completed'
+                    print(f"From funct response: {response}")
                     return response
                 percentage = (run_details['rows_processed'] / run_details['total_rows']) * 100
                 return {'status': 'pending', 'progress': f"{percentage:.0f}", 'remark': f"{percentage:.0f}% completed."}
