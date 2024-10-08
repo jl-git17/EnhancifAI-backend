@@ -46,7 +46,7 @@ class UsersDbCore:
         """
         Check if the provided password hash matches the user's password.
         """
-        sql = schemafy("SELECT * FROM enhancifai.users WHERE email = %s AND password_hash = %s;")
+        sql = schemafy("SELECT * FROM enhancifai.users WHERE email = %s AND password_hash = %s")
         return read_db.do('select_exists', sql=sql, data=(email, password_hash,))
 
     @classmethod
