@@ -63,6 +63,7 @@ class RunsProgress:
                 if run_details['rows_processed'] >= run_details['total_rows']:
                     response = run_details['details']
                     response['status'] = 'completed'
+                    return response
                 percentage = (run_details['rows_processed'] / run_details['total_rows']) * 100
                 return {'status': 'pending', 'progress': f"{percentage:.0f}", 'remark': f"{percentage:.0f}% completed."}
             else:
