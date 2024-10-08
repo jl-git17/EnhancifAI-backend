@@ -48,10 +48,10 @@ class RunsProgress:
         """
         Checks the status of a specific run.
         """
-        run_details = RunsDbCore.get_run_details(run_id)
+        _run_details = RunsDbCore.get_run_details(run_id)
         
         if run_details is not None:
-            run_details = run_details['run_details']
+            run_details = _run_details['run_details']
             #print(run_details)
             if RunsDbCore.is_run_cancelled(run_id):
                 return {'status': 'cancelled'}
