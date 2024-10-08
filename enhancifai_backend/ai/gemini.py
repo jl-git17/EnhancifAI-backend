@@ -40,5 +40,4 @@ class GeminiConnector:
         tokens = self.model.count_tokens(chat.history).total_tokens
         # Save token usage entry
         user_id = RunsDbCore.get_user_id(run_id)
-        UsersDbCore.add_token_usage(user_id, 'gemini-pro', tokens)
         return {"content": response.text.strip(), "tokens": tokens}
