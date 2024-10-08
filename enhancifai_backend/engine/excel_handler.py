@@ -53,14 +53,6 @@ class ExcelHandler:
             return None
         RunsDbCore.set_run_checkin(self.run_id)
 
-        # Check user's token balance before processing (only check if balance > 0)
-        try:
-            #UsersDbCore.check_user_token_balance(self.user_id) TODO: check for unpaid invoices
-            pass
-        except ValueError as e:
-            self.errors.append(f"Row {idx}: {str(e)}")
-            return None
-
         result = {"row_index": idx, "prompt_number": prompt_config['prompt_number']}
         output_heading = prompt_config['output_heading']
 
