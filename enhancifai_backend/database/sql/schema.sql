@@ -1,4 +1,3 @@
--- enhancifai_backend/database/sql/schema.sql
 
 CREATE TABLE IF NOT EXISTS enhancifai.users (
     user_id SERIAL PRIMARY KEY,
