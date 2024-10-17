@@ -30,7 +30,6 @@ class CSVHandler:
         self.user_id = user_id
         self.errors = []
         self.overflow = False
-        self.total_tokens = 0
     
     def _is_run_cancelled(self):
         return RunsDbCore.is_run_cancelled(self.run_id)
@@ -88,7 +87,6 @@ class CSVHandler:
 
         # Thread-safe increment of the row completion count
         with self.lock:
-            self.total_tokens += data.get('tokens', 0)
             if idx in self.row_completion:
                 self.row_completion[idx] += 1
             else:
@@ -133,7 +131,7 @@ class CSVHandler:
                                 time_elapsed= end_time - start_time,
                                 num_rows_in_file=len(self.data),
                                 num_prompts=len(prompts),
-                                num_tokens=self.total_tokens,
+                                num_tokens=sum(int(row.get('Total Tokens', 0)) for row in self.data),
                                 errors=json.dumps(self.errors),
                                 filename=self.filename,
                                 overflow=self.overflow
@@ -170,7 +168,7 @@ class CSVHandler:
                             time_elapsed=time.time() - start_time,
                             num_rows_in_file=len(self.data),
                             num_prompts=len(prompts),
-                            num_tokens=self.total_tokens,
+                            num_tokens=sum(int(row.get('Total Tokens', 0)) for row in self.data),
                             errors=json.dumps(self.errors),
                             filename=self.filename,
                             overflow=self.overflow
@@ -203,6 +201,7 @@ class CSVHandler:
 
         # Updating rows with results and saving to CSV
         self.update_rows_with_results(results)
+        total_tokens_sum = sum(int(row.get('Total Tokens', 0)) for row in self.data)
         end_time = time.time()
         _name = UsersDbCore.get_user_by_id(self.user_id)['name'] or f"user_{self.user_id}"
 
@@ -216,7 +215,7 @@ class CSVHandler:
                 time_elapsed=time.time() - start_time,
                 num_rows_in_file=len(self.data),
                 num_prompts=len(prompts),
-                num_tokens=self.total_tokens,
+                num_tokens=sum(int(row.get('Total Tokens', 0)) for row in self.data),
                 errors=json.dumps(self.errors),
                 filename=self.filename,
                 overflow=self.overflow
@@ -227,7 +226,7 @@ class CSVHandler:
                 "total_records": len(self.data),
                 "processed_records": self.processed,
                 "time_elapsed": end_time - start_time,
-                "total_tokens_sum": self.total_tokens,
+                "total_tokens_sum": total_tokens_sum,
                 "error_count": len(self.errors),
                 "errors": self.errors
             }
@@ -244,7 +243,7 @@ class CSVHandler:
             time_elapsed=end_time - start_time,
             num_rows_in_file=len(self.data),
             num_prompts=len(prompts),
-            num_tokens=self.total_tokens,
+            num_tokens=total_tokens_sum,
             errors=json.dumps(self.errors),
             filename=self.filename,
             overflow=self.overflow
@@ -253,7 +252,7 @@ class CSVHandler:
             "total_records": len(self.data),
             "processed_records": self.processed,
             "time_elapsed": end_time - start_time,
-            "total_tokens_sum": self.total_tokens,
+            "total_tokens_sum": total_tokens_sum,
             "error_count": len(self.errors),
             "errors": self.errors
         }
