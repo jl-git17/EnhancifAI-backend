@@ -32,6 +32,7 @@ class ExcelHandler:
         self.user_id = user_id
         self.errors = []
         self.overflow = False
+        self.total_tokens = 0
     
     def _is_run_cancelled(self):
         return RunsDbCore.is_run_cancelled(self.run_id)
@@ -85,6 +86,7 @@ class ExcelHandler:
         result[f"{output_heading}"] = data.get("content", "")
 
         with self.lock:
+            self.total_tokens += data.get('tokens', 0)
             if idx in self.row_completion:
                 self.row_completion[idx] += 1
             else:
@@ -128,7 +130,7 @@ class ExcelHandler:
                                 time_elapsed= end_time - start_time,
                                 num_rows_in_file=len(self.data),
                                 num_prompts=len(prompts),
-                                num_tokens=sum(int(row.get('Total Tokens', 0)) for row in self.data),
+                                num_tokens=self.total_tokens,
                                 errors=json.dumps(self.errors),
                                 filename=self.filename,
                                 overflow=self.overflow
@@ -139,7 +141,7 @@ class ExcelHandler:
                                 "total_records": len(self.data),
                                 "processed_records": self.processed,
                                 "time_elapsed": end_time - start_time,
-                                "total_tokens_sum": sum(int(row.get('Total Tokens', 0)) for row in self.data),
+                                "total_tokens_sum": self.total_tokens,
                                 "error_count": len(self.errors),
                                 "errors": self.errors
                             }
@@ -164,7 +166,7 @@ class ExcelHandler:
                             time_elapsed=time.time() - start_time,
                             num_rows_in_file=len(self.data),
                             num_prompts=len(prompts),
-                            num_tokens=sum(int(row.get('Total Tokens', 0)) for row in self.data),
+                            num_tokens=self.total_tokens,
                             errors=json.dumps(self.errors),
                             filename=self.filename,
                             overflow=self.overflow
@@ -175,7 +177,7 @@ class ExcelHandler:
                             "total_records": len(self.data),
                             "processed_records": self.processed,
                             "time_elapsed": end_time - start_time,
-                            "total_tokens_sum": sum(int(row.get('Total Tokens', 0)) for row in self.data),
+                            "total_tokens_sum": self.total_tokens,
                             "error_count": len(self.errors),
                             "errors": self.errors
                         }
@@ -210,7 +212,7 @@ class ExcelHandler:
                 time_elapsed=time.time() - start_time,
                 num_rows_in_file=len(self.data),
                 num_prompts=len(prompts),
-                num_tokens=sum(int(row.get('Total Tokens', 0)) for row in self.data),
+                num_tokens=self.total_tokens,
                 errors=json.dumps(self.errors),
                 filename=self.filename,
                 overflow=self.overflow
@@ -221,7 +223,7 @@ class ExcelHandler:
                 "total_records": len(self.data),
                 "processed_records": self.processed,
                 "time_elapsed": end_time - start_time,
-                "total_tokens_sum": total_tokens_sum,
+                "total_tokens_sum": self.total_tokens,
                 "error_count": len(self.errors),
                 "errors": self.errors
             }
@@ -237,7 +239,7 @@ class ExcelHandler:
             time_elapsed=end_time - start_time,
             num_rows_in_file=len(self.data),
             num_prompts=len(prompts),
-            num_tokens=total_tokens_sum,
+            num_tokens=self.total_tokens,
             errors=json.dumps(self.errors),
             filename=self.filename,
             overflow=self.overflow
@@ -246,7 +248,7 @@ class ExcelHandler:
             "total_records": len(self.data),
             "processed_records": self.processed,
             "time_elapsed": end_time - start_time,
-            "total_tokens_sum": total_tokens_sum,
+            "total_tokens_sum": self.total_tokens,
             "error_count": len(self.errors),
             "errors": self.errors
         }
