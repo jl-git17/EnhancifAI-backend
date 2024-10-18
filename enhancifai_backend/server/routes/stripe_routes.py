@@ -1,11 +1,8 @@
 import os
 import stripe
-from datetime import datetime
-from fastapi import APIRouter, Depends, Form, HTTPException, Header, status
+from fastapi import APIRouter, HTTPException, Header
 from fastapi.responses import JSONResponse
 from enhancifai_backend.database.handlers.stripe import StripeDbCore
-from enhancifai_backend.database.handlers.users import UsersDbCore
-from enhancifai_backend.server.utils import get_current_user_id, verify_secret_key
 
 # Initialize Stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")

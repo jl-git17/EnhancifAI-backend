@@ -1,7 +1,6 @@
 import csv
 from datetime import datetime, timezone
 import json
-import os
 import string
 import time
 import threading
@@ -31,7 +30,7 @@ class CSVHandler:
         self.errors = []
         self.overflow = False
         self.total_tokens = 0
-    
+
     def _is_run_cancelled(self):
         return RunsDbCore.is_run_cancelled(self.run_id)
 
@@ -95,7 +94,7 @@ class CSVHandler:
                 self.row_completion[idx] = 1
 
         return result
-    
+
     def process_csv(self, prompts: list, max_records=0):
         start_time = time.time()
 
@@ -118,7 +117,7 @@ class CSVHandler:
             for idx, row in enumerate(self.data):
                 if idx >= total_records:
                     break
-                
+
                 for prompt_config in prompts:
                     if self._is_run_cancelled():  # Check if the run is cancelled
                         print(f"Run {self.run_id} cancelled, stopping processing.")
@@ -150,7 +149,13 @@ class CSVHandler:
                             }
                     selected_columns = self.get_selected_columns(prompt_config, letter_to_column)
                     if selected_columns:
-                        future = executor.submit(self.process_row, idx, {k: row[k] for k in selected_columns}, prompt_config, letter_to_column)
+                        future = executor.submit(
+                            self.process_row,
+                            idx,
+                            {k: row[k] for k in selected_columns},
+                            prompt_config,
+                            letter_to_column
+                        )
                         futures[future] = idx
                         if self.ai_connector.rate_limit is True:
                             time.sleep(0.2)
@@ -287,9 +292,6 @@ class CSVHandler:
             return [letter_to_column.get(letter) for letter in selected_columns_letters if letter in letter_to_column]
 
     def update_rows_with_results(self, results):
-        # Find the last original column's position
-        original_columns = list(self.data[0].keys())
-
         # Initialize a new list for the updated data with ordered columns
         updated_data = []
 
