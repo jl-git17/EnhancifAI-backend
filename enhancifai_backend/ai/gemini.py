@@ -3,7 +3,6 @@ import os
 import google.generativeai as genai
 
 from enhancifai_backend.database.handlers.runs import RunsDbCore
-from enhancifai_backend.database.handlers.users import UsersDbCore
 
 GOOGLE_AI_STUDIO_API_KEY = os.getenv('GOOGLE_AI_STUDIO_API_KEY')
 
@@ -38,6 +37,6 @@ class GeminiConnector:
         msg = f"```{PROMPT}```\n\n{query}:\n\n```{json.dumps(payload)}```"
         response = chat.send_message(msg)
         tokens = self.model.count_tokens(chat.history).total_tokens
-        # Save token usage entry
-        user_id = RunsDbCore.get_user_id(run_id)
+        # Save token usage entry TODO:
+        #user_id = RunsDbCore.get_user_id(run_id)
         return {"content": response.text.strip(), "tokens": tokens}
