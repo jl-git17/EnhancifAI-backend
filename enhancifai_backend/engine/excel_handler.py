@@ -1,12 +1,12 @@
 import json
-import os
 import string
 import time
-import numpy as np
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import pandas as pd
 from datetime import datetime, timezone
+
+import numpy as np
+import pandas as pd
 
 from enhancifai_backend.database.handlers.run_logs import RunLogsDbCore
 from enhancifai_backend.database.handlers.runs import RunsDbCore
@@ -33,7 +33,7 @@ class ExcelHandler:
         self.errors = []
         self.overflow = False
         self.total_tokens = 0
-    
+
     def _is_run_cancelled(self):
         return RunsDbCore.is_run_cancelled(self.run_id)
 
@@ -198,7 +198,6 @@ class ExcelHandler:
                     self.errors.append(f"Row {futures[future]}: {e}")
 
         self.update_rows_with_results(results)
-        total_tokens_sum = sum(int(row.get('Total Tokens', 0)) for row in self.data)
         end_time = time.time()
         _name = UsersDbCore.get_user_by_id(self.user_id)['name'] or f"user_{self.user_id}"
 
@@ -229,7 +228,7 @@ class ExcelHandler:
             }
 
         self.save_excel()
-        
+
         RunLogsDbCore.insert_log(
             run_id=self.run_id,
             user_name=_name,
@@ -281,9 +280,6 @@ class ExcelHandler:
             return [letter_to_column.get(letter) for letter in selected_columns_letters if letter in letter_to_column]
 
     def update_rows_with_results(self, results):
-        # Find the last original column's position
-        original_columns = list(self.data[0].keys())
-
         # Initialize a new list for the updated data with ordered columns
         updated_data = []
 
