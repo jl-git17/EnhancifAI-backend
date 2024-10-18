@@ -186,7 +186,7 @@ class OpenAIConnector:
             return {'content': _err, 'tokens': 0}
 
     def improve_prompt(self, prompt: str):
-        print(pi_settings.prompt)
+        _err = None
         for attempt in range(3):
             try:
                 messages = [
