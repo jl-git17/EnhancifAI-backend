@@ -1,9 +1,6 @@
-# enhancifai_backend/billing/monthly_billing.py
-
-import os
 import logging
 from datetime import datetime, timedelta
-from enhancifai_backend.database.access import read_db, write_db
+from enhancifai_backend.database.access import read_db
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.database.handlers.stripe import StripeDbCore
 from enhancifai_backend.database.handlers.utils import schemafy
@@ -33,19 +30,24 @@ def generate_monthly_invoices():
     Ensures that no duplicate invoices are sent for the same billing period.
     """
     try:
+        # TODO: put a max cap for day, so it spills over (configurable), put a delay
         # Determine the start and end of the previous month
         today = datetime.today().date()
         first_day_of_current_month = today.replace(day=1)
         last_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
         first_day_of_previous_month = last_day_of_previous_month.replace(day=1)
 
-        logger.info(f"Generating invoices for the period: {first_day_of_previous_month} to {first_day_of_current_month}")
+        logger.info(
+            "Generating invoices for the period: %s to %s",
+            first_day_of_previous_month,
+            first_day_of_current_month
+        )
 
         # Fetch all users
         sql = schemafy("SELECT user_id FROM enhancifai.users;")
         users = read_db.do('select', sql=sql)
 
-        logger.info(f"Fetched {len(users)} users from the database.")
+        logger.info("Fetched %s users from the database.", len(users))
 
         for user in users:
             user_id = user['user_id']
@@ -56,7 +58,10 @@ def generate_monthly_invoices():
                 )
 
                 if invoice_exists:
-                    logger.info(f"User {user_id} has already received an invoice for this period. Skipping.")
+                    logger.info(
+                        "User %s has already received an invoice for this period. Skipping.",
+                        user_id
+                    )
                     continue  # Skip users who already have an invoice for this period
 
                 # Get total tokens used by the user in the previous month
@@ -65,7 +70,10 @@ def generate_monthly_invoices():
                 )
 
                 if tokens_used <= 0:
-                    logger.info(f"User {user_id} has no token usage for the month. Skipping invoice.")
+                    logger.info(
+                        "User %s has no token usage for the month. Skipping invoice.",
+                        user_id
+                    )
                     continue  # Skip users with no token usage
 
                 # Calculate the amount due in cents
@@ -80,15 +88,27 @@ def generate_monthly_invoices():
                     user_id, amount, description, first_day_of_previous_month, first_day_of_current_month
                 )
                 logger.info(
-                    f"Created invoice {invoice['id']} for user {user_id}: ${amount / 100:.2f}"
+                    "Created invoice %s for user %s: $%.2f",
+                    invoice['id'],
+                    user_id,
+                    amount / 100
                 )
 
             except Exception as e:
                 # Log the error and continue with other users
-                logger.error(f"Failed to create invoice for user {user_id}: {str(e)}", exc_info=True)
+                logger.error(
+                    "Failed to create invoice for user %s: %s",
+                    user_id,
+                    str(e),
+                    exc_info=True
+                )
 
     except Exception as e:
-        logger.critical(f"Failed to generate monthly invoices: {str(e)}", exc_info=True)
+        logger.critical(
+            "Failed to generate monthly invoices: %s",
+            str(e),
+            exc_info=True
+        )
 
 if __name__ == "__main__":
     generate_monthly_invoices()
