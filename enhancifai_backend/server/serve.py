@@ -1,8 +1,8 @@
 import logging
 import os
-import uvicorn
 from datetime import datetime, timezone
 
+import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -18,7 +18,6 @@ from enhancifai_backend.server.jobs import delete_old_files, refresh_google_shee
 from enhancifai_backend.server.routes.users_routes import router as router_users
 from enhancifai_backend.server.routes.execution_routes import router as router_execution
 from enhancifai_backend.server.routes.downloads_routes import router as router_downloads
-from enhancifai_backend.server.routes.google_sheets_routes import router as router_sheets
 from enhancifai_backend.server.routes.admin_routes import router as router_admin
 from enhancifai_backend.server.routes.google_sheets_routes import router as router_google_sheets
 from enhancifai_backend.server.routes.files_routes import router as router_files
@@ -28,7 +27,7 @@ from enhancifai_backend.server.utils import STATIC_FILES_DIRECTORY
 
 # Environment variables
 SERVER_HOST = os.getenv("SERVER_HOST", "127.0.0.1")
-SERVER_PORT = int(os.getenv("SERVER_PORT", 8000))
+SERVER_PORT = int(os.getenv("SERVER_PORT", "8000"))
 
 # Set global variables
 APP_VERSION = "1.3.2"
@@ -48,7 +47,6 @@ app.mount("/pages", StaticFiles(directory=STATIC_FILES_DIRECTORY, html=True), na
 app.include_router(router_users)
 app.include_router(router_execution)
 app.include_router(router_downloads)
-app.include_router(router_sheets)
 app.include_router(router_admin)
 app.include_router(router_google_sheets)
 app.include_router(router_files)
