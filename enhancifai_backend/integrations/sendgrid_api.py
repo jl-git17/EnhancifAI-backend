@@ -23,10 +23,10 @@ class SendGrid:
         try:
             sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
             response = sg.send(message)
-            code, body, headers = response.status_code, response.body, response.headers
+            _code, _body, _headers = response.status_code, response.body, response.headers
             print("Dynamic Messages Sent!")
         except Exception as e:
-            print("Error: {0}".format(e))
+            print(f"Error: {e}")
 
     @classmethod
     def send_registration_email(cls, to_email, token, name):
@@ -45,10 +45,10 @@ class SendGrid:
         try:
             sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
             response = sg.send(message)
-            code, body, headers = response.status_code, response.body, response.headers
+            _code, _body, _headers = response.status_code, response.body, response.headers
             print("Dynamic Messages Sent!")
         except Exception as e:
-            print("Error: {0}".format(e))
+            print(f"Error: {e}")
 
     @classmethod
     def send_password_reset_email(cls, to_email, token):
@@ -66,7 +66,28 @@ class SendGrid:
         try:
             sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
             response = sg.send(message)
-            code, body, headers = response.status_code, response.body, response.headers
+            _code, _body, _headers = response.status_code, response.body, response.headers
             print("Dynamic Messages Sent!")
         except Exception as e:
-            print("Error: {0}".format(e))
+            print(f"Error: {e}")
+
+    @classmethod
+    def send_invoice_email(cls, to_email):
+        # create Mail object and populate
+        message = Mail(
+            from_email="info@enhancifai.com",
+            to_emails=[to_email])
+        # pass custom values for our HTML placeholders
+        button_url = f'{os.getenv("FRONTEND_URL")}/billing'
+        message.dynamic_template_data = {
+            'button_url': button_url
+        }
+        message.template_id = PASSWORD_RESET_TEMPLATE
+        # create our sendgrid client object, pass it our key, then send and return our response objects
+        try:
+            sg = SendGridAPIClient(os.environ.get('SENDGRID_API_KEY'))
+            response = sg.send(message)
+            _code, _body, _headers = response.status_code, response.body, response.headers
+            print("Dynamic Messages Sent!")
+        except Exception as e:
+            print(f"Error: {e}")
