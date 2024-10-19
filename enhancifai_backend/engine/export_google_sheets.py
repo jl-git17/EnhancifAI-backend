@@ -1,14 +1,10 @@
 import os
-import pandas as pd
-import gspread
-from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
-from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import InstalledAppFlow
-from fastapi import HTTPException
-from typing import Union
-from pathlib import Path
 from datetime import datetime
+
+from google.auth.transport.requests import Request
+from fastapi import HTTPException
+import gspread
+import pandas as pd
 
 from enhancifai_backend.database.handlers.sheets import SheetsDbCore
 
@@ -17,7 +13,7 @@ def authenticate_google_sheets(user_id):
     creds = SheetsDbCore.get_user_google_credentials(user_id)
     if not creds:
         return HTTPException(status_code=403, detail="User is not authenticated with Google")
-    
+
     if not creds.valid:
         if creds.expired and creds.refresh_token:
             creds.refresh(Request())
@@ -28,7 +24,7 @@ def authenticate_google_sheets(user_id):
 
 async def export_to_google_sheets(user_id: int, file_url: str, source_filename: str):
     print(f"Starting export_to_google_sheets with user_id: {user_id} and file_url: {file_url}")
-    
+
     if source_filename is None:
         source_filename = "Your File"
     # Authenticate Google Sheets
@@ -40,7 +36,7 @@ async def export_to_google_sheets(user_id: int, file_url: str, source_filename: 
 
     client = gspread.authorize(creds)
     print("Google Sheets authentication successful")
-    
+
     # Extract filename from URL and construct the file path in /tmp directory
     filename = file_url.split('/')[-1]
     file_path = os.path.join('/tmp', filename)
@@ -56,13 +52,13 @@ async def export_to_google_sheets(user_id: int, file_url: str, source_filename: 
         else:
             print("Unsupported file type")
             return HTTPException(status_code=400, detail="Unsupported file type")
-        
+
         print(f"DataFrame read successfully: {df.shape} rows and columns")
     except Exception as e:
         error_message = f"Error reading file: {str(e)}"
         print(error_message)
         return HTTPException(status_code=400, detail=error_message)
-    
+
     # Handle NaN and infinite values
     df = df.fillna('').replace([float('inf'), float('-inf')], '')
 
