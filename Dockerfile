@@ -13,6 +13,6 @@ COPY . ./
 # Install production dependencies.
 RUN pip install --no-cache-dir -e .
 
-CMD python3 enhancifai_backend/run_enhancifai.py
+CMD python3 -u enhancifai_backend/run_enhancifai.py
 
 EXPOSE ${SERVER_PORT}
