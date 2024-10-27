@@ -84,3 +84,24 @@ class PromptsDbCore:
             WHERE user_id = %s AND version = %s;
         """)
         return read_db.do('select_one', sql=sql, data=(user_id, version,))
+
+class ModelPricesDbCore:
+    """
+    A class to handle database operations related to model prices.
+    """
+
+    @classmethod
+    def get_all_model_prices(cls):
+        sql = schemafy("""
+            SELECT model_name, price_per_token FROM enhancifai.model_prices;
+        """)
+        return read_db.do('select', sql=sql, data=())
+
+    @classmethod
+    def update_model_price(cls, model_name, price_per_token):
+        sql = schemafy("""
+            INSERT INTO enhancifai.model_prices (model_name, price_per_token, updated_at)
+            VALUES (%s, %s, now())
+            ON CONFLICT (model_name) DO UPDATE SET price_per_token = EXCLUDED.price_per_token, updated_at = now();
+        """)
+        write_db.do('execute', sql=sql, data=(model_name, price_per_token))
