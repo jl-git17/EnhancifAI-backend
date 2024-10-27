@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>EnhancifAI - Admin Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Include Bootstrap CSS -->
+    <link
+      rel="stylesheet"
+      href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"
+      integrity="sha384-LtrjvnR4Twt/qOuYxDE+tpcTIR+51JO/MLB5Yx6KZR2RvTx1j8BY5u6OM76XWQDC"
+      crossorigin="anonymous"
+    >
+    <!-- Custom CSS -->
+    <style>
+        body {
+            padding-top: 56px;
+        }
+        .nav-tabs .nav-link {
+            color: #555;
+        }
+        .nav-tabs .nav-link.active {
+            color: #007bff;
+        }
+        .form-control:disabled, .form-control[readonly] {
+            background-color: #e9ecef;
+        }
+        .alert {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <a class="navbar-brand" href="#">EnhancifAI Admin Dashboard</a>
+    </nav>
+
+    <div class="container-fluid">
+        <!-- Tabs -->
+        <ul class="nav nav-tabs mt-3" id="adminTab" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="logs-tab" data-toggle="tab" href="#logs" role="tab" aria-controls="logs" aria-selected="true">Logs</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="prompt-improver-tab" data-toggle="tab" href="#prompt-improver" role="tab" aria-controls="prompt-improver" aria-selected="false">Prompt Improver</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="billing-tab" data-toggle="tab" href="#billing" role="tab" aria-controls="billing" aria-selected="false">Billing</a>
+            </li>
+        </ul>
+
+        <!-- Tab Content -->
+        <div class="tab-content" id="adminTabContent">
+            <!-- Logs Tab -->
+            <div class="tab-pane fade show active" id="logs" role="tabpanel" aria-labelledby="logs-tab">
+                <div class="container mt-4">
+                    <h1>Download Logs (CSV)</h1>
+                    <form id="download-form">
+                        <div class="form-group">
+                            <label for="start_date">Start Date & Time (UTC):</label>
+                            <input type="datetime-local" id="start_date" name="start_date" required class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="end_date">End Date & Time (UTC):</label>
+                            <input type="datetime-local" id="end_date" name="end_date" required class="form-control">
+                        </div>
+                        <button type="submit" class="btn btn-primary">Download CSV</button>
+                        <div id="logs-error" class="alert alert-danger mt-3">Error downloading CSV. Please try again.</div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Prompt Improver Tab -->
+            <div class="tab-pane fade" id="prompt-improver" role="tabpanel" aria-labelledby="prompt-improver-tab">
+                <div class="container mt-4">
+                    <h1>EnhancifAI Prompt Improver<br>-- Settings --</h1>
+                    <form id="settings-form">
+                        <div class="form-group">
+                            <label for="prompt">Prompt:</label>
+                            <textarea id="prompt" name="prompt" required class="form-control" rows="6"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="ai_engine">AI Engine:</label>
+                            <select id="ai_engine" name="ai_engine" required class="form-control">
+                                <option value="gpt-4o">GPT-4o</option>
+                                <option value="gpt-4o-mini">GPT-4o Mini</option>
+                                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Settings</button>
+                        <div id="success-message" class="alert alert-success mt-3">Settings saved successfully!</div>
+                    </form>
+
+                    <h2 class="mt-5">Prompt History</h2>
+                    <div id="loading-message" class="alert alert-info">Loading prompt history...</div>
+                    <table class="table table-striped mt-3">
+                        <thead>
+                            <tr>
+                                <th>Version</th>
+                                <th>Prompt</th>
+                                <th>AI Engine</th>
+                                <th>Created At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="prompt-history">
+                            <!-- Prompt versions will be populated here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Billing Tab -->
+            <div class="tab-pane fade" id="billing" role="tabpanel" aria-labelledby="billing-tab">
+                <div class="container mt-4">
+                    <h1>Billing Settings</h1>
+                    <form id="billing-form">
+                        <div id="model-prices-container">
+                            <!-- Model prices will be dynamically loaded here -->
+                        </div>
+                        <button type="submit" class="btn btn-primary">Save Billing Settings</button>
+                        <div id="billing-success-message" class="alert alert-success mt-3">Billing settings saved successfully!</div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include jQuery and Bootstrap JS -->
+    <script
+      src="https://code.jquery.com/jquery-3.5.1.min.js"
+      integrity="sha384-NiZ9BaDDiR9kWUz9Q/mbMAtjMIfgNnG3Bht4j6hO3r6d8VclP2drR8K5ZgVdV5Zz"
+      crossorigin="anonymous"
+    ></script>
+    <script
+      src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"
+      integrity="sha384-LtrjvnR4Twt/qOuYxDE+tpcTIR+51JO/MLB5Yx6KZR2RvTx1j8BY5u6OM76XWQDC"
+      crossorigin="anonymous"
+    ></script>
+
+    <!-- Custom JS -->
+    <script>
+        // Logs Tab JavaScript
+        $(document).ready(function() {
+            const startDateInput = document.getElementById('start_date');
+            const endDateInput = document.getElementById('end_date');
+            const logsError = document.getElementById('logs-error');
+
+            const now = new Date();
+            const startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24 hours ago
+            startDateInput.value = startDate.toISOString().slice(0,16);
+            endDateInput.value = now.toISOString().slice(0,16);
+
+            $('#download-form').on('submit', function(event) {
+                event.preventDefault();
+                logsError.style.display = 'none';
+
+                const startDateValue = $('#start_date').val();
+                const endDateValue = $('#end_date').val();
+
+                fetch(`/admin/logs/runs/csv?start_date=${startDateValue}&end_date=${endDateValue}`, {
+                    method: 'GET'
+                })
+                .then(response => {
+                    if (response.ok) {
+                        return response.blob();
+                    } else {
+                        throw new Error('Error downloading CSV. Please try again.');
+                    }
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = 'run_logs.csv';
+                    link.click();
+                    window.URL.revokeObjectURL(url);
+                })
+                .catch(error => {
+                    logsError.style.display = 'block';
+                    console.error(error.message);
+                });
+            });
+        });
+
+        // Prompt Improver Tab JavaScript
+        const promptField = document.getElementById('prompt');
+        const aiEngineField = document.getElementById('ai_engine');
+        const promptHistoryTable = document.getElementById('prompt-history');
+        const settingsForm = document.getElementById('settings-form');
+        const successMessage = document.getElementById('success-message');
+        const loadingMessage = document.getElementById('loading-message');
+        const saveButton = settingsForm.querySelector('button');
+
+        function logResponse(response) {
+            console.log('Server Response:', response);
+        }
+
+        async function fetchPromptHistory() {
+            loadingMessage.style.display = 'block';
+            promptHistoryTable.innerHTML = '';
+
+            try {
+                const response = await fetch('/admin/prompt-improver/prompts', {
+                    headers: {
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                logResponse(data);
+
+                if (data.prompts && Array.isArray(data.prompts)) {
+                    promptHistoryTable.innerHTML = data.prompts.map(prompt => `
+                        <tr>
+                            <td>${prompt.version}</td>
+                            <td>${prompt.prompt}</td>
+                            <td>${prompt.ai_engine}</td>
+                            <td>${prompt.created_at}</td>
+                            <td><button class="btn btn-success btn-sm" onclick="restorePrompt(${prompt.version})">Restore</button></td>
+                        </tr>
+                    `).join('');
+                } else {
+                    promptHistoryTable.innerHTML = '<tr><td colspan="5">No prompt history available</td></tr>';
+                }
+            } catch (error) {
+                console.error("Failed to fetch prompt history:", error);
+                promptHistoryTable.innerHTML = '<tr><td colspan="5">Error loading prompt history</td></tr>';
+            } finally {
+                loadingMessage.style.display = 'none';
+            }
+        }
+
+        async function restorePrompt(version) {
+            try {
+                const response = await fetch(`/admin/prompt-improver/prompts/${version}`, {
+                    headers: {
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+
+                const data = await response.json();
+                logResponse(data);
+
+                promptField.value = data.prompt;
+                aiEngineField.value = data.ai_engine;
+
+                alert('Prompt restored to version ' + version);
+
+            } catch (error) {
+                console.error('Error restoring prompt:', error);
+            }
+        }
+
+        async function loadSettings() {
+            try {
+                const response = await fetch('/admin/prompt-improver/settings', {
+                    headers: {
+                        'Cache-Control': 'no-cache'
+                    }
+                });
+
+                const data = await response.json();
+                logResponse(data);
+
+                promptField.value = data.prompt;
+                aiEngineField.value = data.ai_engine;
+            } catch (error) {
+                console.error('Error loading settings:', error);
+            }
+        }
+
+        settingsForm.addEventListener('submit', async function(event) {
+            event.preventDefault();
+            successMessage.style.display = 'none';
+            saveButton.disabled = true;
+
+            const formData = {
+                prompt: promptField.value,
+                ai_engine: aiEngineField.value,
+            };
+
+            try {
+                const response = await fetch('/admin/prompt-improver/settings', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache'
+                    },
+                    body: JSON.stringify(formData),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to save settings');
+                }
+
+                const result = await response.json();
+                logResponse(result);
+
+                successMessage.style.display = 'block';
+                fetchPromptHistory();
+
+            } catch (error) {
+                console.error('Error saving settings:', error);
+                alert('Error saving settings. Please try again.');
+            } finally {
+                saveButton.disabled = false;
+            }
+        });
+
+        loadSettings();
+        fetchPromptHistory();
+
+        // Billing Tab JavaScript
+        const billingForm = document.getElementById('billing-form');
+        const billingSuccessMessage = document.getElementById('billing-success-message');
+        const modelPricesContainer = document.getElementById('model-prices-container');
+
+        function loadModelPrices() {
+            fetch('/admin/billing/model-prices', {
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                console.log('Model Prices:', data);
+                modelPricesContainer.innerHTML = '';
+
+                data.model_prices.forEach(price => {
+                    const formGroup = document.createElement('div');
+                    formGroup.classList.add('form-group');
+
+                    const label = document.createElement('label');
+                    label.setAttribute('for', `price_${price.model_name}`);
+                    label.textContent = `Price per token for ${price.model_name}:`;
+
+                    const input = document.createElement('input');
+                    input.type = 'number';
+                    input.step = '0.0001';
+                    input.min = '0';
+                    input.classList.add('form-control');
+                    input.id = `price_${price.model_name}`;
+                    input.name = price.model_name;
+                    input.value = price.price_per_token;
+
+                    formGroup.appendChild(label);
+                    formGroup.appendChild(input);
+
+                    modelPricesContainer.appendChild(formGroup);
+                });
+            })
+            .catch(error => {
+                console.error('Error loading model prices:', error);
+                modelPricesContainer.innerHTML = '<div class="alert alert-danger">Error loading model prices.</div>';
+            });
+        }
+
+        billingForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            billingSuccessMessage.style.display = 'none';
+
+            const formData = new FormData(billingForm);
+            const data = [];
+
+            for (let [model_name, price_per_token] of formData.entries()) {
+                data.push({ model_name, price_per_token: parseFloat(price_per_token) });
+            }
+
+            fetch('/admin/billing/model-prices', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache'
+                },
+                body: JSON.stringify({ prices: data })
+            })
+            .then(response => response.json())
+            .then(result => {
+                console.log('Billing settings updated:', result);
+                billingSuccessMessage.style.display = 'block';
+            })
+            .catch(error => {
+                console.error('Error updating billing settings:', error);
+                alert('Error updating billing settings. Please try again.');
+            });
+        });
+
+        loadModelPrices();
+
+    </script>
+</body>
+</html>
