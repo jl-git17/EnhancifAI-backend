@@ -135,3 +135,10 @@ CREATE TABLE IF NOT EXISTS enhancifai.users_additional_credits (
     credits INT NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS enhancifai.model_prices (
+    model_name VARCHAR(100) PRIMARY KEY,
+    price_per_token FLOAT NOT NULL,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
+);
