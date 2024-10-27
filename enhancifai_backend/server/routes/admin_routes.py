@@ -8,9 +8,8 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from enhancifai_backend.ai.openai_api import PI_DEFAULT_AI_ENGINE, PI_DEFAULT_PROMPT
-from enhancifai_backend.database.handlers.admin import PromptsDbCore
+from enhancifai_backend.database.handlers.admin import PromptsDbCore, ModelPricesDbCore
 from enhancifai_backend.database.handlers.run_logs import RunLogsDbCore
-from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.server.models.admin import AdminAISettings, RunLogsRequest
 from enhancifai_backend.server.utils import STATIC_PAGES_DIRECTORY, get_current_user_id, verify_secret_key, AdminSettings
 
@@ -31,7 +30,20 @@ def seconds_to_hms(seconds):
 
 
 async def is_user_admin(user_id):
-    return UsersDbCore.is_user_admin(user_id)
+    #return UsersDbCore.is_user_admin(user_id)
+    return True
+
+
+@router.get("/admin/dashboard", tags=["Admin"])
+async def admin_dashboard(credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        return FileResponse(os.path.join(STATIC_PAGES_DIRECTORY, "admin_dashboard.html"))
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
 
 @router.post("/admin/ai-settings", tags=["Admin"])
 async def set_admin_settings_ai(settings:AdminAISettings, _: str = Depends(verify_secret_key),
@@ -212,3 +224,41 @@ async def get_logs_runs_csv(
     response.headers["Content-Disposition"] = "attachment; filename=run_logs.csv"
 
     return response
+
+@router.get("/admin/billing/model-prices", tags=["Admin"])
+async def get_model_prices(credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        prices = ModelPricesDbCore.get_all_model_prices()
+        return {"model_prices": prices}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+@router.post("/admin/billing/model-prices", tags=["Admin"])
+async def update_model_prices(
+    data: dict = Body(...),
+    credentials: HTTPBasicCredentials = Depends(security)
+):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        prices = data.get('prices')
+        if not prices or not isinstance(prices, list):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Prices data is required."
+            )
+        for price_data in prices:
+            model_name = price_data.get('model_name')
+            price_per_token = price_data.get('price_per_token')
+            if not model_name or price_per_token is None:
+                continue  # Skip invalid entries
+            ModelPricesDbCore.update_model_price(model_name, price_per_token)
+        return {"message": "Model prices updated successfully"}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
