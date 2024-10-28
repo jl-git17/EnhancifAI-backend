@@ -78,9 +78,9 @@ class UsersDbCore:
     @classmethod
     def update_ai_consent(cls, user_id):
         """
-        Update the user's AI consent status to True.
+        Update the user's AI consent status to NOW().
         """
-        sql = schemafy("UPDATE enhancifai.users SET ai_consent = TRUE WHERE user_id = %s;")
+        sql = schemafy("UPDATE enhancifai.users SET ai_consent = NOW() WHERE user_id = %s;")
         write_db.do('execute', sql=sql, data=(user_id,))
 
     @classmethod
