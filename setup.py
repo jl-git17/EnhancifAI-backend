@@ -40,7 +40,8 @@ setup(
         'oauth2client',
         'google-generativeai',
         'aiofiles',
-        'stripe'
+        'stripe',
+        'WeasyPrint'
     ],
     entry_points={
         'console_scripts': [

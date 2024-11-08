@@ -50,5 +50,9 @@ TAGS_METADATA = [
     {
         "name": "Stripe",
         "description": "Stripe endpoints"
+    },
+    {
+        "name": "Billing",
+        "description": "Billing endpoints."
     }
 ]

@@ -86,22 +86,27 @@ class PromptsDbCore:
         return read_db.do('select_one', sql=sql, data=(user_id, version,))
 
 class ModelPricesDbCore:
-    """
-    A class to handle database operations related to model prices.
-    """
-
     @classmethod
     def get_all_model_prices(cls):
         sql = schemafy("""
-            SELECT model_name, price_per_token FROM enhancifai.model_prices;
+            SELECT DISTINCT ON (model_name)
+                model_name, price_per_token, effective_date
+            FROM enhancifai.model_price_history
+            ORDER BY model_name, effective_date DESC;
         """)
-        return read_db.do('select', sql=sql, data=())
+        return read_db.do('select_all', sql=sql)
 
     @classmethod
-    def update_model_price(cls, model_name, price_per_token):
+    def update_model_price(cls, model_name, price_per_token, effective_date):
+        """
+        Update model price and insert into history.
+        """
+        # Insert new price into model_price_history
         sql = schemafy("""
-            INSERT INTO enhancifai.model_prices (model_name, price_per_token, updated_at)
-            VALUES (%s, %s, now())
-            ON CONFLICT (model_name) DO UPDATE SET price_per_token = EXCLUDED.price_per_token, updated_at = now();
+            INSERT INTO enhancifai.model_price_history (model_name, price_per_token, effective_date)
+            VALUES (%s, %s, %s)
+            ON CONFLICT (model_name, effective_date) DO UPDATE
+            SET price_per_token = EXCLUDED.price_per_token;
         """)
-        write_db.do('execute', sql=sql, data=(model_name, price_per_token))
+        data = (model_name, price_per_token, effective_date)
+        write_db.do('execute', sql=sql, data=data)

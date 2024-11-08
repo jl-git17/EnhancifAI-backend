@@ -55,3 +55,13 @@ BEGIN
         UNIQUE (user_id, billing_period_start, billing_period_end);
     END IF;
 END $$;
+
+ALTER TABLE enhancifai.users
+ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(255);
+
+CREATE TABLE IF NOT EXISTS enhancifai.model_price_history (
+    model_name VARCHAR(100),
+    price_per_token FLOAT NOT NULL,
+    effective_date DATE NOT NULL,
+    PRIMARY KEY (model_name, effective_date)
+);

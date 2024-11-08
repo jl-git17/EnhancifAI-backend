@@ -252,9 +252,10 @@ async def update_model_prices(
         for price_data in prices:
             model_name = price_data.get('model_name')
             price_per_token = price_data.get('price_per_token')
+            effective_date = price_data.get('effective_date') or datetime.now().date()
             if not model_name or price_per_token is None:
                 continue  # Skip invalid entries
-            ModelPricesDbCore.update_model_price(model_name, price_per_token)
+            ModelPricesDbCore.update_model_price(model_name, price_per_token, effective_date)
         return {"message": "Model prices updated successfully"}
     else:
         raise HTTPException(
