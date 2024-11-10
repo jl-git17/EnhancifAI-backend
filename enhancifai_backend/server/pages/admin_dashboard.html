@@ -244,6 +244,10 @@
                     }
                 });
 
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
                 const data = await response.json();
                 logResponse(data);
 
@@ -254,6 +258,7 @@
 
             } catch (error) {
                 console.error('Error restoring prompt:', error);
+                alert('Error restoring prompt. Please try again.');
             }
         }
 
@@ -264,6 +269,10 @@
                         'Cache-Control': 'no-cache'
                     }
                 });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
 
                 const data = await response.json();
                 logResponse(data);
@@ -327,33 +336,42 @@
                     'Cache-Control': 'no-cache'
                 }
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(data => {
                 console.log('Model Prices:', data);
                 modelPricesContainer.innerHTML = '';
 
-                data.model_prices.forEach(price => {
-                    const formGroup = document.createElement('div');
-                    formGroup.classList.add('form-group');
+                if (data.model_prices && Array.isArray(data.model_prices)) {
+                    data.model_prices.forEach(price => {
+                        const formGroup = document.createElement('div');
+                        formGroup.classList.add('form-group');
 
-                    const label = document.createElement('label');
-                    label.setAttribute('for', `price_${price.model_name}`);
-                    label.textContent = `Price per token for ${price.model_name}:`;
+                        const label = document.createElement('label');
+                        label.setAttribute('for', `price_${price.model_name}`);
+                        label.textContent = `Price per token for ${price.model_name}:`;
 
-                    const input = document.createElement('input');
-                    input.type = 'number';
-                    input.step = '0.0001';
-                    input.min = '0';
-                    input.classList.add('form-control');
-                    input.id = `price_${price.model_name}`;
-                    input.name = price.model_name;
-                    input.value = price.price_per_token;
+                        const input = document.createElement('input');
+                        input.type = 'number';
+                        input.step = '0.0001';
+                        input.min = '0';
+                        input.classList.add('form-control');
+                        input.id = `price_${price.model_name}`;
+                        input.name = price.model_name;
+                        input.value = price.price_per_token;
 
-                    formGroup.appendChild(label);
-                    formGroup.appendChild(input);
+                        formGroup.appendChild(label);
+                        formGroup.appendChild(input);
 
-                    modelPricesContainer.appendChild(formGroup);
-                });
+                        modelPricesContainer.appendChild(formGroup);
+                    });
+                } else {
+                    modelPricesContainer.innerHTML = '<div class="alert alert-warning">No model prices available.</div>';
+                }
             })
             .catch(error => {
                 console.error('Error loading model prices:', error);
@@ -380,7 +398,12 @@
                 },
                 body: JSON.stringify({ prices: data })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                return response.json();
+            })
             .then(result => {
                 console.log('Billing settings updated:', result);
                 billingSuccessMessage.style.display = 'block';
