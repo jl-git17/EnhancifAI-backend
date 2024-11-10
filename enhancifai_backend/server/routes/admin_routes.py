@@ -9,7 +9,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from enhancifai_backend.ai.openai_api import PI_DEFAULT_AI_ENGINE, PI_DEFAULT_PROMPT
 from enhancifai_backend.database.handlers.admin import PromptsDbCore, ModelPricesDbCore
-from enhancifai_backend.database.handlers.run_logs import RunLogsDbCore
+from enhancifai_backend.database.handlers.run_logs import PromptImproverRunLogsDbCore, RunLogsDbCore
 from enhancifai_backend.server.models.admin import AdminAISettings, RunLogsRequest
 from enhancifai_backend.server.utils import STATIC_PAGES_DIRECTORY, get_current_user_id, verify_secret_key, AdminSettings
 
@@ -222,6 +222,64 @@ async def get_logs_runs_csv(
         media_type="text/csv"
     )
     response.headers["Content-Disposition"] = "attachment; filename=run_logs.csv"
+
+    return response
+
+@router.get("/admin/logs/pi_runs/csv", tags=["Admin"])
+async def get_prompt_improver_logs_runs_csv(
+    start_date: datetime,
+    end_date: datetime
+):
+    """
+    Download prompt improver run logs as CSV for a specified date/time range.
+    All times are in UTC, with default values for the start and end dates.
+    
+    Parameters:
+    - start_date (datetime): The start of the date range.
+    - end_date (datetime): The end of the date range.
+    
+    Returns:
+    - StreamingResponse: A CSV file containing the prompt improver run logs.
+    """
+
+    # Uncomment and implement authorization as needed
+    # if not user_id or not await is_user_admin(user_id):
+    #     raise HTTPException(status_code=403, detail="Unauthorized Access")
+
+    # Retrieve logs from the database
+    logs = PromptImproverRunLogsDbCore.retrieve_logs_by_date_range(
+        start_date, end_date
+    )
+
+    # Initialize a StringIO buffer and CSV writer
+    output = io.StringIO()
+    writer = csv.writer(output)
+
+    if logs:
+        # Write CSV header using the keys of the first log entry
+        writer.writerow(logs[0].keys())
+
+        for log in logs:
+            # Format datetime fields as strings
+            log['log_timestamp'] = log['log_timestamp'].strftime('%Y-%m-%d %H:%M:%S.%f')
+            # Convert time_elapsed from seconds to HH:MM:SS format
+            log['time_elapsed'] = seconds_to_hms(float(log['time_elapsed']))
+            # Handle empty errors field
+            if not log.get('errors'):
+                log['errors'] = ""
+            # Write the log values as a CSV row
+            writer.writerow(log.values())
+
+    # Reset the buffer's position to the beginning
+    output.seek(0)
+
+    # Create a StreamingResponse with the CSV data
+    response = StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv"
+    )
+    # Set the Content-Disposition header to prompt file download
+    response.headers["Content-Disposition"] = "attachment; filename=prompt_improver_run_logs.csv"
 
     return response
 
