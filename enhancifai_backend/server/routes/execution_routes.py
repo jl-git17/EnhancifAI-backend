@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 import json
 import mimetypes
 import asyncio
@@ -20,6 +21,7 @@ from enhancifai_backend.engine.runs_progress import runs_progress
 from enhancifai_backend.server.hooks import handle_csv_file, handle_excel_file, pi_ai_connection
 from enhancifai_backend.server.models.execution import (
     PromptImproveRequest, PromptObject, RunCancelsRequest, RunProgressRequest, RunDataRequest)
+from enhancifai_backend.database.handlers.run_logs import PromptImproverRunLogsDbCore
 from enhancifai_backend.server.routes.files_routes import save_to_cache
 from enhancifai_backend.server.utils import (
     STATIC_FILES_DIRECTORY, get_current_user_id, verify_secret_key)
@@ -557,10 +559,21 @@ async def ai_prompt_improver(prompt_data: PromptImproveRequest, _: str = Depends
         The user_id is used to log for usage tracking in future updates.
     """
     try:
-        # will use user_id in future to log usage
+        start_time = time.time()
         new_prompt = pi_ai_connection.improve_prompt(prompt_data.prompt, user_id)
         if not new_prompt or not isinstance(new_prompt,dict):
             raise HTTPException(status_code=404, detail="Error in processing request.")
+        # save to log file
+        _name = UsersDbCore.get_user_by_id(user_id)['name'] or f"user_{user_id}"
+        end_time = time.time()
+        PromptImproverRunLogsDbCore.insert_log(
+            user_name=_name,
+            engine_model="gpt-4o-mini",
+            log_timestamp=datetime.now(tz=timezone.utc),
+            time_elapsed=end_time - start_time,
+            num_prompts=1,
+            num_tokens=new_prompt['tokens']
+        )
         return JSONResponse(status_code=200, content={
                 "message": "Prompts improved successfully.",
                 "new_prompt": new_prompt['content']
