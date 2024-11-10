@@ -11,6 +11,11 @@
         integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
         crossorigin="anonymous"
     >
+    <!-- Include Bootstrap Icons -->
+    <link
+        rel="stylesheet"
+        href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css"
+    >
     <!-- Custom CSS -->
     <style>
         :root {
@@ -53,7 +58,8 @@
         }
 
         .nav-tabs .nav-link.active {
-            color: var(--primary-blue);
+            color: #fff;
+            background-color: var(--primary-blue);
             border-color: var(--primary-blue) var(--primary-blue) var(--background-light);
         }
 
@@ -73,6 +79,11 @@
             margin-top: 32px;
         }
 
+        .btn-primary, .btn-danger, .btn-secondary {
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
         .btn-primary {
             background-color: var(--button-blue);
             border-color: var(--button-blue);
@@ -85,6 +96,8 @@
 
         h1, h2, h3, h4, h5, h6 {
             color: var(--text-dark);
+            margin-top: 20px;
+            margin-bottom: 20px;
         }
 
         table.table {
@@ -94,6 +107,12 @@
 
         .table-striped tbody tr:nth-of-type(odd) {
             background-color: var(--primary-light-blue);
+        }
+
+        /* Tooltip */
+        .tooltip-inner {
+            max-width: 200px;
+            text-align: left;
         }
     </style>
 </head>
@@ -132,7 +151,14 @@
                             <label for="end_date">End Date & Time (UTC):</label>
                             <input type="datetime-local" id="end_date" name="end_date" required class="form-control">
                         </div>
-                        <button type="submit" class="btn btn-primary">Download CSV</button>
+                        <div class="btn-group mb-3" role="group" aria-label="Quick date ranges">
+                            <button type="button" class="btn btn-secondary" onclick="setDateRange(7)">Last 7 days</button>
+                            <button type="button" class="btn btn-secondary" onclick="setDateRange(30)">Last 30 days</button>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Download Activity Logs as CSV</button>
+                        <div id="loading-spinner" class="spinner-border text-primary mt-3" role="status" style="display: none;">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
                         <div id="logs-error" class="alert alert-danger mt-3">Error downloading CSV. Please try again.</div>
                     </form>
                 </div>
@@ -141,25 +167,27 @@
             <!-- Prompt Improver Tab -->
             <div class="tab-pane fade" id="prompt-improver" role="tabpanel" aria-labelledby="prompt-improver-tab">
                 <div class="container mt-4">
-                    <h1>EnhancifAI Prompt Improver<br>-- Settings --</h1>
+                    <h1>EnhancifAI Prompt Improver</h1>
+                    <h2>Settings</h2>
                     <form id="settings-form">
                         <div class="form-group">
                             <label for="prompt">Prompt:</label>
-                            <textarea id="prompt" name="prompt" required class="form-control" rows="6"></textarea>
+                            <textarea id="prompt" name="prompt" required class="form-control" rows="6" style="resize: vertical;"></textarea>
                         </div>
                         <div class="form-group">
-                            <label for="ai_engine">AI Engine:</label>
+                            <label for="ai_engine">AI Engine: <i class="bi bi-question-circle" data-bs-toggle="tooltip" data-bs-placement="top" title="Select the AI engine to use. GPT-4o is more advanced."></i></label>
                             <select id="ai_engine" name="ai_engine" required class="form-control">
                                 <option value="gpt-4o">GPT-4o</option>
                                 <option value="gpt-4o-mini">GPT-4o Mini</option>
                                 <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-primary">Save Settings</button>
+                        <button type="submit" class="btn btn-primary btn-sm">Save Settings</button>
                         <div id="success-message" class="alert alert-success mt-3">Settings saved successfully!</div>
                     </form>
 
                     <h2 class="mt-5">Prompt History</h2>
+                    <!-- <input type="text" id="prompt-history-search" class="form-control" placeholder="Search prompt history"> -->
                     <div id="loading-message" class="alert alert-info">Loading prompt history...</div>
                     <table class="table table-striped mt-3">
                         <thead>
@@ -186,8 +214,8 @@
                         <div id="model-prices-container">
                             <!-- Model prices will be dynamically loaded here -->
                         </div>
-                        <button type="button" id="add-model-price" class="btn btn-secondary mt-3">Add Model Price</button>
-                        <button type="submit" class="btn btn-primary mt-3">Save Billing Settings</button>
+                        <button type="button" id="add-model-price" class="btn btn-secondary btn-sm mt-3">Add Model Price</button>
+                        <button type="submit" class="btn btn-primary btn-sm mt-3">Save Billing Settings</button>
                         <div id="billing-success-message" class="alert alert-success mt-3">Billing settings saved successfully!</div>
                     </form>
                 </div>
@@ -209,11 +237,20 @@
 
     <!-- Custom JS -->
     <script>
+        // Initialize Bootstrap tooltips
+        function initializeTooltips() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        }
+
         // Logs Tab JavaScript
         $(document).ready(function() {
             const startDateInput = document.getElementById('start_date');
             const endDateInput = document.getElementById('end_date');
             const logsError = document.getElementById('logs-error');
+            const loadingSpinner = document.getElementById('loading-spinner');
 
             const now = new Date();
             const startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24 hours ago
@@ -223,6 +260,7 @@
             $('#download-form').on('submit', function(event) {
                 event.preventDefault();
                 logsError.style.display = 'none';
+                loadingSpinner.style.display = 'block';
 
                 const startDateValue = $('#start_date').val();
                 const endDateValue = $('#end_date').val();
@@ -248,9 +286,19 @@
                 .catch(error => {
                     logsError.style.display = 'block';
                     console.error(error.message);
+                })
+                .finally(() => {
+                    loadingSpinner.style.display = 'none';
                 });
             });
         });
+
+        function setDateRange(days) {
+            const now = new Date();
+            const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+            document.getElementById('start_date').value = startDate.toISOString().slice(0,16);
+            document.getElementById('end_date').value = now.toISOString().slice(0,16);
+        }
 
         // Prompt Improver Tab JavaScript
         const promptField = document.getElementById('prompt');
@@ -392,6 +440,7 @@
 
         loadSettings();
         fetchPromptHistory();
+        initializeTooltips();
 
         // Billing Tab JavaScript
         const billingForm = document.getElementById('billing-form');
@@ -417,52 +466,13 @@
 
                 if (data.model_prices && Array.isArray(data.model_prices) && data.model_prices.length > 0) {
                     data.model_prices.forEach(price => {
-                        const formGroup = document.createElement('div');
-                        formGroup.classList.add('form-group', 'row', 'align-items-center', 'mb-3');
-
-                        const label = document.createElement('label');
-                        label.setAttribute('for', `price_${price.model_name}`);
-                        label.classList.add('col-sm-3', 'col-form-label');
-                        label.textContent = `Price per token for ${price.model_name}:`;
-
-                        const inputDiv = document.createElement('div');
-                        inputDiv.classList.add('col-sm-7');
-
-                        const input = document.createElement('input');
-                        input.type = 'number';
-                        input.step = '0.0001';
-                        input.min = '0';
-                        input.classList.add('form-control');
-                        input.id = `price_${price.model_name}`;
-                        input.name = price.model_name;
-                        input.value = price.price_per_token;
-
-                        inputDiv.appendChild(input);
-
-                        // Add remove button for each model price
-                        const removeBtnDiv = document.createElement('div');
-                        removeBtnDiv.classList.add('col-sm-2');
-
-                        const removeBtn = document.createElement('button');
-                        removeBtn.type = 'button';
-                        removeBtn.classList.add('btn', 'btn-danger', 'btn-sm', 'remove-model-btn');
-                        removeBtn.textContent = 'Remove';
-                        removeBtn.onclick = function() {
-                            formGroup.remove();
-                        };
-
-                        removeBtnDiv.appendChild(removeBtn);
-
-                        formGroup.appendChild(label);
-                        formGroup.appendChild(inputDiv);
-                        formGroup.appendChild(removeBtnDiv);
-
-                        modelPricesContainer.appendChild(formGroup);
+                        addModelPrice(price);
                     });
                 } else {
                     // If no model prices, provide an empty form group to add new model price
                     addModelPrice();
                 }
+                initializeTooltips();
             })
             .catch(error => {
                 console.error('Error loading model prices:', error);
@@ -478,18 +488,27 @@
             const label = document.createElement('label');
             label.setAttribute('for', `price_${model.model_name || 'new'}`);
             label.classList.add('col-sm-3', 'col-form-label');
-            label.textContent = `Price per token for ${model.model_name || 'New Model'}:`;
+            label.innerHTML = `Price per token for ${model.model_name || 'New Model'}: <i class="bi bi-question-circle" data-bs-toggle="tooltip" title="Enter the price per token for this model"></i>`;
 
             const inputDiv = document.createElement('div');
             inputDiv.classList.add('col-sm-7');
 
             const input = document.createElement('input');
-            input.type = 'text';
+            input.type = model.model_name ? 'number' : 'text';
             input.classList.add('form-control', 'mb-2');
             input.id = `model_name_${Date.now()}`; // Unique ID
             input.name = `model_name_${Date.now()}`;
             input.placeholder = 'Enter model name';
             input.value = model.model_name;
+            if (model.model_name) {
+                input.type = 'number';
+                input.step = '0.0001';
+                input.min = '0';
+                input.name = model.model_name;
+                input.id = `price_${model.model_name}`;
+                input.value = model.price_per_token;
+                input.placeholder = 'Enter price per token';
+            }
 
             const priceInput = document.createElement('input');
             priceInput.type = 'number';
@@ -501,7 +520,9 @@
             priceInput.placeholder = 'Enter price per token';
             priceInput.value = model.price_per_token;
 
-            inputDiv.appendChild(input);
+            if (!model.model_name) {
+                inputDiv.appendChild(input);
+            }
             inputDiv.appendChild(priceInput);
 
             // Add remove button
@@ -511,7 +532,7 @@
             const removeBtn = document.createElement('button');
             removeBtn.type = 'button';
             removeBtn.classList.add('btn', 'btn-danger', 'btn-sm', 'remove-model-btn');
-            removeBtn.textContent = 'Remove';
+            removeBtn.innerHTML = '<i class="bi bi-trash"></i>';
             removeBtn.onclick = function() {
                 formGroup.remove();
             };
@@ -523,6 +544,7 @@
             formGroup.appendChild(removeBtnDiv);
 
             modelPricesContainer.appendChild(formGroup);
+            initializeTooltips();
         }
 
         // Event listener for adding new model price
@@ -546,6 +568,9 @@
                     modelNames.push(value.trim());
                 } else if (key.startsWith('price_')) {
                     priceValues.push(parseFloat(value));
+                } else {
+                    modelNames.push(key);
+                    priceValues.push(parseFloat(value));
                 }
             }
 
@@ -558,8 +583,6 @@
                     data.push({ model_name, price_per_token });
                 }
             }
-
-            // Optional: Add further validation if necessary
 
             fetch('/admin/billing/model-prices', {
                 method: 'POST',
