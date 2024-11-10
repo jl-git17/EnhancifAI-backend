@@ -13,29 +13,93 @@
     >
     <!-- Custom CSS -->
     <style>
+        :root {
+            /* Primary Colors */
+            --primary-blue: #0078FF;       /* For headers and primary buttons */
+            --primary-light-blue: #E6F2FF; /* Light background accents and highlights */
+
+            /* Text Colors */
+            --text-dark: #1A1A1A;          /* Main text color */
+            --text-muted: #757575;         /* Muted/placeholder text color */
+
+            /* Button and Action Colors */
+            --button-blue: #0078FF;        /* Button background */
+            --button-hover-blue: #005FCC;  /* Button hover state */
+            --border-blue: #A6DAFF;        /* Border for upload and selection areas */
+
+            /* Background Colors */
+            --background-light: #F8FBFF;   /* Light background color for the page */
+
+            /* Miscellaneous */
+            --shadow-color: rgba(0, 0, 0, 0.1); /* Light shadow for elements */
+        }
+
         body {
             padding-top: 56px;
+            background-color: var(--background-light);
+            color: var(--text-dark);
         }
+
+        .navbar {
+            background-color: var(--primary-blue);
+        }
+
+        .navbar .navbar-brand {
+            color: #fff;
+        }
+
         .nav-tabs .nav-link {
-            color: #555;
+            color: var(--text-muted);
         }
+
         .nav-tabs .nav-link.active {
-            color: #007bff;
+            color: var(--primary-blue);
+            border-color: var(--primary-blue) var(--primary-blue) var(--background-light);
         }
+
+        .form-control {
+            border-color: var(--border-blue);
+        }
+
         .form-control:disabled, .form-control[readonly] {
-            background-color: #e9ecef;
+            background-color: var(--primary-light-blue);
         }
+
         .alert {
             display: none;
         }
+
         .remove-model-btn {
             margin-top: 32px;
+        }
+
+        .btn-primary {
+            background-color: var(--button-blue);
+            border-color: var(--button-blue);
+        }
+
+        .btn-primary:hover, .btn-primary:focus {
+            background-color: var(--button-hover-blue);
+            border-color: var(--button-hover-blue);
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            color: var(--text-dark);
+        }
+
+        table.table {
+            background-color: #fff;
+            box-shadow: 0 2px 4px var(--shadow-color);
+        }
+
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: var(--primary-light-blue);
         }
     </style>
 </head>
 <body>
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
         <a class="navbar-brand" href="#">EnhancifAI Admin Dashboard</a>
     </nav>
 
