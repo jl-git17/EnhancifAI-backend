@@ -26,6 +26,14 @@ CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage (
     created_at TIMESTAMP DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage_pi (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES enhancifai.users(user_id),
+    model VARCHAR,
+    tokens INT,
+    created_at TIMESTAMP DEFAULT now()
+);
+
 CREATE TABLE IF NOT EXISTS enhancifai.stripe_invoices (
     invoice_id VARCHAR(255) PRIMARY KEY,  -- Stripe invoice ID
     user_id INT REFERENCES enhancifai.users(user_id),
