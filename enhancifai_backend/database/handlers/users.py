@@ -133,6 +133,17 @@ class UsersDbCore:
             VALUES (%s, %s, %s, %s);
         """)
         write_db.do('execute', sql=sql, data=(user_id, run_id, model, tokens,))
+    
+    @classmethod
+    def add_user_token_usage_pi(cls, user_id, model, tokens):
+        """
+        Add token usage for the user (Prompt Improver).
+        """
+        sql = schemafy("""
+            INSERT INTO enhancifai.users_token_usage_pi (user_id, model, tokens)
+            VALUES (%s, %s, %s);
+        """)
+        write_db.do('execute', sql=sql, data=(user_id, model, tokens,))
 
     @classmethod
     def create_session(cls, user_id, token, expires_at):
