@@ -554,11 +554,11 @@ async def ai_prompt_improver(prompt_data: PromptImproveRequest, _: str = Depends
         JSONResponse: A JSON response containing a message and the improved prompts.
 
     Note:
-        The user_id is not currently utilized but will be logged for usage tracking in future updates.
+        The user_id is used to log for usage tracking in future updates.
     """
     try:
         # will use user_id in future to log usage
-        new_prompt = pi_ai_connection.improve_prompt(prompt_data.prompt)
+        new_prompt = pi_ai_connection.improve_prompt(prompt_data.prompt, user_id)
         if not new_prompt or not isinstance(new_prompt,dict):
             raise HTTPException(status_code=404, detail="Error in processing request.")
         return JSONResponse(status_code=200, content={
