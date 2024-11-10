@@ -8,7 +8,11 @@ class RunLogsDbCore:
     """
 
     @classmethod
-    def insert_log(cls, run_id, user_name, engine_model, log_timestamp, num_rows_processed, num_rows_in_file, num_prompts, num_tokens, errors, time_elapsed, filename, overflow, batched=False):
+    def insert_log(
+        cls, run_id, user_name, engine_model, log_timestamp, num_rows_processed,
+        num_rows_in_file, num_prompts, num_tokens, errors, time_elapsed, filename,
+        overflow, batched=False
+        ):
         """
         Insert a log entry into the run_logs table.
 
@@ -67,7 +71,8 @@ class RunLogsDbCore:
         elif not isinstance(end, datetime):
             end = datetime.fromisoformat(str(end))
 
-        # Adjust 'end' time to the end of the day if it originally had no time part (i.e., is at midnight of the given end date)
+        # Adjust 'end' time to the end of the day if it originally had no time part
+        # (i.e., is at midnight of the given end date)
         if end.time() == datetime.min.time():
             end = datetime.combine(end, datetime.max.time())
 
@@ -77,5 +82,77 @@ class RunLogsDbCore:
             JOIN enhancifai.runs r ON rl.run_id = r.id
             WHERE rl.log_timestamp BETWEEN %s AND %s
             ORDER BY rl.log_id;
+        """)
+        return read_db.do('select', sql=sql, data=(start, end)) or []
+
+class PromptImproverRunLogsDbCore:
+    """
+    A class used to handle operations related to prompt improver run logs in the database.
+    """
+
+    @classmethod
+    def insert_log(cls, user_name, engine_model, log_timestamp, time_elapsed, num_prompts, num_tokens, errors=None):
+        """
+        Insert a log entry into the prompt_improver_run_logs table.
+
+        Parameters:
+        user_name (str): The name of the user.
+        engine_model (str): The engine model used.
+        log_timestamp (datetime): The timestamp of the log.
+        time_elapsed (float): Time elapsed during the run.
+        num_prompts (int): Number of prompts.
+        num_tokens (int): Number of tokens.
+        errors (str, optional): Errors encountered during the run. Defaults to None.
+
+        Returns:
+        Any: Result of the write_db operation.
+        """
+        sql = schemafy("""
+            INSERT INTO enhancifai.prompt_improver_run_logs (
+                user_name, engine_model, log_timestamp,
+                time_elapsed, num_prompts,
+                num_tokens, errors)
+            VALUES (%s, %s, %s, %s, %s, %s, %s);
+        """)
+        return write_db.do(
+            'execute', sql=sql, data=(
+                user_name, engine_model, log_timestamp,
+                time_elapsed, num_prompts,
+                num_tokens, errors
+            )
+        )
+
+    @classmethod
+    def retrieve_logs_by_date_range(cls, start, end=None):
+        """
+        Retrieve logs within a specified date range.
+
+        Parameters:
+        start (datetime or str): The start date of the range.
+        end (datetime or str, optional): The end date of the range. Defaults to None.
+
+        Returns:
+        list: A list of logs within the specified date range.
+        """
+        # Convert start to a datetime object if not already
+        if not isinstance(start, datetime):
+            start = datetime.fromisoformat(str(start))
+
+        # If end is None, set it to 'start' + 1 day; otherwise, convert it to datetime
+        if end is None:
+            end = start + timedelta(days=1)
+        elif not isinstance(end, datetime):
+            end = datetime.fromisoformat(str(end))
+
+        # Adjust 'end' time to the end of the day if it originally had no time part
+        # (i.e., is at midnight of the given end date)
+        if end.time() == datetime.min.time():
+            end = datetime.combine(end, datetime.max.time())
+
+        sql = schemafy("""
+            SELECT * 
+            FROM enhancifai.prompt_improver_run_logs
+            WHERE log_timestamp BETWEEN %s AND %s
+            ORDER BY log_id;
         """)
         return read_db.do('select', sql=sql, data=(start, end)) or []
