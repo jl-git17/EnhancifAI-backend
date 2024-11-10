@@ -185,7 +185,7 @@ class OpenAIConnector:
             print("Failed to get answer from OpenAI API after 3 attempts.")
             return {'content': _err, 'tokens': 0}
 
-    def improve_prompt(self, prompt: str):
+    def improve_prompt(self, prompt: str, user_id: int):
         _err = None
         for attempt in range(3):
             try:
@@ -224,7 +224,7 @@ class OpenAIConnector:
                 tokens_used = completion.usage.total_tokens
                 print(data)
                 new_prompt = data.replace("```", "").strip()
-
+                UsersDbCore.add_user_token_usage_pi(user_id, self.engine, tokens_used)
                 return {"content": new_prompt, "tokens": tokens_used, 'engine_used': self.engine}
 
             except json.JSONDecodeError:
