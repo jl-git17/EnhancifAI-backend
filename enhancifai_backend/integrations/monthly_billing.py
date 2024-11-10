@@ -1,3 +1,5 @@
+# monthly_billing.py
+
 import logging
 from datetime import datetime, timedelta
 from enhancifai_backend.database.access import read_db
@@ -9,20 +11,57 @@ from enhancifai_backend.database.handlers.utils import schemafy
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Define pricing per token (example: $0.0001 per token)
-PRICE_PER_TOKEN = 0.0001  # $0.0001 per token
+# Define pricing per token
+PRICE_PER_TOKEN_STANDARD = 0.0001  # $0.0001 per standard token
+PRICE_PER_TOKEN_PI = 0.0001       # $0.00015 per PI token (adjust as needed)
 
-def calculate_amount(tokens_used: int) -> int:
+def calculate_amount(tokens_standard: int, tokens_pi: int) -> int:
     """
-    Calculate the amount in cents based on tokens used.
+    Calculate the total amount in cents based on standard and PI tokens used.
 
     Args:
-        tokens_used (int): Number of tokens used.
+        tokens_standard (int): Number of standard tokens used.
+        tokens_pi (int): Number of PI tokens used.
 
     Returns:
-        int: Amount in cents.
+        int: Total amount in cents.
     """
-    return int(tokens_used * PRICE_PER_TOKEN * 100)  # Convert to cents
+    amount_standard = tokens_standard * PRICE_PER_TOKEN_STANDARD * 100  # Convert to cents
+    amount_pi = tokens_pi * PRICE_PER_TOKEN_PI * 100                  # Convert to cents
+    total_amount = int(amount_standard + amount_pi)
+    return total_amount
+
+def get_user_token_usage_pi(user_id: int, start_date: datetime, end_date: datetime) -> int:
+    """
+    Retrieve the total number of PI tokens used by the user in the specified period.
+
+    Args:
+        user_id (int): The user's ID.
+        start_date (datetime): Start of the billing period.
+        end_date (datetime): End of the billing period.
+
+    Returns:
+        int: Total PI tokens used.
+    """
+    try:
+        sql = schemafy("""
+            SELECT SUM(tokens) AS total_tokens
+            FROM enhancifai.users_token_usage_pi
+            WHERE user_id = %s
+              AND created_at >= %s
+              AND created_at < %s;
+        """)
+        data = (user_id, start_date, end_date)
+        result = read_db.do('select_one', sql=sql, data=data)
+        return result['total_tokens'] if result and result['total_tokens'] else 0
+    except Exception as e:
+        logger.error(
+            "Error fetching PI token usage for user %s: %s",
+            user_id,
+            str(e),
+            exc_info=True
+        )
+        return 0
 
 def generate_monthly_invoices():
     """
@@ -30,7 +69,6 @@ def generate_monthly_invoices():
     Ensures that no duplicate invoices are sent for the same billing period.
     """
     try:
-        # TODO: put a max cap for day, so it spills over (configurable), put a delay
         # Determine the start and end of the previous month
         today = datetime.today().date()
         first_day_of_current_month = today.replace(day=1)
@@ -64,12 +102,19 @@ def generate_monthly_invoices():
                     )
                     continue  # Skip users who already have an invoice for this period
 
-                # Get total tokens used by the user in the previous month
-                tokens_used = UsersDbCore.get_user_token_usage(
+                # Get total standard tokens used by the user in the previous month
+                tokens_standard = UsersDbCore.get_user_token_usage(
                     user_id, first_day_of_previous_month, first_day_of_current_month
                 )
 
-                if tokens_used <= 0:
+                # Get total PI tokens used by the user in the previous month
+                tokens_pi = get_user_token_usage_pi(
+                    user_id, first_day_of_previous_month, first_day_of_current_month
+                )
+
+                total_tokens = tokens_standard + tokens_pi
+
+                if total_tokens <= 0:
                     logger.info(
                         "User %s has no token usage for the month. Skipping invoice.",
                         user_id
@@ -77,10 +122,10 @@ def generate_monthly_invoices():
                     continue  # Skip users with no token usage
 
                 # Calculate the amount due in cents
-                amount = calculate_amount(tokens_used)
+                amount = calculate_amount(tokens_standard, tokens_pi)
                 description = (
-                    f"Monthly token usage: {tokens_used} tokens for "
-                    f"{first_day_of_previous_month.strftime('%B %Y')}"
+                    f"Monthly token usage: {tokens_standard} standard tokens and "
+                    f"{tokens_pi} PI tokens for {first_day_of_previous_month.strftime('%B %Y')}"
                 )
 
                 # Create and send the invoice
