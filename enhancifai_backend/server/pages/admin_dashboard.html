@@ -213,22 +213,42 @@
                 <div class="container mt-4">
                     <h1>Download Logs (CSV)</h1>
                     <form id="download-form">
+                        <!-- Log Category Selection -->
+                        <div class="form-group">
+                            <label for="log_category">Log Category:</label>
+                            <select id="log_category" name="log_category" required class="form-control">
+                                <option value="runs">Run Logs</option>
+                                <option value="pi_runs">Prompt Improver Logs</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Start Date & Time -->
                         <div class="form-group">
                             <label for="start_date">Start Date & Time (UTC):</label>
                             <input type="datetime-local" id="start_date" name="start_date" required class="form-control">
                         </div>
+                        
+                        <!-- End Date & Time -->
                         <div class="form-group">
                             <label for="end_date">End Date & Time (UTC):</label>
                             <input type="datetime-local" id="end_date" name="end_date" required class="form-control">
                         </div>
+                        
+                        <!-- Quick Date Ranges -->
                         <div class="btn-group mb-3" role="group" aria-label="Quick date ranges">
                             <button type="button" class="btn btn-secondary" onclick="setDateRange(7)">Last 7 days</button>
                             <button type="button" class="btn btn-secondary" onclick="setDateRange(30)">Last 30 days</button>
                         </div>
-                        <button type="submit" class="btn btn-primary">Download Activity Logs as CSV</button>
+                        
+                        <!-- Submit Button -->
+                        <button type="submit" class="btn btn-primary">Download Selected Logs as CSV</button>
+                        
+                        <!-- Loading Spinner -->
                         <div id="loading-spinner" class="spinner-border text-primary mt-3" role="status" style="display: none;">
                             <span class="visually-hidden">Loading...</span>
                         </div>
+                        
+                        <!-- Error Message -->
                         <div id="logs-error" class="alert alert-danger mt-3">Error downloading CSV. Please try again.</div>
                     </form>
                 </div>
@@ -318,6 +338,7 @@
 
         // Logs Tab JavaScript
         $(document).ready(function() {
+            const logCategorySelect = document.getElementById('log_category');
             const startDateInput = document.getElementById('start_date');
             const endDateInput = document.getElementById('end_date');
             const logsError = document.getElementById('logs-error');
@@ -333,10 +354,27 @@
                 logsError.style.display = 'none';
                 loadingSpinner.style.display = 'block';
 
+                const logCategory = logCategorySelect.value;
                 const startDateValue = $('#start_date').val();
                 const endDateValue = $('#end_date').val();
 
-                fetch(`/admin/logs/runs/csv?start_date=${startDateValue}&end_date=${endDateValue}`, {
+                // Determine the endpoint based on selected log category
+                let endpoint = '';
+                let filename = '';
+                if (logCategory === 'runs') {
+                    endpoint = `/admin/logs/runs/csv?start_date=${encodeURIComponent(startDateValue)}&end_date=${encodeURIComponent(endDateValue)}`;
+                    filename = 'run_logs.csv';
+                } else if (logCategory === 'pi_runs') {
+                    endpoint = `/admin/logs/pi_runs/csv?start_date=${encodeURIComponent(startDateValue)}&end_date=${encodeURIComponent(endDateValue)}`;
+                    filename = 'prompt_improver_run_logs.csv';
+                } else {
+                    logsError.textContent = 'Invalid log category selected.';
+                    logsError.style.display = 'block';
+                    loadingSpinner.style.display = 'none';
+                    return;
+                }
+
+                fetch(endpoint, {
                     method: 'GET'
                 })
                 .then(response => {
@@ -350,12 +388,15 @@
                     const url = window.URL.createObjectURL(blob);
                     const link = document.createElement('a');
                     link.href = url;
-                    link.download = 'run_logs.csv';
+                    link.download = filename;
+                    document.body.appendChild(link); // Append to body for Firefox compatibility
                     link.click();
+                    link.remove(); // Remove the link after clicking
                     window.URL.revokeObjectURL(url);
                 })
                 .catch(error => {
                     logsError.style.display = 'block';
+                    logsError.textContent = error.message;
                     console.error(error.message);
                 })
                 .finally(() => {
