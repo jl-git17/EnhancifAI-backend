@@ -28,6 +28,9 @@
         .alert {
             display: none;
         }
+        .remove-model-btn {
+            margin-top: 32px;
+        }
     </style>
 </head>
 <body>
@@ -119,7 +122,8 @@
                         <div id="model-prices-container">
                             <!-- Model prices will be dynamically loaded here -->
                         </div>
-                        <button type="submit" class="btn btn-primary">Save Billing Settings</button>
+                        <button type="button" id="add-model-price" class="btn btn-secondary mt-3">Add Model Price</button>
+                        <button type="submit" class="btn btn-primary mt-3">Save Billing Settings</button>
                         <div id="billing-success-message" class="alert alert-success mt-3">Billing settings saved successfully!</div>
                     </form>
                 </div>
@@ -329,6 +333,7 @@
         const billingForm = document.getElementById('billing-form');
         const billingSuccessMessage = document.getElementById('billing-success-message');
         const modelPricesContainer = document.getElementById('model-prices-container');
+        const addModelPriceBtn = document.getElementById('add-model-price');
 
         function loadModelPrices() {
             fetch('/admin/billing/model-prices', {
@@ -346,14 +351,18 @@
                 console.log('Model Prices:', data);
                 modelPricesContainer.innerHTML = '';
 
-                if (data.model_prices && Array.isArray(data.model_prices)) {
+                if (data.model_prices && Array.isArray(data.model_prices) && data.model_prices.length > 0) {
                     data.model_prices.forEach(price => {
                         const formGroup = document.createElement('div');
-                        formGroup.classList.add('form-group');
+                        formGroup.classList.add('form-group', 'row', 'align-items-center', 'mb-3');
 
                         const label = document.createElement('label');
                         label.setAttribute('for', `price_${price.model_name}`);
+                        label.classList.add('col-sm-3', 'col-form-label');
                         label.textContent = `Price per token for ${price.model_name}:`;
+
+                        const inputDiv = document.createElement('div');
+                        inputDiv.classList.add('col-sm-7');
 
                         const input = document.createElement('input');
                         input.type = 'number';
@@ -364,13 +373,31 @@
                         input.name = price.model_name;
                         input.value = price.price_per_token;
 
+                        inputDiv.appendChild(input);
+
+                        // Add remove button for each model price
+                        const removeBtnDiv = document.createElement('div');
+                        removeBtnDiv.classList.add('col-sm-2');
+
+                        const removeBtn = document.createElement('button');
+                        removeBtn.type = 'button';
+                        removeBtn.classList.add('btn', 'btn-danger', 'btn-sm', 'remove-model-btn');
+                        removeBtn.textContent = 'Remove';
+                        removeBtn.onclick = function() {
+                            formGroup.remove();
+                        };
+
+                        removeBtnDiv.appendChild(removeBtn);
+
                         formGroup.appendChild(label);
-                        formGroup.appendChild(input);
+                        formGroup.appendChild(inputDiv);
+                        formGroup.appendChild(removeBtnDiv);
 
                         modelPricesContainer.appendChild(formGroup);
                     });
                 } else {
-                    modelPricesContainer.innerHTML = '<div class="alert alert-warning">No model prices available.</div>';
+                    // If no model prices, provide an empty form group to add new model price
+                    addModelPrice();
                 }
             })
             .catch(error => {
@@ -379,6 +406,66 @@
             });
         }
 
+        // Function to add a new model price form group
+        function addModelPrice(model = { model_name: '', price_per_token: '' }) {
+            const formGroup = document.createElement('div');
+            formGroup.classList.add('form-group', 'row', 'align-items-center', 'mb-3');
+
+            const label = document.createElement('label');
+            label.setAttribute('for', `price_${model.model_name || 'new'}`);
+            label.classList.add('col-sm-3', 'col-form-label');
+            label.textContent = `Price per token for ${model.model_name || 'New Model'}:`;
+
+            const inputDiv = document.createElement('div');
+            inputDiv.classList.add('col-sm-7');
+
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.classList.add('form-control', 'mb-2');
+            input.id = `model_name_${Date.now()}`; // Unique ID
+            input.name = `model_name_${Date.now()}`;
+            input.placeholder = 'Enter model name';
+            input.value = model.model_name;
+
+            const priceInput = document.createElement('input');
+            priceInput.type = 'number';
+            priceInput.step = '0.0001';
+            priceInput.min = '0';
+            priceInput.classList.add('form-control');
+            priceInput.id = `price_${model.model_name || 'new'}`;
+            priceInput.name = `price_${Date.now()}`;
+            priceInput.placeholder = 'Enter price per token';
+            priceInput.value = model.price_per_token;
+
+            inputDiv.appendChild(input);
+            inputDiv.appendChild(priceInput);
+
+            // Add remove button
+            const removeBtnDiv = document.createElement('div');
+            removeBtnDiv.classList.add('col-sm-2');
+
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.classList.add('btn', 'btn-danger', 'btn-sm', 'remove-model-btn');
+            removeBtn.textContent = 'Remove';
+            removeBtn.onclick = function() {
+                formGroup.remove();
+            };
+
+            removeBtnDiv.appendChild(removeBtn);
+
+            formGroup.appendChild(label);
+            formGroup.appendChild(inputDiv);
+            formGroup.appendChild(removeBtnDiv);
+
+            modelPricesContainer.appendChild(formGroup);
+        }
+
+        // Event listener for adding new model price
+        addModelPriceBtn.addEventListener('click', function() {
+            addModelPrice();
+        });
+
         billingForm.addEventListener('submit', function(event) {
             event.preventDefault();
             billingSuccessMessage.style.display = 'none';
@@ -386,9 +473,29 @@
             const formData = new FormData(billingForm);
             const data = [];
 
-            for (let [model_name, price_per_token] of formData.entries()) {
-                data.push({ model_name, price_per_token: parseFloat(price_per_token) });
+            // Extract model names and their corresponding prices
+            const modelNames = [];
+            const priceValues = [];
+
+            for (let [key, value] of formData.entries()) {
+                if (key.startsWith('model_name_')) {
+                    modelNames.push(value.trim());
+                } else if (key.startsWith('price_')) {
+                    priceValues.push(parseFloat(value));
+                }
             }
+
+            // Validate that each model has a name and price
+            for (let i = 0; i < modelNames.length; i++) {
+                const model_name = modelNames[i];
+                const price_per_token = priceValues[i];
+
+                if (model_name && !isNaN(price_per_token)) {
+                    data.push({ model_name, price_per_token });
+                }
+            }
+
+            // Optional: Add further validation if necessary
 
             fetch('/admin/billing/model-prices', {
                 method: 'POST',
@@ -407,6 +514,7 @@
             .then(result => {
                 console.log('Billing settings updated:', result);
                 billingSuccessMessage.style.display = 'block';
+                loadModelPrices(); // Reload model prices to reflect changes
             })
             .catch(error => {
                 console.error('Error updating billing settings:', error);
