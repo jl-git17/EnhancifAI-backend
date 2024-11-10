@@ -94,7 +94,7 @@ class ModelPricesDbCore:
             FROM enhancifai.model_price_history
             ORDER BY model_name, effective_date DESC;
         """)
-        return read_db.do('select_all', sql=sql)
+        return read_db.do('select', sql=sql)
 
     @classmethod
     def update_model_price(cls, model_name, price_per_token, effective_date):
