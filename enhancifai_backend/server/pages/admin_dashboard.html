@@ -51,6 +51,8 @@
 
         .navbar .navbar-brand {
             color: #fff;
+            /* Center the navbar brand */
+            margin: 0 auto;
         }
 
         .nav-tabs .nav-link {
@@ -75,10 +77,6 @@
             display: none;
         }
 
-        .remove-model-btn {
-            margin-top: 32px;
-        }
-
         .btn-primary, .btn-danger, .btn-secondary {
             border-radius: 4px;
             font-size: 14px;
@@ -100,6 +98,17 @@
             margin-bottom: 20px;
         }
 
+        /* Adjusted H1 and H2 Styles */
+        h1 {
+            font-size: 1.75rem; /* Reduced size */
+            text-align: center;  /* Center alignment */
+        }
+
+        h2 {
+            font-size: 1.5rem; /* Reduced size */
+            color: var(--primary-blue); /* Enhanced color for visibility */
+        }
+
         table.table {
             background-color: #fff;
             box-shadow: 0 2px 4px var(--shadow-color);
@@ -117,8 +126,6 @@
     
         /* Adjustments for spacing and alignment */
         .form-group {
-            display: flex;
-            flex-direction: column; /* Stack label and input vertically */
             margin-bottom: 20px; /* Adds space between form groups */
         }
     
@@ -130,12 +137,58 @@
         #download-form button[type="submit"] {
             margin-top: 10px;
         }
+
+        /* Billing Entry Styles */
+        .billing-entry {
+            border: 1px solid var(--border-blue);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px var(--shadow-color);
+            display: flex;
+            flex-direction: column;
+            max-width: 500px; /* Set maximum width */
+            margin: 0 auto 15px auto; /* Center horizontally and maintain bottom margin */
+        }
+
+        .billing-entry .form-group {
+            display: flex;
+            flex-direction: column; /* Stack label and input vertically */
+            align-items: flex-start;
+            gap: 5px; /* Add some spacing between label and input */
+            margin-bottom: 15px;
+            width: 100%;
+        }
+
+        .billing-entry .form-group label {
+            flex: 2;
+            margin-bottom: 5px;
+        }
+
+        .billing-entry .form-group input {
+            flex: 1;
+            width: 100%; /* Make inputs take full width */
+            max-width: 300px; /* Optional: Set a maximum width for inputs */
+        }
+
+        .btn-remove {
+            align-self: flex-end;
+            margin-top: 10px; /* Adds space above the button */
+        }
+
+        /* Buttons Container in Billing Form */
+        .billing-buttons {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
     </style>    
 </head>
 <body>
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
-        <a class="navbar-brand" href="#">EnhancifAI Admin Dashboard</a>
+        <a class="navbar-brand mx-auto" href="#">EnhancifAI Admin Dashboard</a>
     </nav>
 
     <div class="container-fluid">
@@ -226,11 +279,13 @@
                 <div class="container mt-4">
                     <h1>Billing Settings</h1>
                     <form id="billing-form">
+                        <div class="billing-buttons">
+                            <button type="button" id="add-model-price" class="btn btn-secondary btn-sm">Add Model Price</button>
+                            <button type="submit" class="btn btn-primary btn-sm">Save Billing Settings</button>
+                        </div>
                         <div id="model-prices-container">
                             <!-- Model prices will be dynamically loaded here -->
                         </div>
-                        <button type="button" id="add-model-price" class="btn btn-secondary btn-sm mt-3">Add Model Price</button>
-                        <button type="submit" class="btn btn-primary btn-sm mt-3">Save Billing Settings</button>
                         <div id="billing-success-message" class="alert alert-success mt-3">Billing settings saved successfully!</div>
                     </form>
                 </div>
@@ -497,68 +552,79 @@
 
         // Function to add a new model price form group
         function addModelPrice(model = { model_name: '', price_per_token: '' }) {
-            const formGroup = document.createElement('div');
-            formGroup.classList.add('form-group', 'row', 'align-items-center', 'mb-3');
+            const billingEntry = document.createElement('div');
+            billingEntry.classList.add('billing-entry');
 
-            const label = document.createElement('label');
-            label.setAttribute('for', `price_${model.model_name || 'new'}`);
-            label.classList.add('col-sm-3', 'col-form-label');
-            label.innerHTML = `Price per token for ${model.model_name || 'New Model'}: <i class="bi bi-question-circle" data-bs-toggle="tooltip" title="Enter the price per token for this model"></i>`;
+            // Form Group for Model Name
+            const modelNameGroup = document.createElement('div');
+            modelNameGroup.classList.add('form-group');
 
-            const inputDiv = document.createElement('div');
-            inputDiv.classList.add('col-sm-7');
+            const modelNameLabel = document.createElement('label');
+            modelNameLabel.textContent = 'Model Name:';
+            modelNameLabel.setAttribute('for', `model_name_${Date.now()}`);
 
-            const input = document.createElement('input');
-            input.type = model.model_name ? 'number' : 'text';
-            input.classList.add('form-control', 'mb-2');
-            input.id = `model_name_${Date.now()}`; // Unique ID
-            input.name = `model_name_${Date.now()}`;
-            input.placeholder = 'Enter model name';
-            input.value = model.model_name;
+            const modelNameInput = document.createElement('input');
+            modelNameInput.type = 'text';
+            modelNameInput.classList.add('form-control');
+            modelNameInput.id = `model_name_${Date.now()}`;
+            modelNameInput.name = 'model_name';
+            modelNameInput.value = model.model_name;
+            modelNameInput.placeholder = 'Enter model name';
+
             if (model.model_name) {
-                input.type = 'number';
-                input.step = '0.0001';
-                input.min = '0';
-                input.name = model.model_name;
-                input.id = `price_${model.model_name}`;
-                input.value = model.price_per_token;
-                input.placeholder = 'Enter price per token';
+                // If model name is provided (existing entry), make it read-only
+                modelNameInput.readOnly = true;
             }
+
+            modelNameGroup.appendChild(modelNameLabel);
+            modelNameGroup.appendChild(modelNameInput);
+
+            // Form Group for Price per Token
+            const priceGroup = document.createElement('div');
+            priceGroup.classList.add('form-group');
+
+            const priceLabel = document.createElement('label');
+            priceLabel.textContent = 'Price per Token:';
+            priceLabel.setAttribute('for', `price_${Date.now()}`);
+
+            // Add tooltip icon
+            const tooltipIcon = document.createElement('i');
+            tooltipIcon.classList.add('bi', 'bi-question-circle');
+            tooltipIcon.setAttribute('data-bs-toggle', 'tooltip');
+            tooltipIcon.setAttribute('title', 'Enter the price per token for this model');
+            priceLabel.appendChild(tooltipIcon);
 
             const priceInput = document.createElement('input');
             priceInput.type = 'number';
             priceInput.step = '0.0001';
             priceInput.min = '0';
             priceInput.classList.add('form-control');
-            priceInput.id = `price_${model.model_name || 'new'}`;
-            priceInput.name = `price_${Date.now()}`;
-            priceInput.placeholder = 'Enter price per token';
+            priceInput.id = `price_${Date.now()}`;
+            priceInput.name = 'price_per_token';
             priceInput.value = model.price_per_token;
+            priceInput.placeholder = 'Enter price per token';
 
-            if (!model.model_name) {
-                inputDiv.appendChild(input);
-            }
-            inputDiv.appendChild(priceInput);
+            priceGroup.appendChild(priceLabel);
+            priceGroup.appendChild(priceInput);
 
-            // Add remove button
-            const removeBtnDiv = document.createElement('div');
-            removeBtnDiv.classList.add('col-sm-2');
-
+            // Remove button
             const removeBtn = document.createElement('button');
             removeBtn.type = 'button';
-            removeBtn.classList.add('btn', 'btn-danger', 'btn-sm', 'remove-model-btn');
+            removeBtn.classList.add('btn', 'btn-danger', 'btn-sm', 'btn-remove');
             removeBtn.innerHTML = '<i class="bi bi-trash"></i>';
             removeBtn.onclick = function() {
-                formGroup.remove();
+                billingEntry.remove();
             };
 
-            removeBtnDiv.appendChild(removeBtn);
+            // Append form groups and remove button to billingEntry
+            billingEntry.appendChild(modelNameGroup);
+            billingEntry.appendChild(priceGroup);
+            billingEntry.appendChild(removeBtn);
 
-            formGroup.appendChild(label);
-            formGroup.appendChild(inputDiv);
-            formGroup.appendChild(removeBtnDiv);
+            // Append billingEntry to modelPricesContainer
+            modelPricesContainer.appendChild(billingEntry);
 
-            modelPricesContainer.appendChild(formGroup);
+            // Initialize tooltips
             initializeTooltips();
         }
 
@@ -571,33 +637,20 @@
             event.preventDefault();
             billingSuccessMessage.style.display = 'none';
 
-            const formData = new FormData(billingForm);
             const data = [];
 
-            // Extract model names and their corresponding prices
-            const modelNames = [];
-            const priceValues = [];
+            const billingEntries = document.querySelectorAll('.billing-entry');
+            billingEntries.forEach(entry => {
+                const modelNameInput = entry.querySelector('input[name="model_name"]');
+                const priceInput = entry.querySelector('input[name="price_per_token"]');
 
-            for (let [key, value] of formData.entries()) {
-                if (key.startsWith('model_name_')) {
-                    modelNames.push(value.trim());
-                } else if (key.startsWith('price_')) {
-                    priceValues.push(parseFloat(value));
-                } else {
-                    modelNames.push(key);
-                    priceValues.push(parseFloat(value));
-                }
-            }
-
-            // Validate that each model has a name and price
-            for (let i = 0; i < modelNames.length; i++) {
-                const model_name = modelNames[i];
-                const price_per_token = priceValues[i];
+                const model_name = modelNameInput.value.trim();
+                const price_per_token = parseFloat(priceInput.value);
 
                 if (model_name && !isNaN(price_per_token)) {
                     data.push({ model_name, price_per_token });
                 }
-            }
+            });
 
             fetch('/admin/billing/model-prices', {
                 method: 'POST',
@@ -625,7 +678,6 @@
         });
 
         loadModelPrices();
-
     </script>
 </body>
 </html>
