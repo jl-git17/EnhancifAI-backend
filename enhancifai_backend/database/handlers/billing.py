@@ -31,7 +31,7 @@ class BillingDbCore:
             ORDER BY rl.log_timestamp DESC;
         """)
         data = (user_id,)
-        return read_db.do('select_all', sql=sql, data=data)
+        return read_db.do('select', sql=sql, data=data)
 
     @classmethod
     def get_monthly_balance(cls, user_id):
@@ -75,7 +75,7 @@ class BillingDbCore:
             GROUP BY ai_model_name, mp.price_per_token;
         """)
         data = (user_id,)
-        return read_db.do('select_all', sql=sql, data=data)
+        return read_db.do('select', sql=sql, data=data)
 
     @classmethod
     def get_invoice_history(cls, user_id):
@@ -94,7 +94,7 @@ class BillingDbCore:
             ORDER BY si.created_at DESC;
         """)
         data = (user_id,)
-        return read_db.do('select_all', sql=sql, data=data)
+        return read_db.do('select', sql=sql, data=data)
 
     @classmethod
     def get_stripe_customer_id(cls, user_id):
@@ -162,7 +162,7 @@ class BillingDbCore:
                 ORDER BY model_name, effective_date DESC;
             """)
             data = ()
-        return read_db.do('select_all', sql=sql, data=data)
+        return read_db.do('select', sql=sql, data=data)
     
     @classmethod
     def get_invoice_by_id(cls, user_id, invoice_id):
