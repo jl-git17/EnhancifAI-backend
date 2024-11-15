@@ -58,6 +58,7 @@ async def get_usage_history(
         usage_history = BillingDbCore.get_usage_history(user_id)
         return JSONResponse(status_code=200, content={"usage_history": usage_history})
     except Exception as e:
+        print(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.get("/billing/usage/download", tags=["Billing"])
@@ -112,6 +113,7 @@ async def download_usage_history(
                 status_code=400, detail="Invalid file format. Choose 'csv' or 'pdf'."
             )
     except Exception as e:
+        print(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.get("/billing/monthly-balance", tags=["Billing"])
@@ -150,6 +152,7 @@ async def get_monthly_balance(
         monthly_balance = BillingDbCore.get_monthly_balance(user_id)
         return JSONResponse(status_code=200, content={"monthly_balance": monthly_balance})
     except Exception as e:
+        print(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.get("/billing/usage-by-model", tags=["Billing"])
@@ -195,6 +198,7 @@ async def get_usage_by_model(
         usage_by_model = BillingDbCore.get_usage_by_model(user_id)
         return JSONResponse(status_code=200, content={"usage_by_model": usage_by_model})
     except Exception as e:
+        print(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.get("/billing/invoice-history", tags=["Billing"])
@@ -242,6 +246,7 @@ async def get_invoice_history(
         invoice_history = BillingDbCore.get_invoice_history(user_id)
         return JSONResponse(status_code=200, content={"invoice_history": invoice_history})
     except Exception as e:
+        print(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.get("/billing/invoice/download/{invoice_id}", tags=["Billing"])
@@ -294,6 +299,7 @@ async def download_invoice(
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
     except Exception as e:
+        print(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.post("/billing/invoice/pay/{invoice_id}", tags=["Billing"])
@@ -374,6 +380,7 @@ async def pay_invoice(
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
     except Exception as e:
+        print(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
         
 @router.post("/stripe/webhook", tags=["Stripe"])
@@ -473,4 +480,5 @@ async def get_rate_card(
         rates = BillingDbCore.get_rate_card(month, year)
         return JSONResponse(status_code=200, content={"rates": rates})
     except Exception as e:
+        print(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
