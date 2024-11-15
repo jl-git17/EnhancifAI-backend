@@ -29,7 +29,7 @@ def seconds_to_hms(seconds):
     return f"{int(hours):02}:{int(minutes):02}:{seconds:06.3f}"
 
 
-async def is_user_admin(user_id):
+async def is_user_admin(_):
     #return UsersDbCore.is_user_admin(user_id)
     return True
 

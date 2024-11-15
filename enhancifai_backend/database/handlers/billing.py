@@ -87,7 +87,7 @@ class BillingDbCore:
                 si.created_at AS date,
                 si.invoice_id AS invoice_number,
                 si.amount AS invoice_amount,
-                si.updated_at AS payment_date,
+                si.created_at AS payment_date,
                 si.status AS payment_status
             FROM enhancifai.stripe_invoices si
             WHERE si.user_id = %s
@@ -163,7 +163,7 @@ class BillingDbCore:
             """)
             data = ()
         return read_db.do('select', sql=sql, data=data)
-    
+
     @classmethod
     def get_invoice_by_id(cls, user_id, invoice_id):
         """
@@ -174,7 +174,7 @@ class BillingDbCore:
                 si.created_at AS date,
                 si.invoice_id AS invoice_number,
                 si.amount AS invoice_amount,
-                si.updated_at AS payment_date,
+                si.created_at AS payment_date,
                 si.status AS payment_status
             FROM enhancifai.stripe_invoices si
             WHERE si.user_id = %s AND si.invoice_id = %s;
