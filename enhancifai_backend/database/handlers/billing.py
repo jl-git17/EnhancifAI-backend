@@ -129,10 +129,15 @@ class BillingDbCore:
         """
         Update the status of an invoice.
         """
-        sql = schemafy("UPDATE enhancifai.stripe_invoices SET status = %s, updated_at = NOW() WHERE invoice_id = %s;")
-        data = (status, invoice_id)
-        write_db.do('execute', sql=sql, data=data)
-    
+        if status == 'paid':
+            sql = schemafy("UPDATE enhancifai.stripe_invoices SET status = %s, paid_at = NOW() WHERE invoice_id = %s;")
+            data = (status, invoice_id)
+            write_db.do('execute', sql=sql, data=data)
+        elif status == 'failed':
+            sql = schemafy("UPDATE enhancifai.stripe_invoices SET status = %s WHERE invoice_id = %s;")
+            data = (status, invoice_id)
+            write_db.do('execute', sql=sql, data=data)
+
     @classmethod
     def get_rate_card(cls, month: Optional[int], year: Optional[int]):
         """
