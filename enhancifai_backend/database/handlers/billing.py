@@ -17,7 +17,7 @@ class BillingDbCore:
         """
         sql = schemafy("""
             SELECT 
-                rl.log_timestamp AS execution_time,
+                TO_CHAR(rl.log_timestamp, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS execution_time,
                 rl.filename AS uploaded_file_name,
                 r.source_type AS type,
                 rl.num_rows_processed AS number_of_rows,
@@ -84,10 +84,10 @@ class BillingDbCore:
         """
         sql = schemafy("""
             SELECT 
-                si.created_at AS date,
+                TO_CHAR(si.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS date,
                 si.invoice_id AS invoice_number,
                 si.amount AS invoice_amount,
-                si.created_at AS payment_date,
+                TO_CHAR(si.paid_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS payment_date,
                 si.status AS payment_status
             FROM enhancifai.stripe_invoices si
             WHERE si.user_id = %s
@@ -163,7 +163,7 @@ class BillingDbCore:
             """)
             data = ()
         return read_db.do('select', sql=sql, data=data)
-
+    
     @classmethod
     def get_invoice_by_id(cls, user_id, invoice_id):
         """
@@ -171,10 +171,10 @@ class BillingDbCore:
         """
         sql = schemafy("""
             SELECT 
-                si.created_at AS date,
+                TO_CHAR(si.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS date,
                 si.invoice_id AS invoice_number,
                 si.amount AS invoice_amount,
-                si.created_at AS payment_date,
+                TO_CHAR(si.paid_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS payment_date,
                 si.status AS payment_status
             FROM enhancifai.stripe_invoices si
             WHERE si.user_id = %s AND si.invoice_id = %s;

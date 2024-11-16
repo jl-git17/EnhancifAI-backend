@@ -94,3 +94,6 @@ INSERT INTO enhancifai_dev.model_price_history (
     ('gpt-4o-mini', 0.0001, CURRENT_DATE)
 ON CONFLICT (model_name, effective_date) 
 DO NOTHING;
+
+ALTER TABLE enhancifai.stripe_invoices
+ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP;
