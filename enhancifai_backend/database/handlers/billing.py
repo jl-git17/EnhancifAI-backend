@@ -149,7 +149,7 @@ class BillingDbCore:
                 SELECT
                     model_name,
                     price_per_token,
-                    effective_date
+                    TO_CHAR(effective_date, 'YYYY-MM-DD') AS effective_date
                 FROM enhancifai.model_price_history
                 WHERE EXTRACT(MONTH FROM effective_date) = %s
                   AND EXTRACT(YEAR FROM effective_date) = %s
@@ -162,7 +162,7 @@ class BillingDbCore:
                 SELECT DISTINCT ON (model_name)
                     model_name,
                     price_per_token,
-                    effective_date
+                    TO_CHAR(effective_date, 'YYYY-MM-DD') AS effective_date
                 FROM enhancifai.model_price_history
                 ORDER BY model_name, effective_date DESC;
             """)
