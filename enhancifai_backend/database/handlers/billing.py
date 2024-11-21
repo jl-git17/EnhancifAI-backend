@@ -76,6 +76,83 @@ class BillingDbCore:
         """)
         data = (user_id,)
         return read_db.do('select', sql=sql, data=data)
+    
+    @classmethod
+    def create_invoice(cls, user_id, amount, description, billing_period_start, billing_period_end):
+        """
+        Create an invoice and save it in the database.
+
+        Args:
+            user_id (int): The user's ID.
+            amount (int): The total amount in cents.
+            description (str): Description of the invoice.
+            billing_period_start (date): Start of the billing period.
+            billing_period_end (date): End of the billing period.
+
+        Returns:
+            dict: A dictionary containing the created invoice details.
+        """
+        try:
+            sql = schemafy("""
+                INSERT INTO enhancifai.stripe_invoices (
+                    invoice_id,
+                    user_id,
+                    amount,
+                    status,
+                    created_at,
+                    billing_period_start,
+                    billing_period_end,
+                    metadata
+                ) VALUES (
+                    DEFAULT, -- Auto-generate the invoice ID if not provided
+                    %s, %s, 'open', NOW(), %s, %s, %s
+                ) RETURNING invoice_id, amount, status, created_at, billing_period_start, billing_period_end;
+            """)
+            data = (user_id, amount, billing_period_start, billing_period_end, {'description': description})
+            result = write_db.do('execute_returning', sql=sql, data=data)
+
+            return {
+                'id': result['invoice_id'],
+                'amount': result['amount'],
+                'status': result['status'],
+                'created_at': result['created_at'],
+                'billing_period_start': result['billing_period_start'],
+                'billing_period_end': result['billing_period_end'],
+            }
+
+        except Exception as e:
+            raise RuntimeError(f"Failed to create invoice for user {user_id}: {str(e)}")
+    
+    @classmethod
+    def invoice_exists(cls, user_id, billing_period_start, billing_period_end):
+        """
+        Check if an invoice exists for a user and billing period.
+
+        Args:
+            user_id (int): The user's ID.
+            billing_period_start (date): Start of the billing period.
+            billing_period_end (date): End of the billing period.
+
+        Returns:
+            bool: True if an invoice exists, False otherwise.
+        """
+        try:
+            sql = schemafy("""
+                SELECT 1
+                FROM enhancifai.stripe_invoices
+                WHERE user_id = %s
+                AND billing_period_start = %s
+                AND billing_period_end = %s;
+            """)
+            data = (user_id, billing_period_start, billing_period_end)
+            result = read_db.do('select_one', sql=sql, data=data)
+
+            return result is not None  # If result is not None, invoice exists
+
+        except Exception as e:
+            raise RuntimeError(f"Error checking if invoice exists for user {user_id}: {str(e)}")
+
+
 
     @classmethod
     def get_invoice_history(cls, user_id):

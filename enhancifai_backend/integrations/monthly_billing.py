@@ -3,6 +3,7 @@
 import logging
 from datetime import datetime, timedelta
 from enhancifai_backend.database.access import read_db
+from enhancifai_backend.database.handlers.billing import BillingDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.database.handlers.stripe import StripeDbCore
 from enhancifai_backend.database.handlers.utils import schemafy
@@ -66,7 +67,7 @@ def get_user_token_usage_pi(user_id: int, start_date: datetime, end_date: dateti
 def generate_monthly_invoices():
     """
     Generate monthly invoices for all users based on their token usage in the previous month.
-    Ensures that no duplicate invoices are sent for the same billing period.
+    Stores invoice details in the database without making any Stripe API calls.
     """
     try:
         # Determine the start and end of the previous month
@@ -91,7 +92,7 @@ def generate_monthly_invoices():
             user_id = user['user_id']
             try:
                 # Check if an invoice already exists for this billing period
-                invoice_exists = StripeDbCore.invoice_exists(
+                invoice_exists = BillingDbCore.invoice_exists(
                     user_id, first_day_of_previous_month, first_day_of_current_month
                 )
 
@@ -128,13 +129,13 @@ def generate_monthly_invoices():
                     f"{tokens_pi} PI tokens for {first_day_of_previous_month.strftime('%B %Y')}"
                 )
 
-                # Create and send the invoice
-                invoice = StripeDbCore.create_invoice(
+                # Store the invoice in the database
+                invoice_id = BillingDbCore.create_invoice(
                     user_id, amount, description, first_day_of_previous_month, first_day_of_current_month
                 )
                 logger.info(
-                    "Created invoice %s for user %s: $%.2f",
-                    invoice['id'],
+                    "Stored invoice %s for user %s: $%.2f",
+                    invoice_id,
                     user_id,
                     amount / 100
                 )
