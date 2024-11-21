@@ -109,7 +109,7 @@ class BillingDbCore:
                     %s, %s, 'open', NOW(), %s, %s, %s
                 ) RETURNING invoice_id, amount, status, created_at, billing_period_start, billing_period_end;
             """)
-            data = (user_id, amount, billing_period_start, billing_period_end, json.loads({'description': description}))
+            data = (user_id, amount, billing_period_start, billing_period_end, json.dumps({'description': description}))
             result = write_db.do('execute', sql=sql, data=data)
 
             return {
