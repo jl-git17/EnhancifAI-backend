@@ -1,6 +1,7 @@
 # enhancifai_backend/database/handlers/billing.py
 
 from datetime import datetime
+import json
 from typing import Optional
 from enhancifai_backend.database.access import read_db, write_db
 from enhancifai_backend.database.handlers.utils import schemafy
@@ -108,7 +109,7 @@ class BillingDbCore:
                     %s, %s, 'open', NOW(), %s, %s, %s
                 ) RETURNING invoice_id, amount, status, created_at, billing_period_start, billing_period_end;
             """)
-            data = (user_id, amount, billing_period_start, billing_period_end, {'description': description})
+            data = (user_id, amount, billing_period_start, billing_period_end, json.loads({'description': description}))
             result = write_db.do('execute', sql=sql, data=data)
 
             return {
