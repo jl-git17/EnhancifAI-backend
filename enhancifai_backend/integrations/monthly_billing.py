@@ -16,9 +16,9 @@ logger = logging.getLogger(__name__)
 PRICE_PER_TOKEN_STANDARD = 0.0001  # $0.0001 per standard token
 PRICE_PER_TOKEN_PI = 0.0001       # $0.00015 per PI token (adjust as needed)
 
-def calculate_amount(tokens_standard: int, tokens_pi: int) -> float:
+def calculate_amount(tokens_standard: int, tokens_pi: int) -> int:
     """
-    Calculate the total amount based on standard and PI tokens used.
+    Calculate the total amount in cents based on standard and PI tokens used.
 
     Args:
         tokens_standard (int): Number of standard tokens used.
@@ -28,9 +28,9 @@ def calculate_amount(tokens_standard: int, tokens_pi: int) -> float:
         int: Total amount in cents.
     """
     # tokens priced per 1,000
-    amount_standard = float((tokens_standard/1000)) * PRICE_PER_TOKEN_STANDARD  # Convert to cents
-    amount_pi = float((tokens_pi/1000)) * PRICE_PER_TOKEN_PI                  # Convert to cents
-    total_amount = amount_standard + amount_pi
+    amount_standard = (tokens_standard/1000) * PRICE_PER_TOKEN_STANDARD * 100  # Convert to cents
+    amount_pi = (tokens_pi/1000) * PRICE_PER_TOKEN_PI * 100                  # Convert to cents
+    total_amount = int(amount_standard + amount_pi)
     return total_amount
 
 def get_user_token_usage_pi(user_id: int, start_date: datetime, end_date: datetime) -> int:
@@ -138,7 +138,7 @@ def generate_monthly_invoices():
                     "Stored invoice %s for user %s: $%.2f",
                     invoice_id,
                     user_id,
-                    amount
+                    amount / 100
                 )
 
             except Exception as e:
