@@ -27,8 +27,9 @@ def calculate_amount(tokens_standard: int, tokens_pi: int) -> int:
     Returns:
         int: Total amount in cents.
     """
-    amount_standard = tokens_standard * PRICE_PER_TOKEN_STANDARD * 100  # Convert to cents
-    amount_pi = tokens_pi * PRICE_PER_TOKEN_PI * 100                  # Convert to cents
+    # tokens priced per 1,000
+    amount_standard = (tokens_standard/1000) * PRICE_PER_TOKEN_STANDARD * 100  # Convert to cents
+    amount_pi = (tokens_pi/1000) * PRICE_PER_TOKEN_PI * 100                  # Convert to cents
     total_amount = int(amount_standard + amount_pi)
     return total_amount
 
