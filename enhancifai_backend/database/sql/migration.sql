@@ -97,3 +97,6 @@ DO NOTHING;
 
 ALTER TABLE enhancifai.stripe_invoices
 ADD COLUMN IF NOT EXISTS paid_at TIMESTAMP;
+
+ALTER TABLE enhancifai.stripe_invoices
+ALTER COLUMN amount TYPE FLOAT USING amount::FLOAT;
