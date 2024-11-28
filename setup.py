@@ -19,7 +19,7 @@ setup(
     long_description=open('README.md', 'r', encoding='UTF-8').read(),
     packages=find_packages(exclude=['scripts']),
     install_requires=[
-        'openai',
+        'openai == 1.12.0',
         'pandas',
         'fastapi',
         'uvicorn',
