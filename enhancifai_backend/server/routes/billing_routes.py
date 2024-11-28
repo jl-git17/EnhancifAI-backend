@@ -138,7 +138,7 @@ async def download_invoice(
         <body>
             <h1>Invoice #{invoice['invoice_number']}</h1>
             <p>Date: {invoice['date']}</p>
-            <p>Amount: ${invoice['invoice_amount']:.2f}</p>
+            <p>Amount: ${invoice['invoice_amount']}</p>
             <p>Status: {invoice['payment_status']}</p>
             <!-- Add more invoice details as needed -->
         </body>
