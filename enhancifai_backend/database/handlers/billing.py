@@ -24,7 +24,7 @@ class BillingDbCore:
                 rl.num_rows_processed AS number_of_rows,
                 rl.num_tokens AS total_tokens,
                 mp.price_per_token AS cost_per_token,
-                (rl.num_tokens * mp.price_per_token) AS total_cost
+                (rl.num_tokens * mp.price_per_token) / 1000 AS total_cost  -- Adjusted for per 1000 tokens
             FROM enhancifai.run_logs rl
             JOIN enhancifai.runs r ON rl.run_id = r.id
             LEFT JOIN enhancifai.model_prices mp ON rl.engine_model = mp.model_name
@@ -42,7 +42,7 @@ class BillingDbCore:
         sql = schemafy("""
             SELECT 
                 TO_CHAR(NOW(), 'YYYY-MM') AS billing_month,
-                SUM(rl.num_tokens * mp.price_per_token) AS total_monthly_cost
+                SUM(rl.num_tokens * mp.price_per_token) / 1000 AS total_monthly_cost
             FROM enhancifai.run_logs rl
             JOIN enhancifai.runs r ON rl.run_id = r.id
             LEFT JOIN enhancifai.model_prices mp ON rl.engine_model = mp.model_name
@@ -68,7 +68,7 @@ class BillingDbCore:
                 rl.engine_model AS ai_model_name,
                 SUM(rl.num_tokens) AS tokens_used,
                 mp.price_per_token,
-                SUM(rl.num_tokens * mp.price_per_token) AS total_cost
+                SUM(rl.num_tokens * mp.price_per_token) / 1000 AS total_cost
             FROM enhancifai.run_logs rl
             JOIN enhancifai.runs r ON rl.run_id = r.id
             LEFT JOIN enhancifai.model_prices mp ON rl.engine_model = mp.model_name
