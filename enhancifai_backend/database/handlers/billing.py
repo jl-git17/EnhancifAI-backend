@@ -83,7 +83,7 @@ class BillingDbCore:
             SELECT 
                 rl.engine_model AS ai_model_name,
                 SUM(rl.num_tokens) AS tokens_used,
-                mp.price_per_token,
+                (mp.price_per_token)/1000 AS price_per_token,
                 SUM(rl.num_tokens * mp.price_per_token) AS total_cost
             FROM enhancifai.run_logs rl
             JOIN enhancifai.runs r ON rl.run_id = r.id
