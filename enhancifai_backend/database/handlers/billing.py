@@ -201,7 +201,7 @@ class BillingDbCore:
         # Convert invoice_amount to dollars, rounded to two decimal places
         invoice_history = []
         for record in raw_records:
-            record['invoice_amount'] = float((Decimal(record['invoice_amount']) / 100).quantize(Decimal('0.01')))
+            record['invoice_amount'] = float((Decimal(record['invoice_amount'])).quantize(Decimal('0.01')))
             # Handle possible None for payment_date
             if record['payment_date']:
                 record['payment_date'] = record['payment_date']
