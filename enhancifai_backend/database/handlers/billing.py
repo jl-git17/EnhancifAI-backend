@@ -3,6 +3,7 @@
 from datetime import datetime
 import json
 from typing import Optional
+from decimal import Decimal
 from enhancifai_backend.database.access import read_db, write_db
 from enhancifai_backend.database.handlers.utils import schemafy
 
@@ -15,6 +16,7 @@ class BillingDbCore:
     def get_usage_history(cls, user_id):
         """
         Retrieve the history of Enhancifai executions and token consumption for a user.
+        Returns amounts in dollars as floats rounded to two decimal places.
         """
         sql = schemafy("""
             SELECT 
@@ -24,7 +26,7 @@ class BillingDbCore:
                 rl.num_rows_processed AS number_of_rows,
                 rl.num_tokens AS total_tokens,
                 mp.price_per_token AS cost_per_token,
-                (rl.num_tokens * mp.price_per_token) / 1000 AS total_cost  -- Adjusted for per 1000 tokens
+                (rl.num_tokens * mp.price_per_token) AS total_cost  -- Since price is per single token
             FROM enhancifai.run_logs rl
             JOIN enhancifai.runs r ON rl.run_id = r.id
             LEFT JOIN enhancifai.model_prices mp ON rl.engine_model = mp.model_name
@@ -32,17 +34,27 @@ class BillingDbCore:
             ORDER BY rl.log_timestamp DESC;
         """)
         data = (user_id,)
-        return read_db.do('select', sql=sql, data=data)
+        raw_records = read_db.do('select', sql=sql, data=data)
+
+        # Convert total_cost to dollars, rounded to two decimal places
+        usage_history = []
+        for record in raw_records:
+            record['cost_per_token'] = float(Decimal(record['cost_per_token']).quantize(Decimal('0.0001')))
+            record['total_cost'] = float((Decimal(record['total_cost'])).quantize(Decimal('0.01')))
+            usage_history.append(record)
+
+        return usage_history
 
     @classmethod
     def get_monthly_balance(cls, user_id):
         """
-        Provide the current monthly balance for the user, including the breakdown of tokens used per AI model.
+        Provide the current monthly balance for the user, including the total cost for the current month.
+        Returns amounts in dollars as floats rounded to two decimal places.
         """
         sql = schemafy("""
             SELECT 
-                TO_CHAR(NOW(), 'YYYY-MM') AS billing_month,
-                SUM(rl.num_tokens * mp.price_per_token) / 1000 AS total_monthly_cost
+                TO_CHAR(DATE_TRUNC('month', NOW()), 'YYYY-MM') AS billing_month,
+                SUM(rl.num_tokens * mp.price_per_token) AS total_monthly_cost
             FROM enhancifai.run_logs rl
             JOIN enhancifai.runs r ON rl.run_id = r.id
             LEFT JOIN enhancifai.model_prices mp ON rl.engine_model = mp.model_name
@@ -56,19 +68,23 @@ class BillingDbCore:
                 "billing_month": datetime.now().strftime("%Y-%m"),
                 "total_monthly_cost": 0.0
             }
-        return result
+        return {
+            "billing_month": result['billing_month'],
+            "total_monthly_cost": float(Decimal(result['total_monthly_cost']).quantize(Decimal('0.01')))
+        }
 
     @classmethod
     def get_usage_by_model(cls, user_id):
         """
         Aggregate data by AI model, including tokens used, price per token, and total monthly cost for each model.
+        Returns amounts in dollars as floats rounded to two decimal places.
         """
         sql = schemafy("""
             SELECT 
                 rl.engine_model AS ai_model_name,
                 SUM(rl.num_tokens) AS tokens_used,
                 mp.price_per_token,
-                SUM(rl.num_tokens * mp.price_per_token) / 1000 AS total_cost
+                SUM(rl.num_tokens * mp.price_per_token) AS total_cost
             FROM enhancifai.run_logs rl
             JOIN enhancifai.runs r ON rl.run_id = r.id
             LEFT JOIN enhancifai.model_prices mp ON rl.engine_model = mp.model_name
@@ -76,16 +92,25 @@ class BillingDbCore:
             GROUP BY ai_model_name, mp.price_per_token;
         """)
         data = (user_id,)
-        return read_db.do('select', sql=sql, data=data)
-    
+        raw_records = read_db.do('select', sql=sql, data=data)
+
+        # Convert total_cost to dollars, rounded to two decimal places
+        usage_by_model = []
+        for record in raw_records:
+            record['price_per_token'] = float(Decimal(record['price_per_token']).quantize(Decimal('0.0001')))
+            record['total_cost'] = float((Decimal(record['total_cost'])).quantize(Decimal('0.01')))
+            usage_by_model.append(record)
+
+        return usage_by_model
+
     @classmethod
-    def create_invoice(cls, user_id, amount, description, billing_period_start, billing_period_end):
+    def create_invoice(cls, user_id, amount_cents, description, billing_period_start, billing_period_end):
         """
         Create an invoice and save it in the database.
 
         Args:
             user_id (int): The user's ID.
-            amount (int): The total amount in cents.
+            amount_cents (int): The total amount in cents.
             description (str): Description of the invoice.
             billing_period_start (date): Start of the billing period.
             billing_period_end (date): End of the billing period.
@@ -109,12 +134,12 @@ class BillingDbCore:
                     %s, %s, 'open', NOW(), %s, %s, %s
                 ) RETURNING invoice_id, amount, status, created_at, billing_period_start, billing_period_end;
             """)
-            data = (user_id, amount, billing_period_start, billing_period_end, json.dumps({'description': description}))
+            data = (user_id, amount_cents, billing_period_start, billing_period_end, json.dumps({'description': description}))
             result = write_db.do('execute', sql=sql, data=data)
 
             return {
                 'id': result['invoice_id'],
-                'amount': result['amount'],
+                'amount' : Decimal(Decimal(result['amount']) / 100).quantize(Decimal('0.01')),
                 'status': result['status'],
                 'created_at': result['created_at'],
                 'billing_period_start': result['billing_period_start'],
@@ -123,7 +148,7 @@ class BillingDbCore:
 
         except Exception as e:
             raise RuntimeError(f"Failed to create invoice for user {user_id}: {str(e)}")
-    
+
     @classmethod
     def invoice_exists(cls, user_id, billing_period_start, billing_period_end):
         """
@@ -153,12 +178,11 @@ class BillingDbCore:
         except Exception as e:
             raise RuntimeError(f"Error checking if invoice exists for user {user_id}: {str(e)}")
 
-
-
     @classmethod
     def get_invoice_history(cls, user_id):
         """
         Retrieve invoice data, including date, invoice number, invoice amount, payment date, and status.
+        Returns amounts in dollars as floats rounded to two decimal places.
         """
         sql = schemafy("""
             SELECT 
@@ -172,7 +196,20 @@ class BillingDbCore:
             ORDER BY si.created_at DESC;
         """)
         data = (user_id,)
-        return read_db.do('select', sql=sql, data=data)
+        raw_records = read_db.do('select', sql=sql, data=data)
+
+        # Convert invoice_amount to dollars, rounded to two decimal places
+        invoice_history = []
+        for record in raw_records:
+            record['invoice_amount'] = float((Decimal(record['invoice_amount']) / 100).quantize(Decimal('0.01')))
+            # Handle possible None for payment_date
+            if record['payment_date']:
+                record['payment_date'] = record['payment_date']
+            else:
+                record['payment_date'] = None
+            invoice_history.append(record)
+
+        return invoice_history
 
     @classmethod
     def get_stripe_customer_id(cls, user_id):
@@ -201,7 +238,7 @@ class BillingDbCore:
         sql = schemafy("SELECT email, name FROM enhancifai.users WHERE user_id = %s;")
         data = (user_id,)
         return read_db.do('select_one', sql=sql, data=data)
-    
+
     @classmethod
     def update_invoice_status(cls, invoice_id, status):
         """
@@ -219,7 +256,7 @@ class BillingDbCore:
     @classmethod
     def get_rate_card(cls, month: Optional[int], year: Optional[int]):
         """
-        Retrieve the cost per 1000 tokens for each AI model, supporting historical rates.
+        Retrieve the cost per token for each AI model, supporting historical rates.
         """
         if month and year:
             # Retrieve rates for the specified month and year
@@ -246,11 +283,12 @@ class BillingDbCore:
             """)
             data = ()
         return read_db.do('select', sql=sql, data=data)
-    
+
     @classmethod
     def get_invoice_by_id(cls, user_id, invoice_id):
         """
         Retrieve a specific invoice for a user.
+        Returns amount in dollars as float rounded to two decimal places.
         """
         sql = schemafy("""
             SELECT 
@@ -263,4 +301,33 @@ class BillingDbCore:
             WHERE si.user_id = %s AND si.invoice_id = %s;
         """)
         data = (user_id, invoice_id)
-        return read_db.do('select_one', sql=sql, data=data)
+        record = read_db.do('select_one', sql=sql, data=data)
+        if record:
+            record['invoice_amount'] = float((Decimal(record['invoice_amount']) / 100).quantize(Decimal('0.01')))
+        return record
+
+    @classmethod
+    def get_price_per_token(cls, model_name: str, effective_date: datetime) -> Optional[Decimal]:
+        """
+        Retrieve the price per token for a specific model effective on a given date.
+
+        Args:
+            model_name (str): The name of the AI model (e.g., 'standard', 'pi').
+            effective_date (datetime): The date for which to fetch the rate.
+
+        Returns:
+            Optional[Decimal]: The price per token if found, else None.
+        """
+        sql = schemafy("""
+            SELECT price_per_token
+            FROM enhancifai.model_price_history
+            WHERE model_name = %s
+              AND effective_date <= %s
+            ORDER BY effective_date DESC
+            LIMIT 1;
+        """)
+        data = (model_name, effective_date)
+        result = read_db.do('select_one', sql=sql, data=data)
+        if result and result['price_per_token']:
+            return Decimal(result['price_per_token'])
+        return None
