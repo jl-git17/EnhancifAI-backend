@@ -139,7 +139,7 @@ class BillingDbCore:
 
             return {
                 'id': result['invoice_id'],
-                'amount' : Decimal(Decimal(result['amount']) / 100).quantize(Decimal('0.01')),
+                'amount' : Decimal(Decimal(result['amount'])).quantize(Decimal('0.01')),
                 'status': result['status'],
                 'created_at': result['created_at'],
                 'billing_period_start': result['billing_period_start'],
@@ -303,7 +303,7 @@ class BillingDbCore:
         data = (user_id, invoice_id)
         record = read_db.do('select_one', sql=sql, data=data)
         if record:
-            record['invoice_amount'] = float((Decimal(record['invoice_amount']) / 100).quantize(Decimal('0.01')))
+            record['invoice_amount'] = float((Decimal(record['invoice_amount'])).quantize(Decimal('0.01')))
         return record
 
     @classmethod
