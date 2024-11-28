@@ -283,7 +283,7 @@ async def download_invoice(
         <html>
         <body>
             <h1>Invoice #{invoice['invoice_number']}</h1>
-            <p>Date: {invoice['date'].strftime('%Y-%m-%d')}</p>
+            <p>Date: {invoice['date']}</p>
             <p>Amount: ${invoice['invoice_amount']/100:.2f}</p>
             <p>Status: {invoice['payment_status']}</p>
             <!-- Add more invoice details as needed -->
