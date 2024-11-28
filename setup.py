@@ -10,8 +10,6 @@ from setuptools import find_packages, setup
 assert sys.version_info[0] == 3 and sys.version_info[1] >= 10, \
     "AI CSV Processor requires Python 3.10 or newer"
 
-# TODO: freeze packages
-
 setup(
     name='enhancifai_backend',
     version='1.3.0',
@@ -19,10 +17,10 @@ setup(
     long_description=open('README.md', 'r', encoding='UTF-8').read(),
     packages=find_packages(exclude=['scripts']),
     install_requires=[
-        'openai == 1.12.0',
-        'pandas',
-        'fastapi',
-        'uvicorn',
+        'openai == 1.55.2',
+        'pandas == 2.2.3',
+        'fastapi == 0.115.5',
+        'uvicorn == 0.32.1',
         'python-multipart',
         'apscheduler',
         'fastapi[security]',
@@ -30,17 +28,17 @@ setup(
         'google-auth-httplib2',
         'google-auth-oauthlib',
         'google-auth',
-        'PyJWT',
+        'PyJWT == 2.10.1',
         'psycopg2-binary',
         'pydantic[email]',
-        'sendgrid',
-        'openpyxl',
-        'gspread',
+        'sendgrid == 6.11.0',
+        'openpyxl == 3.1.5',
+        'gspread == 4.0.0',
         'gspread-dataframe',
-        'oauth2client',
+        'oauth2client == 4.1.3',
         'google-generativeai',
-        'aiofiles',
-        'stripe',
+        'aiofiles == 24.1.0',
+        'stripe == 11.3.0',
         'WeasyPrint'
     ],
     entry_points={
