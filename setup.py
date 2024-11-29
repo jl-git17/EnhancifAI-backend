@@ -39,7 +39,9 @@ setup(
         'google-generativeai',
         'aiofiles == 24.1.0',
         'stripe == 11.3.0',
-        'WeasyPrint'
+        'WeasyPrint',
+        'requests',
+        'httpx<0.23.0',
     ],
     entry_points={
         'console_scripts': [
