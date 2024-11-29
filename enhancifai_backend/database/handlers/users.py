@@ -197,7 +197,7 @@ class UsersDbCore:
         """
         try:
             sql = schemafy("""
-                SELECT date_joined
+                SELECT created_at
                 FROM enhancifai.users
                 WHERE user_id = %s;
             """)
