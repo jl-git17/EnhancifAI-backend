@@ -1,4 +1,3 @@
-
 import logging
 from datetime import datetime, timedelta
 from decimal import Decimal
@@ -67,7 +66,9 @@ def get_user_token_usage_pi(user_id: int, start_date: datetime, end_date: dateti
 
 def generate_monthly_invoices():
     """
-    Generate monthly invoices for all users based on their token usage in the previous month.
+    Generate monthly invoices for all users based on their token usage.
+    If a user has no invoices, generate invoices monthly from their date of joining.
+    Otherwise, generate an invoice for the last month only.
     Stores invoice details in the database without making any Stripe API calls.
     """
     try:
@@ -78,7 +79,7 @@ def generate_monthly_invoices():
         first_day_of_previous_month = last_day_of_previous_month.replace(day=1)
 
         logger.info(
-            "Generating invoices for the period: %s to %s",
+            "Generating invoices up to the period: %s to %s",
             first_day_of_previous_month,
             first_day_of_current_month
         )
@@ -92,71 +93,111 @@ def generate_monthly_invoices():
         for user in users:
             user_id = user['user_id']
             try:
-                # Check if an invoice already exists for this billing period
-                invoice_exists = BillingDbCore.invoice_exists(
-                    user_id, first_day_of_previous_month, first_day_of_current_month
-                )
+                # Check if any invoice exists for this user
+                any_invoice = BillingDbCore.has_any_invoice(user_id)
 
-                if invoice_exists:
+                if not any_invoice:
+                    # User has no invoices, generate invoices from joining date
+                    date_joined = UsersDbCore.get_date_joined(user_id)
+                    if not date_joined:
+                        logger.error(
+                            "Could not retrieve date of joining for user %s. Skipping.",
+                            user_id
+                        )
+                        continue  # Skip if date of joining is unavailable
+
+                    # Normalize to first day of joining month
+                    current_start = date_joined.replace(day=1)
+                else:
+                    # User has existing invoices, generate invoice for last month only
+                    current_start = first_day_of_previous_month
+
+                # Determine the end date for invoice generation
+                while current_start <= first_day_of_previous_month:
+                    current_end = (current_start + timedelta(days=32)).replace(day=1)
+                    # Adjust if current_end exceeds the last day to invoice
+                    if current_end > first_day_of_current_month:
+                        current_end = first_day_of_current_month
+
                     logger.info(
-                        "User %s has already received an invoice for this period. Skipping.",
-                        user_id
+                        "Generating invoice for user %s for period: %s to %s",
+                        user_id,
+                        current_start,
+                        current_end
                     )
-                    continue  # Skip users who already have an invoice for this period
 
-                # Get total standard tokens used by the user in the previous month
-                tokens_standard = UsersDbCore.get_user_token_usage(
-                    user_id, first_day_of_previous_month, first_day_of_current_month
-                )
-
-                # Get total PI tokens used by the user in the previous month
-                tokens_pi = get_user_token_usage_pi(
-                    user_id, first_day_of_previous_month, first_day_of_current_month
-                )
-
-                total_tokens = tokens_standard + tokens_pi
-
-                if total_tokens <= 0:
-                    logger.info(
-                        "User %s has no token usage for the month. Skipping invoice.",
-                        user_id
+                    # Check if an invoice already exists for this period
+                    invoice_exists = BillingDbCore.invoice_exists(
+                        user_id, current_start, current_end
                     )
-                    continue  # Skip users with no token usage
 
-                # Fetch rates from the database
-                rate_standard = BillingDbCore.get_price_per_token(
-                    model_name='standard',
-                    effective_date=first_day_of_previous_month
-                )
-                rate_pi = BillingDbCore.get_price_per_token(
-                    model_name='pi',
-                    effective_date=first_day_of_previous_month
-                )
+                    if invoice_exists:
+                        logger.info(
+                            "User %s already has an invoice for %s to %s. Skipping.",
+                            user_id,
+                            current_start,
+                            current_end
+                        )
+                    else:
+                        # Get total standard tokens used by the user in the billing period
+                        tokens_standard = UsersDbCore.get_user_token_usage(
+                            user_id, current_start, current_end
+                        )
 
-                if rate_standard is None or rate_pi is None:
-                    logger.error(
-                        "Missing pricing information for user %s. Skipping invoice.",
-                        user_id
-                    )
-                    continue  # Skip if pricing information is missing
+                        # Get total PI tokens used by the user in the billing period
+                        tokens_pi = get_user_token_usage_pi(
+                            user_id, current_start, current_end
+                        )
 
-                # Calculate the amount due in cents
-                amount_cents = calculate_amount(tokens_standard, tokens_pi, rate_standard, rate_pi)
-                description = (
-                    f"Monthly token usage: {tokens_standard} standard tokens and "
-                    f"{tokens_pi} PI tokens for {first_day_of_previous_month.strftime('%B %Y')}"
-                )
+                        total_tokens = tokens_standard + tokens_pi
 
-                # Store the invoice in the database
-                invoice = BillingDbCore.create_invoice(
-                    user_id, amount_cents, description, first_day_of_previous_month, first_day_of_current_month
-                )
-                logger.info(
-                    "Stored invoice %s for user %s: $%.2f",
-                    invoice['id'],
-                    user_id,
-                    invoice['amount'] / 100
-                )
+                        if total_tokens <= 0:
+                            logger.info(
+                                "User %s has no token usage for %s to %s. Skipping invoice.",
+                                user_id,
+                                current_start,
+                                current_end
+                            )
+                        else:
+                            # Fetch rates from the database
+                            rate_standard = BillingDbCore.get_price_per_token(
+                                model_name='standard',
+                                effective_date=current_start
+                            )
+                            rate_pi = BillingDbCore.get_price_per_token(
+                                model_name='pi',
+                                effective_date=current_start
+                            )
+
+                            if rate_standard is None or rate_pi is None:
+                                logger.error(
+                                    "Missing pricing information for user %s for period %s to %s. Skipping invoice.",
+                                    user_id,
+                                    current_start,
+                                    current_end
+                                )
+                                continue  # Skip if pricing information is missing
+
+                            # Calculate the amount due in cents
+                            amount_cents = calculate_amount(tokens_standard, tokens_pi, rate_standard, rate_pi)
+                            description = (
+                                f"Monthly token usage: {tokens_standard} standard tokens and "
+                                f"{tokens_pi} PI tokens for {current_start.strftime('%B %Y')}"
+                            )
+
+                            # Store the invoice in the database
+                            invoice = BillingDbCore.create_invoice(
+                                user_id, amount_cents, description, current_start, current_end
+                            )
+                            logger.info(
+                                "Stored invoice %s for user %s: $%.2f",
+                                invoice['id'],
+                                user_id,
+                                invoice['amount'] / 100
+                            )
+
+                    # Move to the next month
+                    current_start = current_end
 
             except Exception as e:
                 # Log the error and continue with other users

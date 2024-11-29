@@ -1,5 +1,6 @@
 import time
 from datetime import datetime
+from typing import Optional
 
 from enhancifai_backend.database.access import read_db, write_db
 from enhancifai_backend.database.handlers.utils import schemafy
@@ -182,6 +183,30 @@ class UsersDbCore:
         # Example: Remove expired sessions
         sql = schemafy("DELETE FROM enhancifai.users_sessions WHERE expires_at < NOW();")
         write_db.do('execute', sql=sql)
+    
+    @classmethod
+    def get_date_joined(cls, user_id: int) -> Optional[datetime]:
+        """
+        Retrieve the date when the user joined.
+
+        Args:
+            user_id (int): The user's ID.
+
+        Returns:
+            Optional[datetime]: The date the user joined, or None if not found.
+        """
+        try:
+            sql = schemafy("""
+                SELECT date_joined
+                FROM enhancifai.users
+                WHERE user_id = %s;
+            """)
+            data = (user_id,)
+            result = read_db.do('select_one', sql=sql, data=data)
+            return result['date_joined'] if result else None
+        except Exception as e:
+            print(f"Error fetching date of joining for user {user_id}: {str(e)}",)
+            return None
 
 
 class UsersDbRegisterTokens:
