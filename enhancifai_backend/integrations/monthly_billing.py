@@ -1,11 +1,11 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date, time
 from decimal import Decimal
-from enhancifai_backend.database.access import read_db
+import json
+from enhancifai_backend.database.access import read_db, write_db
 from enhancifai_backend.database.handlers.billing import BillingDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.database.handlers.utils import schemafy
-import json
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -15,15 +15,6 @@ def calculate_amount(tokens_standard: int, tokens_pi: int, rate_standard: Decima
     """
     Calculate the total amount based on standard and PI tokens used.
     Returns the amount in cents.
-
-    Args:
-        tokens_standard (int): Number of standard tokens used.
-        tokens_pi (int): Number of PI tokens used.
-        rate_standard (Decimal): Price per standard token.
-        rate_pi (Decimal): Price per PI token.
-
-    Returns:
-        int: Total amount in cents.
     """
     if tokens_standard < 0 or tokens_pi < 0:
         raise ValueError("Token counts cannot be negative.")
@@ -36,14 +27,6 @@ def calculate_amount(tokens_standard: int, tokens_pi: int, rate_standard: Decima
 def get_user_token_usage_pi(user_id: int, start_date: datetime, end_date: datetime) -> int:
     """
     Retrieve the total number of PI tokens used by the user in the specified period.
-
-    Args:
-        user_id (int): The user's ID.
-        start_date (datetime): Start of the billing period.
-        end_date (datetime): End of the billing period.
-
-    Returns:
-        int: Total PI tokens used.
     """
     try:
         sql = schemafy("""
@@ -73,11 +56,11 @@ def generate_monthly_invoices():
     Stores invoice details in the database without making any Stripe API calls.
     """
     try:
-        # Determine the start and end of the previous month
-        today = datetime.today().date()
-        first_day_of_current_month = today.replace(day=1)
+        # Determine the start and end of the previous month as datetime.datetime objects
+        today = datetime.today()
+        first_day_of_current_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         last_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
-        first_day_of_previous_month = last_day_of_previous_month.replace(day=1)
+        first_day_of_previous_month = last_day_of_previous_month.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
         logger.info(
             "Generating invoices up to the period: %s to %s",
@@ -102,16 +85,25 @@ def generate_monthly_invoices():
                     date_joined = UsersDbCore.get_date_joined(user_id)
                     if not date_joined:
                         logger.error(
-                            f"Could not retrieve date of joining for user {user_id}. Skipping."
+                            "Could not retrieve date of joining for user %s. Skipping.",
+                            user_id
                         )
                         continue  # Skip if date of joining is unavailable
 
-                    # Convert date_joined to date if it's datetime.datetime
-                    if isinstance(date_joined, datetime):
-                        date_joined = date_joined.date()
+                    # Convert date_joined to datetime at midnight if it's a date object
+                    if isinstance(date_joined, date):
+                        date_joined = datetime.combine(date_joined, time.min)
 
-                    # Normalize to first day of joining month
-                    current_start = date_joined.replace(day=1)
+                    # Ensure date_joined is datetime.datetime
+                    if not isinstance(date_joined, datetime):
+                        logger.error(
+                            "Invalid date_joined type for user %s. Skipping.",
+                            user_id
+                        )
+                        continue  # Skip if date_joined is not datetime.datetime
+
+                    # Normalize to first day of joining month at midnight
+                    current_start = date_joined.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
                 else:
                     # User has existing invoices, generate invoice for last month only
                     current_start = first_day_of_previous_month
@@ -125,14 +117,17 @@ def generate_monthly_invoices():
                     else:
                         next_month = current_start.month + 1
                         next_year = current_start.year
-                    current_end = datetime(next_year, next_month, 1).date()
+                    current_end = current_start.replace(year=next_year, month=next_month, day=1)
 
                     # Adjust if current_end exceeds the last day to invoice
                     if current_end > first_day_of_current_month:
                         current_end = first_day_of_current_month
 
                     logger.info(
-                        f"Generating invoice for user {user_id} for period: {current_start} to {current_end}"
+                        "Generating invoice for user %s for period: %s to %s",
+                        user_id,
+                        current_start.strftime('%Y-%m-%d'),
+                        current_end.strftime('%Y-%m-%d')
                     )
 
                     # Check if an invoice already exists for this period
@@ -142,7 +137,10 @@ def generate_monthly_invoices():
 
                     if invoice_exists:
                         logger.info(
-                            f"User {user_id} already has an invoice for {current_start} to {current_end}. Skipping."
+                            "User %s already has an invoice for %s to %s. Skipping.",
+                            user_id,
+                            current_start.strftime('%Y-%m-%d'),
+                            current_end.strftime('%Y-%m-%d')
                         )
                     else:
                         # Get total standard tokens used by the user in the billing period
@@ -159,7 +157,10 @@ def generate_monthly_invoices():
 
                         if total_tokens <= 0:
                             logger.info(
-                                f"User {user_id} has no token usage for {current_start} to {current_end}. Skipping invoice."
+                                "User %s has no token usage for %s to %s. Skipping invoice.",
+                                user_id,
+                                current_start.strftime('%Y-%m-%d'),
+                                current_end.strftime('%Y-%m-%d')
                             )
                         else:
                             # Fetch rates from the database
@@ -174,12 +175,17 @@ def generate_monthly_invoices():
 
                             if rate_standard is None or rate_pi is None:
                                 logger.error(
-                                    f"Missing pricing information for user {user_id} for period {current_start} to {current_end}. Skipping invoice."
+                                    "Missing pricing information for user %s for period %s to %s. Skipping invoice.",
+                                    user_id,
+                                    current_start.strftime('%Y-%m-%d'),
+                                    current_end.strftime('%Y-%m-%d')
                                 )
                                 continue  # Skip if pricing information is missing
 
                             # Calculate the amount due in cents
-                            amount_cents = calculate_amount(tokens_standard, tokens_pi, rate_standard, rate_pi)
+                            amount_cents = calculate_amount(
+                                tokens_standard, tokens_pi, rate_standard, rate_pi
+                            )
                             description = (
                                 f"Monthly token usage: {tokens_standard} standard tokens and "
                                 f"{tokens_pi} PI tokens for {current_start.strftime('%B %Y')}"
@@ -190,7 +196,10 @@ def generate_monthly_invoices():
                                 user_id, amount_cents, description, current_start, current_end
                             )
                             logger.info(
-                                f"Stored invoice {invoice['id']} for user {user_id}: ${invoice['amount']}"
+                                "Stored invoice %s for user %s: $%.2f",
+                                invoice['id'],
+                                user_id,
+                                invoice['amount']
                             )
 
                     # Move to the next month
@@ -199,12 +208,17 @@ def generate_monthly_invoices():
             except Exception as e:
                 # Log the error and continue with other users
                 logger.error(
-                    f"Failed to create invoice for user {user_id}: {str(e)}",
+                    "Failed to create invoice for user %s: %s",
+                    user_id,
+                    str(e),
                     exc_info=True
                 )
     except Exception as e:
-        # Handle exceptions
-        logger.error(f"An error occurred: {e}", exc_info=True)
+        logger.critical(
+            "Failed to generate monthly invoices: %s",
+            str(e),
+            exc_info=True
+        )
 
 if __name__ == "__main__":
     generate_monthly_invoices()
