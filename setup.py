@@ -41,7 +41,7 @@ setup(
         'stripe == 11.3.0',
         'WeasyPrint',
         'requests',
-        'httpx<0.23.0',
+        'httpx<1',
     ],
     entry_points={
         'console_scripts': [
