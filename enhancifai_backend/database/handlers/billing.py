@@ -116,30 +116,32 @@ class BillingDbCore:
             billing_period_end (date): End of the billing period.
 
         Returns:
-            dict: A dictionary containing the created invoice details.
+            dict: A dictionary containing the created invoice details or None if skipped.
         """
         try:
+            # Validate amount
+            if amount_cents <= 0:
+                logging.info(f"Skipping invoice for user {user_id}: amount is zero or negative.")
+                return None
+
+            # Check if an invoice already exists for the period
+            if cls.invoice_exists(user_id, billing_period_start, billing_period_end):
+                logging.info(f"Skipping invoice for user {user_id}: invoice already exists for this period.")
+                return None
+
             sql = schemafy("""
                 INSERT INTO enhancifai.stripe_invoices (
-                    invoice_id,
-                    user_id,
-                    amount,
-                    status,
-                    created_at,
-                    billing_period_start,
-                    billing_period_end,
-                    metadata
-                ) VALUES (
-                    DEFAULT, -- Auto-generate the invoice ID if not provided
-                    %s, %s, 'open', NOW(), %s, %s, %s
-                ) RETURNING invoice_id, amount, status, created_at, billing_period_start, billing_period_end;
+                    user_id, amount, status, created_at,
+                    billing_period_start, billing_period_end, metadata
+                ) VALUES (%s, %s, 'open', NOW(), %s, %s, %s)
+                RETURNING invoice_id, amount, status, created_at, billing_period_start, billing_period_end;
             """)
             data = (user_id, amount_cents, billing_period_start, billing_period_end, json.dumps({'description': description}))
             result = write_db.do('execute', sql=sql, data=data)
 
             return {
                 'id': result['invoice_id'],
-                'amount' : Decimal(Decimal(result['amount'])).quantize(Decimal('0.01')),
+                'amount': Decimal(result['amount']).quantize(Decimal('0.01')),
                 'status': result['status'],
                 'created_at': result['created_at'],
                 'billing_period_start': result['billing_period_start'],
@@ -148,6 +150,7 @@ class BillingDbCore:
 
         except Exception as e:
             raise RuntimeError(f"Failed to create invoice for user {user_id}: {str(e)}")
+
 
     @classmethod
     def invoice_exists(cls, user_id, billing_period_start, billing_period_end):
@@ -257,6 +260,13 @@ class BillingDbCore:
     def get_rate_card(cls, month: Optional[int], year: Optional[int]):
         """
         Retrieve the cost per token for each AI model, supporting historical rates.
+
+        Args:
+            month (Optional[int]): The month for which rates are required (historical).
+            year (Optional[int]): The year for which rates are required (historical).
+
+        Returns:
+            list: A list of model names and their prices per token.
         """
         if month and year:
             # Retrieve rates for the specified month and year
@@ -267,7 +277,7 @@ class BillingDbCore:
                     TO_CHAR(effective_date, 'YYYY-MM-DD') AS effective_date
                 FROM enhancifai.model_price_history
                 WHERE EXTRACT(MONTH FROM effective_date) = %s
-                  AND EXTRACT(YEAR FROM effective_date) = %s
+                AND EXTRACT(YEAR FROM effective_date) = %s
                 ORDER BY model_name;
             """)
             data = (month, year)
@@ -282,7 +292,9 @@ class BillingDbCore:
                 ORDER BY model_name, effective_date DESC;
             """)
             data = ()
+
         return read_db.do('select', sql=sql, data=data)
+
 
     @classmethod
     def get_invoice_by_id(cls, user_id, invoice_id):
@@ -322,17 +334,16 @@ class BillingDbCore:
             SELECT price_per_token
             FROM enhancifai.model_price_history
             WHERE model_name = %s
-              AND effective_date <= %s
+            AND effective_date <= %s
             ORDER BY effective_date DESC
             LIMIT 1;
         """)
         data = (model_name, effective_date)
         result = read_db.do('select_one', sql=sql, data=data)
-        if result and result['price_per_token']:
-            return Decimal(result['price_per_token'])
-        else:
-            return 0
-        return None
+
+        # Return None if no price is found for the given date and model
+        return Decimal(result['price_per_token']).quantize(Decimal('0.0001')) if result and result['price_per_token'] else None
+
 
     @classmethod
     def has_any_invoice(cls, user_id):
