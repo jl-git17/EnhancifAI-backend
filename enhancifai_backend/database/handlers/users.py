@@ -203,7 +203,7 @@ class UsersDbCore:
             """)
             data = (user_id,)
             result = read_db.do('select_one', sql=sql, data=data)
-            return result['date_joined'] if result else None
+            return result['created_at'] if result else None
         except Exception as e:
             print(f"Error fetching date of joining for user {user_id}: {str(e)}",)
             return None
