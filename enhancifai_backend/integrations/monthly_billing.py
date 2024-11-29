@@ -180,27 +180,26 @@ def generate_monthly_invoices():
                                     current_start.strftime('%Y-%m-%d'),
                                     current_end.strftime('%Y-%m-%d')
                                 )
-                                continue  # Skip if pricing information is missing
+                            else:
+                                # Calculate the amount due in cents
+                                amount_cents = calculate_amount(
+                                    tokens_standard, tokens_pi, rate_standard, rate_pi
+                                )
+                                description = (
+                                    f"Monthly token usage: {tokens_standard} standard tokens and "
+                                    f"{tokens_pi} PI tokens for {current_start.strftime('%B %Y')}"
+                                )
 
-                            # Calculate the amount due in cents
-                            amount_cents = calculate_amount(
-                                tokens_standard, tokens_pi, rate_standard, rate_pi
-                            )
-                            description = (
-                                f"Monthly token usage: {tokens_standard} standard tokens and "
-                                f"{tokens_pi} PI tokens for {current_start.strftime('%B %Y')}"
-                            )
-
-                            # Store the invoice in the database
-                            invoice = BillingDbCore.create_invoice(
-                                user_id, amount_cents, description, current_start, current_end
-                            )
-                            logger.info(
-                                "Stored invoice %s for user %s: $%.2f",
-                                invoice['id'],
-                                user_id,
-                                invoice['amount']
-                            )
+                                # Store the invoice in the database
+                                invoice = BillingDbCore.create_invoice(
+                                    user_id, amount_cents, description, current_start, current_end
+                                )
+                                logger.info(
+                                    "Stored invoice %s for user %s: $%.2f",
+                                    invoice['id'],
+                                    user_id,
+                                    invoice['amount']
+                                )
 
                     # Move to the next month
                     current_start = current_end
