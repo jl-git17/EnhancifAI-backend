@@ -11,49 +11,10 @@ from enhancifai_backend.database.handlers.utils import schemafy
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-def calculate_amount(tokens_standard: int, tokens_pi: int, rate_standard: Decimal, rate_pi: Decimal) -> int:
-    """
-    Calculate the total amount based on standard and PI tokens used.
-    Returns the amount in cents.
-    """
-    if tokens_standard < 0 or tokens_pi < 0:
-        raise ValueError("Token counts cannot be negative.")
-
-    amount_standard = Decimal(tokens_standard) * rate_standard
-    amount_pi = Decimal(tokens_pi) * rate_pi
-    total_amount = amount_standard + amount_pi
-    return int(total_amount * 100)  # Convert to cents
-
-def get_user_token_usage_pi(user_id: int, start_date: datetime, end_date: datetime) -> int:
-    """
-    Retrieve the total number of PI tokens used by the user in the specified period.
-    """
-    try:
-        sql = schemafy("""
-            SELECT SUM(tokens) AS total_tokens
-            FROM enhancifai.users_token_usage_pi
-            WHERE user_id = %s
-              AND created_at >= %s
-              AND created_at < %s;
-        """)
-        data = (user_id, start_date, end_date)
-        result = read_db.do('select_one', sql=sql, data=data)
-        return result['total_tokens'] if result and result['total_tokens'] else 0
-    except Exception as e:
-        logger.error(
-            "Error fetching PI token usage for user %s: %s",
-            user_id,
-            str(e),
-            exc_info=True
-        )
-        return 0
-
 def generate_monthly_invoices():
     """
-    Generate monthly invoices for all users based on their token usage.
-    If a user has no invoices, generate invoices monthly from their date of joining.
-    Otherwise, generate an invoice for the last month only.
-    Stores invoice details in the database without making any Stripe API calls.
+    Generate monthly invoices for all users based on their token usage per model.
+    Calculates cost for every token usage and sums it up.
     """
     try:
         # Determine the start and end of the previous month as datetime.datetime objects
@@ -143,19 +104,12 @@ def generate_monthly_invoices():
                             current_end.strftime('%Y-%m-%d')
                         )
                     else:
-                        # Get total standard tokens used by the user in the billing period
-                        tokens_standard = UsersDbCore.get_user_token_usage(
+                        # Get total tokens used per model by the user in the billing period
+                        tokens_per_model = UsersDbCore.get_user_token_usage_per_model(
                             user_id, current_start, current_end
                         )
 
-                        # Get total PI tokens used by the user in the billing period
-                        tokens_pi = get_user_token_usage_pi(
-                            user_id, current_start, current_end
-                        )
-
-                        total_tokens = tokens_standard + tokens_pi
-
-                        if total_tokens <= 0:
+                        if not tokens_per_model:
                             logger.info(
                                 "User %s has no token usage for %s to %s. Skipping invoice.",
                                 user_id,
@@ -163,42 +117,52 @@ def generate_monthly_invoices():
                                 current_end.strftime('%Y-%m-%d')
                             )
                         else:
-                            # Fetch rates from the database
-                            rate_standard = BillingDbCore.get_price_per_token(
-                                model_name='standard',
-                                effective_date=current_start
-                            )
-                            rate_pi = BillingDbCore.get_price_per_token(
-                                model_name='pi',
-                                effective_date=current_start
-                            )
+                            total_amount_cents = 0
+                            description_lines = []
+                            for usage in tokens_per_model:
+                                model = usage['model']
+                                tokens = usage['total_tokens']
+                                rate = BillingDbCore.get_price_per_token(
+                                    model_name=model,
+                                    effective_date=current_start
+                                )
+                                if rate is None:
+                                    logger.error(
+                                        "Missing pricing information for model %s used by user %s for period %s to %s. Skipping this model.",
+                                        model,
+                                        user_id,
+                                        current_start.strftime('%Y-%m-%d'),
+                                        current_end.strftime('%Y-%m-%d')
+                                    )
+                                    continue  # Skip this model if rate is missing
+                                amount_cents = int(Decimal(tokens) * Decimal(rate) * 100)
+                                total_amount_cents += amount_cents
+                                description_lines.append(
+                                    f"{tokens} tokens of {model} at ${Decimal(rate):.6f} per token"
+                                )
 
-                            if rate_standard is None or rate_pi is None:
-                                logger.error(
-                                    "Missing pricing information for user %s for period %s to %s. Skipping invoice.",
+                            if total_amount_cents <= 0:
+                                logger.info(
+                                    "User %s has no billable token usage for %s to %s. Skipping invoice.",
                                     user_id,
                                     current_start.strftime('%Y-%m-%d'),
                                     current_end.strftime('%Y-%m-%d')
                                 )
                             else:
-                                # Calculate the amount due in cents
-                                amount_cents = calculate_amount(
-                                    tokens_standard, tokens_pi, rate_standard, rate_pi
-                                )
-                                description = (
-                                    f"Monthly token usage: {tokens_standard} standard tokens and "
-                                    f"{tokens_pi} PI tokens for {current_start.strftime('%B %Y')}"
+                                description = "Monthly token usage for {}: {}".format(
+                                    current_start.strftime('%B %Y'),
+                                    "; ".join(description_lines)
                                 )
 
                                 # Store the invoice in the database
                                 invoice = BillingDbCore.create_invoice(
-                                    user_id, amount_cents, description, current_start, current_end
+                                    user_id, total_amount_cents, description, current_start, current_end
                                 )
                                 logger.info(
                                     "Stored invoice %s for user %s: $%.2f",
                                     invoice['id'],
                                     user_id,
-                                    invoice['amount']
+                                    invoice['amount'] / 100  # Convert cents to dollars
                                 )
 
                     # Move to the next month

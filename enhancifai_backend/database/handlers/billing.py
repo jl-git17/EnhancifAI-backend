@@ -2,6 +2,7 @@
 
 from datetime import datetime
 import json
+import logging
 from typing import Optional
 from decimal import Decimal
 from enhancifai_backend.database.access import read_db, write_db
