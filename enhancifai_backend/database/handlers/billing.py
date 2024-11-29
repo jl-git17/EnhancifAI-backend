@@ -196,7 +196,7 @@ class BillingDbCore:
             ORDER BY si.created_at DESC;
         """)
         data = (user_id,)
-        raw_records = read_db.do('select', sql=sql, data=data)
+        raw_records = read_db.do('select', sql=sql, data=data) or []
 
         # Convert invoice_amount to dollars, rounded to two decimal places
         invoice_history = []
