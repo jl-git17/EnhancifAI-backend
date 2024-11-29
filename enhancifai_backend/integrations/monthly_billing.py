@@ -65,38 +65,6 @@ def get_user_token_usage_pi(user_id: int, start_date: datetime, end_date: dateti
         )
         return 0
 
-def get_user_token_usage_standard(user_id: int, start_date: datetime, end_date: datetime) -> int:
-    """
-    Retrieve the total number of Standard tokens used by the user in the specified period.
-
-    Args:
-        user_id (int): The user's ID.
-        start_date (datetime): Start of the billing period.
-        end_date (datetime): End of the billing period.
-
-    Returns:
-        int: Total Standard tokens used.
-    """
-    try:
-        sql = schemafy("""
-            SELECT SUM(tokens) AS total_tokens
-            FROM enhancifai.users_token_usage_standard
-            WHERE user_id = %s
-              AND created_at >= %s
-              AND created_at < %s;
-        """)
-        data = (user_id, start_date, end_date)
-        result = read_db.do('select_one', sql=sql, data=data)
-        return result['total_tokens'] if result and result['total_tokens'] else 0
-    except Exception as e:
-        logger.error(
-            "Error fetching Standard token usage for user %s: %s",
-            user_id,
-            str(e),
-            exc_info=True
-        )
-        return 0
-
 def generate_monthly_invoices():
     """
     Generate monthly invoices for all users based on their token usage in the previous month.
@@ -137,7 +105,7 @@ def generate_monthly_invoices():
                     continue  # Skip users who already have an invoice for this period
 
                 # Get total standard tokens used by the user in the previous month
-                tokens_standard = get_user_token_usage_standard(
+                tokens_standard = UsersDbCore.get_user_token_usage(
                     user_id, first_day_of_previous_month, first_day_of_current_month
                 )
 
