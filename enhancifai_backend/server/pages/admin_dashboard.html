@@ -621,19 +621,19 @@
             modelNameGroup.appendChild(modelNameLabel);
             modelNameGroup.appendChild(modelNameInput);
 
-            // Form Group for Price per Token
+            // Form Group for Price per 1,000 Tokens
             const priceGroup = document.createElement('div');
             priceGroup.classList.add('form-group');
 
             const priceLabel = document.createElement('label');
-            priceLabel.textContent = 'Price per Token:';
+            priceLabel.textContent = 'Price per 1,000 Tokens:';
             priceLabel.setAttribute('for', `price_${Date.now()}`);
 
             // Add tooltip icon
             const tooltipIcon = document.createElement('i');
             tooltipIcon.classList.add('bi', 'bi-question-circle');
             tooltipIcon.setAttribute('data-bs-toggle', 'tooltip');
-            tooltipIcon.setAttribute('title', 'Enter the price per token for this model');
+            tooltipIcon.setAttribute('title', 'Enter the price per 1,000 tokens for this model');
             priceLabel.appendChild(tooltipIcon);
 
             const priceInput = document.createElement('input');
@@ -643,8 +643,9 @@
             priceInput.classList.add('form-control');
             priceInput.id = `price_${Date.now()}`;
             priceInput.name = 'price_per_token';
-            priceInput.value = model.price_per_token;
-            priceInput.placeholder = 'Enter price per token';
+            // Convert price_per_token (per token) to per 1,000 tokens for display
+            priceInput.value = model.price_per_token ? (model.price_per_token * 1000).toFixed(4) : '';
+            priceInput.placeholder = 'Enter price per 1,000 tokens';
 
             priceGroup.appendChild(priceLabel);
             priceGroup.appendChild(priceInput);
@@ -687,9 +688,11 @@
                 const priceInput = entry.querySelector('input[name="price_per_token"]');
 
                 const model_name = modelNameInput.value.trim();
-                const price_per_token = parseFloat(priceInput.value);
-
-                if (model_name && !isNaN(price_per_token)) {
+                let price_per_token_display = parseFloat(priceInput.value);
+                
+                if (model_name && !isNaN(price_per_token_display)) {
+                    // Convert price from per 1,000 tokens to per token before sending to backend
+                    const price_per_token = price_per_token_display / 1000;
                     data.push({ model_name, price_per_token });
                 }
             });
