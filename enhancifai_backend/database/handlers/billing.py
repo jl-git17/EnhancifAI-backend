@@ -330,6 +330,8 @@ class BillingDbCore:
         result = read_db.do('select_one', sql=sql, data=data)
         if result and result['price_per_token']:
             return Decimal(result['price_per_token'])
+        else:
+            return 0
         return None
 
     @classmethod
