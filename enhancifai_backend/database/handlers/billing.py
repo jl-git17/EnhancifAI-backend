@@ -333,32 +333,29 @@ class BillingDbCore:
         return None
 
     @classmethod
-def has_any_invoice(cls, user_id):
-    """
-    Check if a user has any invoices.
+    def has_any_invoice(cls, user_id):
+        """
+        Check if a user has any invoices.
 
-    Args:
-        user_id (int): The user's ID.
+        Args:
+            user_id (int): The user's ID.
 
-    Returns:
-        bool: True if the user has any invoices, False otherwise.
-    """
-    try:
-        sql = schemafy("""
-            SELECT 1
-            FROM enhancifai.stripe_invoices
-            WHERE user_id = %s
-            LIMIT 1;
-        """)
-        data = (user_id,)
-        result = read_db.do('select_one', sql=sql, data=data)
+        Returns:
+            bool: True if the user has any invoices, False otherwise.
+        """
+        try:
+            sql = schemafy("""
+                SELECT 1
+                FROM enhancifai.stripe_invoices
+                WHERE user_id = %s
+                LIMIT 1;
+            """)
+            data = (user_id,)
+            result = read_db.do('select_one', sql=sql, data=data)
 
-        return result is not None  # If result is not None, user has at least one invoice
+            return result is not None  # If result is not None, user has at least one invoice
 
-    except Exception as e:
-        logger.error(
-            f"Error checking if user {user_id} has any invoices: {str(e)}",
-            exc_info=True
-        )
-        raise RuntimeError(f"Error checking if user {user_id} has any invoices: {str(e)}")
+        except Exception as e:
+            print(f"Error checking if user {user_id} has any invoices: {str(e)}")
+            raise RuntimeError(f"Error checking if user {user_id} has any invoices: {str(e)}")
     
