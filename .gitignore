@@ -9,5 +9,5 @@ client_secret*
 ~$*
 .pylintrc
 .project/
-ec_output_files/
+ec_output.txt
 export_code.py
