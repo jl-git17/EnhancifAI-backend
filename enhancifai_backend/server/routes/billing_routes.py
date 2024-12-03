@@ -18,6 +18,27 @@ from enhancifai_backend.server.utils import get_current_user_id, verify_secret_k
 router = APIRouter()
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
+
+def get_default_month(
+    month: Optional[int] = Query(
+        None, ge=1, le=12, description="Month for filtering (1-12)"
+    )
+) -> int:
+    """
+    Dependency to provide the month, defaulting to the current month if not provided.
+    """
+    return month if month is not None else datetime.now().month
+
+def get_default_year(
+    year: Optional[int] = Query(
+        None, ge=2000, le=datetime.now().year, description="Year for filtering (e.g., 2023)"
+    )
+) -> int:
+    """
+    Dependency to provide the year, defaulting to the current year if not provided.
+    """
+    return year if year is not None else datetime.now().year
+
 @router.get("/billing/usage", tags=["Billing"])
 async def get_usage_history(
     user_id: int = Depends(get_current_user_id), 
@@ -90,9 +111,9 @@ async def get_monthly_balance(
 
 @router.get("/billing/usage-by-model", tags=["Billing"])
 async def get_usage_by_model(
-    month: Optional[int] = Query(None, ge=1, le=12, description="Month for filtering (1-12)"),
-    year: Optional[int] = Query(None, ge=2000, le=datetime.now().year, description="Year for filtering (e.g., 2023)"),
-    user_id: int = Depends(get_current_user_id), 
+    month: int = Depends(get_default_month),
+    year: int = Depends(get_default_year),
+    user_id: int = Depends(get_current_user_id),
     _api_key: str = Depends(verify_secret_key)
 ):
     """
