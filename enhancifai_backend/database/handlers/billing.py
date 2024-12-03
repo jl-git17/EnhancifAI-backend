@@ -202,18 +202,21 @@ class BillingDbCore:
         data = (user_id,)
         raw_records = read_db.do('select', sql=sql, data=data) or []
 
-        # Convert invoice_amount to dollars, rounded to two decimal places
+        # Convert invoice_amount from cents to dollars, rounded to two decimal places
         invoice_history = []
         for record in raw_records:
-            record['invoice_amount'] = float((Decimal(record['invoice_amount'])).quantize(Decimal('0.01')))
-            # Handle possible None for payment_date
-            if record['payment_date']:
-                record['payment_date'] = record['payment_date']
-            else:
-                record['payment_date'] = None
+            # Ensure amount is treated as Decimal for accurate division
+            amount_in_cents = Decimal(record['invoice_amount'])
+            amount_in_dollars = (amount_in_cents / Decimal('100')).quantize(Decimal('0.01'))
+            record['invoice_amount'] = float(amount_in_dollars)
+            
+            # Handle possible None for payment_date (optional improvement)
+            record['payment_date'] = record['payment_date'] if record['payment_date'] else None
+            
             invoice_history.append(record)
 
         return invoice_history
+
 
     @classmethod
     def get_stripe_customer_id(cls, user_id):
