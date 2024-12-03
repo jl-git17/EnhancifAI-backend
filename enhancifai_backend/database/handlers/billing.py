@@ -35,7 +35,7 @@ class BillingDbCore:
             ORDER BY rl.log_timestamp DESC;
         """)
         data = (user_id,)
-        raw_records = read_db.do('select', sql=sql, data=data)
+        raw_records = read_db.do('select', sql=sql, data=data) or []
 
         # Convert total_cost to dollars, rounded to two decimal places
         usage_history = []
