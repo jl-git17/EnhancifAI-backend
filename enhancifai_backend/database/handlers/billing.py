@@ -468,3 +468,51 @@ class BillingDbCore:
             return result['billing_period_end']
         else:
             return None
+    
+    @classmethod
+    def update_last_invoice_run(cls, user_id: int, run_timestamp: datetime):
+        """
+        Update the last_invoice_run_at timestamp for a user.
+
+        Args:
+            user_id (int): The user's ID.
+            run_timestamp (datetime): The timestamp of the invoice run (timezone-aware).
+        """
+        try:
+            sql = schemafy("""
+                UPDATE enhancifai.users
+                SET last_invoice_run_at = %s
+                WHERE user_id = %s;
+            """)
+            data = (run_timestamp, user_id)
+            write_db.do('execute', sql=sql, data=data)
+            logging.info("Updated last_invoice_run_at for user %s to %s", user_id, run_timestamp.isoformat())
+        except Exception as e:
+            logging.error("Failed to update last_invoice_run_at for user %s: %s", user_id, str(e))
+            raise
+
+    @classmethod
+    def get_last_invoice_run(cls, user_id: int) -> Optional[datetime]:
+        """
+        Retrieve the last_invoice_run_at timestamp for a user.
+
+        Args:
+            user_id (int): The user's ID.
+
+        Returns:
+            Optional[datetime]: The timestamp of the last invoice run, or None if not available.
+        """
+        try:
+            sql = schemafy("""
+                SELECT last_invoice_run_at
+                FROM enhancifai.users
+                WHERE user_id = %s;
+            """)
+            data = (user_id,)
+            result = read_db.do('select_one', sql=sql, data=data)
+            if result and result['last_invoice_run_at']:
+                return result['last_invoice_run_at']
+            return None
+        except Exception as e:
+            logging.error("Failed to retrieve last_invoice_run_at for user %s: %s", user_id, str(e))
+            raise
