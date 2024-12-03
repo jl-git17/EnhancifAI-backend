@@ -20,17 +20,27 @@ class BillingDbCore:
         Returns amounts in dollars as floats rounded to two decimal places.
         """
         sql = schemafy("""
+            WITH price_history AS (
+                SELECT 
+                    model_name,
+                    price_per_token,
+                    effective_date,
+                    LEAD(effective_date, 1, '9999-12-31') OVER (PARTITION BY model_name ORDER BY effective_date) AS next_effective_date
+                FROM enhancifai.model_price_history
+            )
             SELECT 
                 TO_CHAR(rl.log_timestamp, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS execution_time,
                 rl.filename AS uploaded_file_name,
                 r.source_type AS type,
                 rl.num_rows_processed AS number_of_rows,
                 rl.num_tokens AS total_tokens,
-                mp.price_per_token AS cost_per_token,
-                (rl.num_tokens * mp.price_per_token) AS total_cost  -- Since price is per single token
+                ph.price_per_token AS cost_per_token,
+                (rl.num_tokens * ph.price_per_token) AS total_cost
             FROM enhancifai.run_logs rl
             JOIN enhancifai.runs r ON rl.run_id = r.id
-            LEFT JOIN enhancifai.model_prices mp ON rl.engine_model = mp.model_name
+            JOIN price_history ph ON rl.engine_model = ph.model_name
+                AND rl.log_timestamp::date >= ph.effective_date
+                AND rl.log_timestamp::date < ph.next_effective_date
             WHERE r.user_id = %s
             ORDER BY rl.log_timestamp DESC;
         """)
@@ -53,12 +63,22 @@ class BillingDbCore:
         Returns amounts in dollars as floats rounded to two decimal places.
         """
         sql = schemafy("""
+            WITH price_history AS (
+                SELECT 
+                    model_name,
+                    price_per_token,
+                    effective_date,
+                    LEAD(effective_date, 1, '9999-12-31') OVER (PARTITION BY model_name ORDER BY effective_date) AS next_effective_date
+                FROM enhancifai.model_price_history
+            )
             SELECT 
                 TO_CHAR(DATE_TRUNC('month', NOW()), 'YYYY-MM') AS billing_month,
-                SUM(rl.num_tokens * mp.price_per_token) AS total_monthly_cost
+                SUM(rl.num_tokens * ph.price_per_token) AS total_monthly_cost
             FROM enhancifai.run_logs rl
             JOIN enhancifai.runs r ON rl.run_id = r.id
-            LEFT JOIN enhancifai.model_prices mp ON rl.engine_model = mp.model_name
+            JOIN price_history ph ON rl.engine_model = ph.model_name
+                AND rl.log_timestamp::date >= ph.effective_date
+                AND rl.log_timestamp::date < ph.next_effective_date
             WHERE r.user_id = %s AND DATE_TRUNC('month', rl.log_timestamp) = DATE_TRUNC('month', NOW())
             GROUP BY billing_month;
         """)
@@ -96,36 +116,34 @@ class BillingDbCore:
             if not (2000 <= year <= current_year):
                 raise ValueError("Invalid year.")
 
-            # Filter data for the specified month and year
-            sql = schemafy("""
-                SELECT 
-                    rl.engine_model AS ai_model_name,
-                    SUM(rl.num_tokens) AS tokens_used,
-                    mp.price_per_token AS price_per_token,
-                    SUM(rl.num_tokens * mp.price_per_token) AS total_cost
-                FROM enhancifai.run_logs rl
-                JOIN enhancifai.runs r ON rl.run_id = r.id
-                LEFT JOIN enhancifai.model_prices mp ON rl.engine_model = mp.model_name
-                WHERE r.user_id = %s AND EXTRACT(MONTH FROM rl.log_timestamp) = %s AND EXTRACT(YEAR FROM rl.log_timestamp) = %s
-                GROUP BY ai_model_name, mp.price_per_token;
-            """)
+            date_filter = "AND EXTRACT(MONTH FROM rl.log_timestamp) = %s AND EXTRACT(YEAR FROM rl.log_timestamp) = %s"
             data = (user_id, month, year)
         else:
-            # Retrieve all data without date filtering
-            sql = schemafy("""
-                SELECT 
-                    rl.engine_model AS ai_model_name,
-                    SUM(rl.num_tokens) AS tokens_used,
-                    mp.price_per_token AS price_per_token,
-                    SUM(rl.num_tokens * mp.price_per_token) AS total_cost
-                FROM enhancifai.run_logs rl
-                JOIN enhancifai.runs r ON rl.run_id = r.id
-                LEFT JOIN enhancifai.model_prices mp ON rl.engine_model = mp.model_name
-                WHERE r.user_id = %s
-                GROUP BY ai_model_name, mp.price_per_token;
-            """)
+            date_filter = ""
             data = (user_id,)
 
+        sql = schemafy(f"""
+            WITH price_history AS (
+                SELECT 
+                    model_name,
+                    price_per_token,
+                    effective_date,
+                    LEAD(effective_date, 1, '9999-12-31') OVER (PARTITION BY model_name ORDER BY effective_date) AS next_effective_date
+                FROM enhancifai.model_price_history
+            )
+            SELECT 
+                rl.engine_model AS ai_model_name,
+                SUM(rl.num_tokens) AS tokens_used,
+                ph.price_per_token AS price_per_token,
+                SUM(rl.num_tokens * ph.price_per_token) AS total_cost
+            FROM enhancifai.run_logs rl
+            JOIN enhancifai.runs r ON rl.run_id = r.id
+            JOIN price_history ph ON rl.engine_model = ph.model_name
+                AND rl.log_timestamp::date >= ph.effective_date
+                AND rl.log_timestamp::date < ph.next_effective_date
+            WHERE r.user_id = %s {date_filter}
+            GROUP BY ai_model_name, ph.price_per_token;
+        """)
         raw_records = read_db.do('select', sql=sql, data=data) or []
 
         # Convert total_cost to dollars, rounded to two decimal places
@@ -258,9 +276,6 @@ class BillingDbCore:
 
         return invoice_history
 
-
-
-
     @classmethod
     def get_stripe_customer_id(cls, user_id):
         """
@@ -353,7 +368,7 @@ class BillingDbCore:
             SELECT 
                 TO_CHAR(si.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS date,
                 si.invoice_id AS invoice_number,
-                si.amount AS invoice_amount,
+                si.amount AS invoice_amount_cents,
                 TO_CHAR(si.paid_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS payment_date,
                 si.status AS payment_status,
                 TO_CHAR(si.billing_period_start, 'YYYY-MM-DD') AS billing_period_start,
@@ -366,7 +381,7 @@ class BillingDbCore:
         record = read_db.do('select_one', sql=sql, data=data)
         if record:
             # Convert amount from cents to dollars
-            amount_in_cents = Decimal(record['invoice_amount'])
+            amount_in_cents = Decimal(record['invoice_amount_cents'])
             amount_in_dollars = (amount_in_cents / Decimal('100')).quantize(Decimal('0.01'))
             record['invoice_amount'] = float(amount_in_dollars)
             
