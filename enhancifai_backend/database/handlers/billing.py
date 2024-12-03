@@ -185,7 +185,8 @@ class BillingDbCore:
     @classmethod
     def get_invoice_history(cls, user_id):
         """
-        Retrieve invoice data, including date, invoice number, invoice amount, payment date, and status.
+        Retrieve invoice data, including date, invoice number, invoice amount, payment date, status,
+        billing period start and end, and metadata.
         Returns amounts in dollars as floats rounded to two decimal places.
         """
         sql = schemafy("""
@@ -194,28 +195,37 @@ class BillingDbCore:
                 si.invoice_id AS invoice_number,
                 si.amount AS invoice_amount,
                 TO_CHAR(si.paid_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS payment_date,
-                si.status AS payment_status
+                si.status AS payment_status,
+                TO_CHAR(si.billing_period_start, 'YYYY-MM-DD') AS billing_period_start,
+                TO_CHAR(si.billing_period_end, 'YYYY-MM-DD') AS billing_period_end,
+                si.metadata
             FROM enhancifai.stripe_invoices si
             WHERE si.user_id = %s
             ORDER BY si.created_at DESC;
         """)
         data = (user_id,)
         raw_records = read_db.do('select', sql=sql, data=data) or []
-
-        # Convert invoice_amount from cents to dollars, rounded to two decimal places
         invoice_history = []
         for record in raw_records:
-            # Ensure amount is treated as Decimal for accurate division
+            # Convert amount from cents to dollars
             amount_in_cents = Decimal(record['invoice_amount'])
             amount_in_dollars = (amount_in_cents / Decimal('100')).quantize(Decimal('0.01'))
             record['invoice_amount'] = float(amount_in_dollars)
             
-            # Handle possible None for payment_date (optional improvement)
+            # Handle possible None for payment_date
             record['payment_date'] = record['payment_date'] if record['payment_date'] else None
+            
+            # Process metadata (convert from JSON string to dict if necessary)
+            if record['metadata'] and isinstance(record['metadata'], str):
+                record['metadata'] = json.loads(record['metadata'])
+            elif record['metadata'] is None:
+                record['metadata'] = {}
             
             invoice_history.append(record)
 
         return invoice_history
+
+
 
 
     @classmethod
@@ -312,14 +322,30 @@ class BillingDbCore:
                 si.invoice_id AS invoice_number,
                 si.amount AS invoice_amount,
                 TO_CHAR(si.paid_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS payment_date,
-                si.status AS payment_status
+                si.status AS payment_status,
+                TO_CHAR(si.billing_period_start, 'YYYY-MM-DD') AS billing_period_start,
+                TO_CHAR(si.billing_period_end, 'YYYY-MM-DD') AS billing_period_end,
+                si.metadata
             FROM enhancifai.stripe_invoices si
             WHERE si.user_id = %s AND si.invoice_id = %s;
         """)
         data = (user_id, invoice_id)
         record = read_db.do('select_one', sql=sql, data=data)
         if record:
-            record['invoice_amount'] = float((Decimal(record['invoice_amount'])).quantize(Decimal('0.01')))
+            # Convert amount from cents to dollars
+            amount_in_cents = Decimal(record['invoice_amount'])
+            amount_in_dollars = (amount_in_cents / Decimal('100')).quantize(Decimal('0.01'))
+            record['invoice_amount'] = float(amount_in_dollars)
+            
+            # Handle possible None for payment_date
+            record['payment_date'] = record['payment_date'] if record['payment_date'] else None
+            
+            # Process metadata
+            if record['metadata'] and isinstance(record['metadata'], str):
+                record['metadata'] = json.loads(record['metadata'])
+            elif record['metadata'] is None:
+                record['metadata'] = {}
+        
         return record
 
     @classmethod
