@@ -114,16 +114,12 @@ class DbSession:
                 cur.execute(sql, data)
             else:
                 cur.execute(sql)
-        
-            # If the SQL contains RETURNING, fetch the returned value
+            
+            # If the SQL contains RETURNING, fetch the returned row
             if "RETURNING" in sql:
-                returned_id = cur.fetchone()
-                
-                # Extract the key name from the SQL after 'RETURNING'
-                match = RETURNING_REGEX.search(sql)
-                if match:
-                    key_to_use = match.group(1)
-                    return returned_id.get(key_to_use) if returned_id else None
+                returned_row = cur.fetchone()
+                return dict(returned_row) if returned_row else None
+
 
     def _commit(self):
         self.conn.commit()
