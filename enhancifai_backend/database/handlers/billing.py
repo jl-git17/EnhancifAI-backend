@@ -93,7 +93,7 @@ class BillingDbCore:
             GROUP BY ai_model_name, mp.price_per_token;
         """)
         data = (user_id,)
-        raw_records = read_db.do('select', sql=sql, data=data)
+        raw_records = read_db.do('select', sql=sql, data=data) or []
 
         # Convert total_cost to dollars, rounded to two decimal places
         usage_by_model = []
