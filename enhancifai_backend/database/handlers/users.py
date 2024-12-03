@@ -241,6 +241,45 @@ class UsersDbCore:
         data = (user_id, start_date, end_date, user_id, start_date, end_date)
         result = read_db.do('select', sql=sql, data=data)
         return result if result else []
+    
+    @classmethod
+    def get_user_token_usage_per_model_per_day(cls, user_id: int, start_date: datetime, end_date: datetime) -> List[Dict]:
+        """
+        Retrieve the total tokens used per model per day by the user within a specific date range.
+
+        Args:
+            user_id (int): The ID of the user.
+            start_date (datetime): The start datetime of the range.
+            end_date (datetime): The end datetime of the range.
+
+        Returns:
+            List[Dict]: A list of dictionaries with 'usage_date', 'model', and 'total_tokens'.
+        """
+        sql = schemafy("""
+            SELECT
+                date_trunc('day', created_at) AS usage_date,
+                model,
+                SUM(tokens) AS total_tokens
+            FROM (
+                SELECT created_at, model, tokens
+                FROM enhancifai.users_token_usage
+                WHERE user_id = %s
+                AND created_at >= %s
+                AND created_at < %s
+                UNION ALL
+                SELECT created_at, model, tokens
+                FROM enhancifai.users_token_usage_pi
+                WHERE user_id = %s
+                AND created_at >= %s
+                AND created_at < %s
+            ) AS combined_usage
+            GROUP BY usage_date, model
+            ORDER BY usage_date, model;
+        """)
+        data = (user_id, start_date, end_date, user_id, start_date, end_date)
+        result = read_db.do('select', sql=sql, data=data)
+        return result if result else []
+
 
 
 

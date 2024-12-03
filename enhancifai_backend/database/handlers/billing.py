@@ -139,7 +139,7 @@ class BillingDbCore:
             """)
             data = (user_id, amount_cents, billing_period_start, billing_period_end, json.dumps({'description': description}))
             result = write_db.do('execute', sql=sql, data=data)
-
+            pass
             return {
                 'id': result['invoice_id'],
                 'amount': Decimal(result['amount']).quantize(Decimal('0.01')),
@@ -343,7 +343,7 @@ class BillingDbCore:
         result = read_db.do('select_one', sql=sql, data=data)
 
         # Return None if no price is found for the given date and model
-        return Decimal(result['price_per_token']).quantize(Decimal('0.0001')) if result and result['price_per_token'] else None
+        return Decimal(result['price_per_token']) if result and result['price_per_token'] else None
 
 
     @classmethod

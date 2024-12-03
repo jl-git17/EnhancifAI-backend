@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 def generate_monthly_invoices():
     """
-    Generate monthly invoices for all users based on their token usage per model.
-    Calculates cost for every token usage and sums it up.
+    Generate monthly invoices for all users based on their token usage per model per day.
+    Calculates cost for every token usage and sums it up, accounting for daily price changes.
     """
     try:
         # Determine the start and end of the previous month as datetime.datetime objects
@@ -37,6 +37,8 @@ def generate_monthly_invoices():
 
         for user in users:
             user_id = user['user_id']
+            if user_id != 5:
+                continue
             try:
                 # Check if any invoice exists for this user
                 any_invoice = BillingDbCore.has_any_invoice(user_id)
@@ -104,12 +106,12 @@ def generate_monthly_invoices():
                             current_end.strftime('%Y-%m-%d')
                         )
                     else:
-                        # Get total tokens used per model by the user in the billing period
-                        tokens_per_model = UsersDbCore.get_user_token_usage_per_model(
+                        # Get token usage per model per day for the user in the billing period
+                        tokens_per_model_per_day = UsersDbCore.get_user_token_usage_per_model_per_day(
                             user_id, current_start, current_end
                         )
 
-                        if not tokens_per_model:
+                        if not tokens_per_model_per_day:
                             logger.info(
                                 "User %s has no token usage for %s to %s. Skipping invoice.",
                                 user_id,
@@ -118,28 +120,32 @@ def generate_monthly_invoices():
                             )
                         else:
                             total_amount_cents = 0
-                            description_lines = []
-                            for usage in tokens_per_model:
+                            usage_summary = {}  # key: (model, rate), value: total_tokens
+                            for usage in tokens_per_model_per_day:
+                                usage_date = usage['usage_date'].date()  # Ensure it's a date object
                                 model = usage['model']
                                 tokens = usage['total_tokens']
                                 rate = BillingDbCore.get_price_per_token(
                                     model_name=model,
-                                    effective_date=current_start
+                                    effective_date=usage_date
                                 )
                                 if rate is None:
                                     logger.error(
-                                        "Missing pricing information for model %s used by user %s for period %s to %s. Skipping this model.",
+                                        "Missing pricing information for model %s used by user %s on %s. Skipping this usage.",
                                         model,
                                         user_id,
-                                        current_start.strftime('%Y-%m-%d'),
-                                        current_end.strftime('%Y-%m-%d')
+                                        usage_date.strftime('%Y-%m-%d')
                                     )
-                                    continue  # Skip this model if rate is missing
+                                    continue  # Skip this usage if rate is missing
+
+                                key = (model, rate)
+                                if key in usage_summary:
+                                    usage_summary[key] += tokens
+                                else:
+                                    usage_summary[key] = tokens
+
                                 amount_cents = int(Decimal(tokens) * Decimal(rate) * 100)
                                 total_amount_cents += amount_cents
-                                description_lines.append(
-                                    f"{tokens} tokens of {model} at ${Decimal(rate):.6f} per token"
-                                )
 
                             if total_amount_cents <= 0:
                                 logger.info(
@@ -149,6 +155,11 @@ def generate_monthly_invoices():
                                     current_end.strftime('%Y-%m-%d')
                                 )
                             else:
+                                description_lines = []
+                                for (model, rate), tokens in usage_summary.items():
+                                    description_lines.append(
+                                        f"{tokens} tokens of {model} at ${Decimal(rate):.6f} per token"
+                                    )
                                 description = "Monthly token usage for {}: {}".format(
                                     current_start.strftime('%B %Y'),
                                     "; ".join(description_lines)
