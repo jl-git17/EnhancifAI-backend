@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 def generate_monthly_invoices():
     """
-    Generate monthly invoices for all users based on their token usage per model per day.
-    Calculates cost for every token usage and sums it up, accounting for daily price changes.
+    Generate monthly invoices for all users starting from the month after the last invoiced month.
+    This avoids processing months that have already been invoiced.
     """
     try:
         # Determine the start and end of the previous month as datetime.datetime objects
@@ -25,8 +25,8 @@ def generate_monthly_invoices():
 
         logger.info(
             "Generating invoices up to the period: %s to %s",
-            first_day_of_previous_month,
-            first_day_of_current_month
+            first_day_of_previous_month.strftime('%Y-%m-%d'),
+            first_day_of_current_month.strftime('%Y-%m-%d')
         )
 
         # Fetch all users
@@ -37,21 +37,23 @@ def generate_monthly_invoices():
 
         for user in users:
             user_id = user['user_id']
-            if user_id != 5:
-                continue
+            # Remove the condition that skips users (user_id != 5) to process all users
             try:
-                # Check if any invoice exists for this user
-                any_invoice = BillingDbCore.has_any_invoice(user_id)
+                # Get the last invoice end date for the user
+                last_invoice_end_date = BillingDbCore.get_last_invoice_end_date(user_id)
 
-                if not any_invoice:
-                    # User has no invoices, generate invoices from joining date
+                if last_invoice_end_date:
+                    # Start from the day after the last invoiced period
+                    current_start = last_invoice_end_date
+                else:
+                    # No invoices exist; start from the date the user joined
                     date_joined = UsersDbCore.get_date_joined(user_id)
                     if not date_joined:
                         logger.error(
                             "Could not retrieve date of joining for user %s. Skipping.",
                             user_id
                         )
-                        continue  # Skip if date of joining is unavailable
+                        continue  # Skip if date_joined is unavailable
 
                     # Convert date_joined to datetime at midnight if it's a date object
                     if isinstance(date_joined, date):
@@ -67,9 +69,15 @@ def generate_monthly_invoices():
 
                     # Normalize to first day of joining month at midnight
                     current_start = date_joined.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                else:
-                    # User has existing invoices, generate invoice for last month only
-                    current_start = first_day_of_previous_month
+
+                # Adjust current_start if it's after the first day of the previous month
+                if current_start > first_day_of_previous_month:
+                    logger.info(
+                        "User %s has no new periods to invoice up to %s.",
+                        user_id,
+                        first_day_of_previous_month.strftime('%Y-%m-%d')
+                    )
+                    continue  # No new periods to invoice
 
                 # Determine the end date for invoice generation
                 while current_start <= first_day_of_previous_month:
@@ -171,7 +179,7 @@ def generate_monthly_invoices():
                                 )
                                 logger.info(
                                     "Stored invoice %s for user %s: $%.2f",
-                                    invoice['id'],
+                                    invoice['invoice_id'],
                                     user_id,
                                     invoice['amount'] / 100  # Convert cents to dollars
                                 )

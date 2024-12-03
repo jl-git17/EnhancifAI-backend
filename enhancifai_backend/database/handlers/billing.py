@@ -402,3 +402,21 @@ class BillingDbCore:
             print(f"Error checking if user {user_id} has any invoices: {str(e)}")
             raise RuntimeError(f"Error checking if user {user_id} has any invoices: {str(e)}")
     
+    @classmethod
+    def get_last_invoice_end_date(cls, user_id):
+        """
+        Get the end date of the last invoice for a user.
+        """
+        sql = schemafy("""
+            SELECT billing_period_end
+            FROM enhancifai.stripe_invoices
+            WHERE user_id = %s
+            ORDER BY billing_period_end DESC
+            LIMIT 1;
+        """)
+        data = (user_id,)
+        result = read_db.do('select_one', sql=sql, data=data)
+        if result:
+            return result['billing_period_end']
+        else:
+            return None
