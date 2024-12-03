@@ -141,7 +141,7 @@ class BillingDbCore:
             result = write_db.do('execute', sql=sql, data=data)
             pass
             return {
-                'id': result['invoice_id'],
+                'invoice_id': result['invoice_id'],
                 'amount': Decimal(result['amount']).quantize(Decimal('0.01')),
                 'status': result['status'],
                 'created_at': result['created_at'],
