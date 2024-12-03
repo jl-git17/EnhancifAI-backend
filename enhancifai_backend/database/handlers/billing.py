@@ -75,31 +75,64 @@ class BillingDbCore:
         }
 
     @classmethod
-    def get_usage_by_model(cls, user_id):
+    def get_usage_by_model(cls, user_id, month=None, year=None):
         """
-        Aggregate data by AI model, including tokens used, price per token, and total monthly cost for each model.
-        Returns amounts in dollars as floats rounded to two decimal places.
+        Aggregate data by AI model, including tokens used, price per token, and total cost for each model.
+        Allows filtering by month and year.
+
+        Args:
+            user_id (int): The user's ID.
+            month (int, optional): The month for which to retrieve data (1-12).
+            year (int, optional): The year for which to retrieve data.
+
+        Returns:
+            list: A list of dictionaries containing usage data by model.
         """
-        sql = schemafy("""
-            SELECT 
-                rl.engine_model AS ai_model_name,
-                SUM(rl.num_tokens) AS tokens_used,
-                (mp.price_per_token * 1000) AS price_per_token,
-                SUM(rl.num_tokens * mp.price_per_token) AS total_cost
-            FROM enhancifai.run_logs rl
-            JOIN enhancifai.runs r ON rl.run_id = r.id
-            LEFT JOIN enhancifai.model_prices mp ON rl.engine_model = mp.model_name
-            WHERE r.user_id = %s AND DATE_TRUNC('month', rl.log_timestamp) = DATE_TRUNC('month', NOW())
-            GROUP BY ai_model_name, mp.price_per_token;
-        """)
-        data = (user_id,)
+        if month is not None and year is not None:
+            # Validate month and year
+            if not (1 <= month <= 12):
+                raise ValueError("Invalid month. Must be between 1 and 12.")
+            current_year = datetime.now().year
+            if not (2000 <= year <= current_year):
+                raise ValueError("Invalid year.")
+
+            # Filter data for the specified month and year
+            sql = schemafy("""
+                SELECT 
+                    rl.engine_model AS ai_model_name,
+                    SUM(rl.num_tokens) AS tokens_used,
+                    mp.price_per_token AS price_per_token,
+                    SUM(rl.num_tokens * mp.price_per_token) AS total_cost
+                FROM enhancifai.run_logs rl
+                JOIN enhancifai.runs r ON rl.run_id = r.id
+                LEFT JOIN enhancifai.model_prices mp ON rl.engine_model = mp.model_name
+                WHERE r.user_id = %s AND EXTRACT(MONTH FROM rl.log_timestamp) = %s AND EXTRACT(YEAR FROM rl.log_timestamp) = %s
+                GROUP BY ai_model_name, mp.price_per_token;
+            """)
+            data = (user_id, month, year)
+        else:
+            # Retrieve all data without date filtering
+            sql = schemafy("""
+                SELECT 
+                    rl.engine_model AS ai_model_name,
+                    SUM(rl.num_tokens) AS tokens_used,
+                    mp.price_per_token AS price_per_token,
+                    SUM(rl.num_tokens * mp.price_per_token) AS total_cost
+                FROM enhancifai.run_logs rl
+                JOIN enhancifai.runs r ON rl.run_id = r.id
+                LEFT JOIN enhancifai.model_prices mp ON rl.engine_model = mp.model_name
+                WHERE r.user_id = %s
+                GROUP BY ai_model_name, mp.price_per_token;
+            """)
+            data = (user_id,)
+
         raw_records = read_db.do('select', sql=sql, data=data) or []
 
         # Convert total_cost to dollars, rounded to two decimal places
         usage_by_model = []
         for record in raw_records:
-            record['price_per_token'] = float(Decimal(record['price_per_token']).quantize(Decimal('0.0001')))
-            record['total_cost'] = float((Decimal(record['total_cost'])).quantize(Decimal('0.01')))
+            record['price_per_token'] = float(Decimal(record['price_per_token']).quantize(Decimal('0.000001')))
+            record['total_cost'] = float(Decimal(record['total_cost']).quantize(Decimal('0.01')))
             usage_by_model.append(record)
 
         return usage_by_model

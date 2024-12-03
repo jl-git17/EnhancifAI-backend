@@ -1,11 +1,12 @@
 # enhancifai_backend/server/routes/billing_routes.py
 
 import csv
+from datetime import datetime
 from decimal import Decimal
 import io
 import os
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from weasyprint import HTML
 
@@ -89,18 +90,26 @@ async def get_monthly_balance(
 
 @router.get("/billing/usage-by-model", tags=["Billing"])
 async def get_usage_by_model(
+    month: Optional[int] = Query(None, ge=1, le=12, description="Month for filtering (1-12)"),
+    year: Optional[int] = Query(None, ge=2000, le=datetime.now().year, description="Year for filtering (e.g., 2023)"),
     user_id: int = Depends(get_current_user_id), 
     _api_key: str = Depends(verify_secret_key)
 ):
     """
-    Get usage data aggregated by AI model.
+    Get usage data aggregated by AI model, filtered by month and year if provided.
     """
     try:
-        usage_by_model = BillingDbCore.get_usage_by_model(user_id)
+        # Call the modified get_usage_by_model function with month and year
+        usage_by_model = BillingDbCore.get_usage_by_model(user_id, month=month, year=year)
         return JSONResponse(status_code=200, content={"usage_by_model": usage_by_model})
+    except ValueError as ve:
+        # Handle validation errors from BillingDbCore
+        print(f"Validation error in get_usage_by_model: {str(ve)}")
+        raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         print(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
+
 
 @router.get("/billing/invoice-history", tags=["Billing"])
 async def get_invoice_history(
