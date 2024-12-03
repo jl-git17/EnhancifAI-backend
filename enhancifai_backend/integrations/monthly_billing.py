@@ -37,7 +37,6 @@ def generate_monthly_invoices():
 
         for user in users:
             user_id = user['user_id']
-            # Remove the condition that skips users (user_id != 5) to process all users
             try:
                 # Get the last invoice end date for the user
                 last_invoice_end_date = BillingDbCore.get_last_invoice_end_date(user_id)
@@ -45,6 +44,10 @@ def generate_monthly_invoices():
                 if last_invoice_end_date:
                     # Start from the day after the last invoiced period
                     current_start = last_invoice_end_date
+
+                    # Ensure current_start is a datetime.datetime object at midnight
+                    if isinstance(current_start, date) and not isinstance(current_start, datetime):
+                        current_start = datetime.combine(current_start, time.min)
                 else:
                     # No invoices exist; start from the date the user joined
                     date_joined = UsersDbCore.get_date_joined(user_id)
@@ -56,7 +59,7 @@ def generate_monthly_invoices():
                         continue  # Skip if date_joined is unavailable
 
                     # Convert date_joined to datetime at midnight if it's a date object
-                    if isinstance(date_joined, date):
+                    if isinstance(date_joined, date) and not isinstance(date_joined, datetime):
                         date_joined = datetime.combine(date_joined, time.min)
 
                     # Ensure date_joined is datetime.datetime
@@ -130,7 +133,9 @@ def generate_monthly_invoices():
                             total_amount_cents = 0
                             usage_summary = {}  # key: (model, rate), value: total_tokens
                             for usage in tokens_per_model_per_day:
-                                usage_date = usage['usage_date'].date()  # Ensure it's a date object
+                                usage_date = usage['usage_date']
+                                if isinstance(usage_date, date) and not isinstance(usage_date, datetime):
+                                    usage_date = datetime.combine(usage_date, time.min)
                                 model = usage['model']
                                 tokens = usage['total_tokens']
                                 rate = BillingDbCore.get_price_per_token(
@@ -175,7 +180,7 @@ def generate_monthly_invoices():
 
                                 # Store the invoice in the database
                                 invoice = BillingDbCore.create_invoice(
-                                    user_id, total_amount_cents, description, current_start, current_end
+                                    user_id, total_amount_cents, description, current_start.date(), current_end.date()
                                 )
                                 logger.info(
                                     "Stored invoice %s for user %s: $%.2f",
