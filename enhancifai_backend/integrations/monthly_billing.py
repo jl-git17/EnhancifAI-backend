@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timedelta, date, time
 from decimal import Decimal
 import json
+import calendar  # Added import
 from enhancifai_backend.database.access import read_db, write_db
 from enhancifai_backend.database.handlers.billing import BillingDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
@@ -17,16 +18,16 @@ def generate_monthly_invoices():
     This avoids processing months that have already been invoiced.
     """
     try:
-        # Determine the start and end of the previous month as datetime.datetime objects
+        # Determine the start and end of the previous month
         today = datetime.today()
         first_day_of_current_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        last_day_of_previous_month = first_day_of_current_month - timedelta(days=1)
+        last_day_of_previous_month = first_day_of_current_month - timedelta(seconds=1)
         first_day_of_previous_month = last_day_of_previous_month.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
         logger.info(
             "Generating invoices up to the period: %s to %s",
             first_day_of_previous_month.strftime('%Y-%m-%d'),
-            first_day_of_current_month.strftime('%Y-%m-%d')
+            last_day_of_previous_month.strftime('%Y-%m-%d')
         )
 
         # Fetch all users
@@ -43,7 +44,7 @@ def generate_monthly_invoices():
 
                 if last_invoice_end_date:
                     # Start from the day after the last invoiced period
-                    current_start = last_invoice_end_date
+                    current_start = last_invoice_end_date + timedelta(days=1)
 
                     # Ensure current_start is a datetime.datetime object at midnight
                     if isinstance(current_start, date) and not isinstance(current_start, datetime):
@@ -62,40 +63,27 @@ def generate_monthly_invoices():
                     if isinstance(date_joined, date) and not isinstance(date_joined, datetime):
                         date_joined = datetime.combine(date_joined, time.min)
 
-                    # Ensure date_joined is datetime.datetime
-                    if not isinstance(date_joined, datetime):
-                        logger.error(
-                            "Invalid date_joined type for user %s. Skipping.",
-                            user_id
-                        )
-                        continue  # Skip if date_joined is not datetime.datetime
-
                     # Normalize to first day of joining month at midnight
                     current_start = date_joined.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
-                # Adjust current_start if it's after the first day of the previous month
-                if current_start > first_day_of_previous_month:
+                # Adjust current_start if it's after the last day of the previous month
+                if current_start > last_day_of_previous_month:
                     logger.info(
                         "User %s has no new periods to invoice up to %s.",
                         user_id,
-                        first_day_of_previous_month.strftime('%Y-%m-%d')
+                        last_day_of_previous_month.strftime('%Y-%m-%d')
                     )
                     continue  # No new periods to invoice
 
-                # Determine the end date for invoice generation
-                while current_start <= first_day_of_previous_month:
-                    # Calculate the first day of the next month
-                    if current_start.month == 12:
-                        next_month = 1
-                        next_year = current_start.year + 1
-                    else:
-                        next_month = current_start.month + 1
-                        next_year = current_start.year
-                    current_end = current_start.replace(year=next_year, month=next_month, day=1)
+                # Generate invoices up to the last day of the previous month
+                while current_start <= last_day_of_previous_month:
+                    # Calculate the last day of the current month
+                    last_day = calendar.monthrange(current_start.year, current_start.month)[1]
+                    current_end = current_start.replace(day=last_day, hour=23, minute=59, second=59, microsecond=999999)
 
                     # Adjust if current_end exceeds the last day to invoice
-                    if current_end > first_day_of_current_month:
-                        current_end = first_day_of_current_month
+                    if current_end > last_day_of_previous_month:
+                        current_end = last_day_of_previous_month
 
                     logger.info(
                         "Generating invoice for user %s for period: %s to %s",
@@ -189,8 +177,14 @@ def generate_monthly_invoices():
                                     invoice['amount'] / 100  # Convert cents to dollars
                                 )
 
-                    # Move to the next month
-                    current_start = current_end
+                    # Move to the first day of the next month
+                    if current_start.month == 12:
+                        current_start = current_start.replace(year=current_start.year + 1, month=1, day=1)
+                    else:
+                        current_start = current_start.replace(month=current_start.month + 1, day=1)
+
+                # Reset time to midnight
+                current_start = current_start.replace(hour=0, minute=0, second=0, microsecond=0)
 
             except Exception as e:
                 # Log the error and continue with other users

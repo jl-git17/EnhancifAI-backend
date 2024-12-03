@@ -113,7 +113,7 @@ async def get_usage_by_model(
 
 @router.get("/billing/invoice-history", tags=["Billing"])
 async def get_invoice_history(
-    user_id: int = Depends(get_current_user_id), 
+    user_id: int = Depends(get_current_user_id),
     _api_key: str = Depends(verify_secret_key)
 ):
     """
