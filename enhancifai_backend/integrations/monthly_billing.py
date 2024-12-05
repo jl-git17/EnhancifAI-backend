@@ -11,6 +11,15 @@ from enhancifai_backend.database.handlers.utils import schemafy
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def add_one_month(dt):
+    """
+    Adds one month to the given datetime object.
+    """
+    year = dt.year + (dt.month // 12)
+    month = dt.month % 12 + 1
+    day = min(dt.day, calendar.monthrange(year, month)[1])
+    return dt.replace(year=year, month=month, day=day)
+
 def generate_monthly_invoices():
     """
     Generate monthly invoices for all users starting from the month after the last invoiced month.
@@ -183,6 +192,9 @@ def generate_monthly_invoices():
                                         user_id,
                                         invoice['amount'] / 100  # Convert cents to dollars
                                     )
+                    
+                    # Advance to the next month
+                    current_start = add_one_month(current_start)
 
                 # Update the last_invoice_run_at timestamp after processing all invoices for the user
                 current_timestamp = datetime.now(timezone.utc)  # Use timezone-aware datetime
