@@ -48,6 +48,10 @@ def generate_monthly_invoices():
                     # Ensure current_start is a datetime.datetime object at midnight UTC
                     if isinstance(current_start, date) and not isinstance(current_start, datetime):
                         current_start = datetime.combine(current_start, time.min, tzinfo=timezone.utc)
+                    
+                    if isinstance(current_start, datetime) and current_start.tzinfo is None:
+                        current_start = current_start.replace(tzinfo=timezone.utc)
+
                 else:
                     # No invoices exist; start from the date the user joined
                     date_joined = UsersDbCore.get_date_joined(user_id)
