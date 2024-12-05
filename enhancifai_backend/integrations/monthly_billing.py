@@ -69,6 +69,9 @@ def generate_monthly_invoices():
                     # Normalize to first day of joining month at midnight UTC
                     current_start = date_joined.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
 
+                if isinstance(current_start, datetime) and current_start.tzinfo is None:
+                    current_start = current_start.replace(tzinfo=timezone.utc)
+
                 # Adjust current_start if it's after the last day of the previous month
                 if current_start > last_day_of_previous_month:
                     logger.info(
