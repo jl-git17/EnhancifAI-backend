@@ -3,6 +3,7 @@ import json
 import mimetypes
 import asyncio
 import csv
+import logging
 from enum import Enum
 import os
 from tempfile import NamedTemporaryFile
@@ -326,15 +327,32 @@ async def cancel_run(req_run: RunCancelsRequest, _: str = Depends(verify_secret_
     
 
 @router.post("/execution/direct", tags=["Execution"])
-async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile = File(None),
-                               json_data: str = Body(None), max_records: bool = Form(...),
-                               _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
+async def upload_direct_prompt(
+    prompts: str = Form(...),
+    data_file: UploadFile = File(None),
+    json_data: str = Body(None),
+    max_records: bool = Form(...),
+    _: str = Depends(verify_secret_key),
+    user_id: int = Depends(get_current_user_id)
+):
     """
     Upload a CSV/Excel file or provide JSON data, with prompts payload.
     """
+    logging.debug("Entered upload_direct_prompt endpoint")
+    logging.debug(f"User ID: {user_id}")
+    logging.debug(f"Prompts: {prompts}")
+    logging.debug(f"Data file provided: {'Yes' if data_file else 'No'}")
+    logging.debug(f"JSON data provided: {'Yes' if json_data else 'No'}")
+    logging.debug(f"Max records flag: {max_records}")
+
     ai_consent = UsersDbCore.check_ai_consent(user_id)
-    if ai_consent is False:
-        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
+    logging.debug(f"AI consent for user {user_id}: {ai_consent}")
+    if not ai_consent:
+        logging.warning(f"User {user_id} has not consented for AI usage.")
+        raise HTTPException(
+            status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+            detail="User has not consented for AI usage."
+        )
     
     temp_data_file_path = None
     data_file_suffix = None
@@ -342,25 +360,36 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
     sheet_name = None
 
     if data_file and json_data:
-        raise HTTPException(status_code=400, detail="Cannot upload both a file and JSON data. Provide either one.")
+        logging.error("Both data_file and json_data provided. This is not allowed.")
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot upload both a file and JSON data. Provide either one."
+        )
 
     if json_data:
+        logging.info("Processing JSON data")
         try:
-            print(json_data)
+            logging.debug(f"JSON data received: {json_data}")
             _json_data = json.loads(json_data)
-            print(_json_data)
+            logging.debug(f"Parsed JSON data: {_json_data}")
             sheet_name = _json_data['sheet_name']
-            print(f"Sheet name: {sheet_name}")
+            logging.debug(f"Sheet name extracted: {sheet_name}")
             data_json = _json_data['data']
             with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx') as temp_data_file:
                 temp_data_file_path = temp_data_file.name
+                logging.debug(f"Created temporary data file at {temp_data_file_path}")
                 json_to_excel(data_json, temp_data_file_path)
             file_name = f"{sheet_name}.xlsx"
             data_file_suffix = '.xlsx'
+            logging.info(f"JSON data converted to Excel: {file_name}")
+        except KeyError as e:
+            logging.exception("Missing key in JSON data")
+            raise HTTPException(status_code=400, detail="Invalid JSON data.") from e
         except Exception as err:
-            print(err)
+            logging.exception("Error processing JSON data")
             raise HTTPException(status_code=400, detail="Invalid JSON data.") from err
     elif data_file:
+        logging.info("Processing uploaded data file")
         file_suffix_map = {
             'text/csv': '.csv',
             'application/vnd.ms-excel': '.xls',
@@ -369,46 +398,129 @@ async def upload_direct_prompt(prompts: str = Form(...), data_file: UploadFile =
         data_file_suffix = file_suffix_map.get(data_file.content_type, None)
         file_name = data_file.filename
 
+        logging.debug(f"Received data file '{file_name}' with content type: {data_file.content_type}")
+        
         if not data_file_suffix:
+            logging.error(f"Invalid data file type: {data_file.content_type}")
             raise HTTPException(status_code=400, detail="Invalid data file type")
+        
+        prompt_file_suffix = file_suffix_map.get(data_file.content_type, None)  # Assuming prompt_file has similar types
+        if not prompt_file_suffix:
+            logging.error(f"Invalid prompt file type for content type: {data_file.content_type}")
+            raise HTTPException(status_code=400, detail="Invalid prompt file type")
 
-        with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
-            temp_data_file_path = temp_data_file.name
-            data_contents = await data_file.read()
-            temp_data_file.write(data_contents)
-            temp_data_file.flush()
+        # Handling Data File
+        try:
+            with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
+                temp_data_file_path = temp_data_file.name
+                logging.debug(f"Created temporary data file at {temp_data_file_path}")
+                data_contents = await data_file.read()
+                logging.debug(f"Read {len(data_contents)} bytes from data file")
+                temp_data_file.write(data_contents)
+                temp_data_file.flush()
+                logging.debug("Data file written to temporary storage")
+            
+            if os.path.exists(temp_data_file_path):
+                logging.info(f"Temporary data file exists at {temp_data_file_path}")
+            else:
+                logging.error(f"Temporary data file not found at {temp_data_file_path}")
+                raise HTTPException(status_code=500, detail="Failed to create temporary data file.")
+        except Exception as e:
+            logging.exception("Error handling uploaded data file")
+            raise HTTPException(status_code=500, detail="Failed to process uploaded data file.") from e
     else:
+        logging.error("Neither data_file nor json_data provided")
         raise HTTPException(status_code=400, detail="Either data file or JSON data must be provided.")
 
     # Handle Prompts
     try:
+        if data_file:
+            logging.info("Processing uploaded prompt file")
+            prompt_file = data_file  # Adjust if prompt_file is different
+            # Implement prompt file handling if necessary
+            # For now, assuming prompt_file_suffix and temp_prompt_file_path are handled elsewhere
+    except Exception as e:
+        logging.exception("Error processing prompt file")
+        raise HTTPException(status_code=500, detail="Failed to process prompt file.") from e
+
+    # Handle Prompts from 'prompts' Form Field
+    try:
+        logging.debug(f"Parsing prompts payload: {prompts}")
         prompt_list = json.loads(prompts)
-    except Exception as err:
-        raise HTTPException(status_code=400, detail="Invalid prompts payload.") from err
-    read_prompts = PromptsProcessor.read_prompt_objects(
-        [PromptObject(**prompt) for prompt in prompt_list]
-    )
+        logging.debug(f"Parsed prompts list: {prompt_list}")
+    except json.JSONDecodeError as e:
+        logging.exception("Invalid JSON in prompts payload")
+        raise HTTPException(status_code=400, detail="Invalid prompts payload.") from e
+
+    try:
+        read_prompts = PromptsProcessor.read_prompt_objects(
+            [PromptObject(**prompt) for prompt in prompt_list]
+        )
+        logging.info(f"Read {len(read_prompts)} prompts successfully")
+    except Exception as e:
+        logging.exception("Error reading prompt objects")
+        raise HTTPException(status_code=400, detail="Invalid prompts format.") from e
 
     max_recs = MAX_RECORDS if max_records else GLOBAL_MAX_ROWS
+    logging.debug(f"Max records set to: {max_recs}")
 
     # Extract columns from data file
-    extracted_columns = extract_columns_from_file(temp_data_file_path)
+    try:
+        logging.info(f"Extracting columns from data file at {temp_data_file_path}")
+        extracted_columns = extract_columns_from_file(temp_data_file_path)
+        logging.debug(f"Extracted columns: {extracted_columns}")
+    except Exception as e:
+        logging.exception("Error extracting columns from data file")
+        cleanup_temp_files(None, temp_data_file_path)
+        raise HTTPException(status_code=500, detail="Failed to extract columns from data file.") from e
 
     run_type = 'csv' if data_file_suffix == '.csv' else 'excel'
-    if sheet_name:
-        source_filename = sheet_name
-    else:
-        source_filename = str(file_name).replace(data_file_suffix, '')
-    run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
-    runs_progress.add_run(run_id, None)
+    source_filename = sheet_name if sheet_name else os.path.splitext(file_name)[0]
+    logging.debug(f"Run type: {run_type}, Source filename: {source_filename}")
 
-    save_to_cache(temp_data_file_path, user_id, file_name)
+    try:
+        run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
+        logging.info(f"Created new run with ID: {run_id}")
+        runs_progress.add_run(run_id, None)
+        logging.debug(f"Added run {run_id} to runs_progress")
+    except Exception as e:
+        logging.exception("Error creating new run")
+        cleanup_temp_files(None, temp_data_file_path)
+        raise HTTPException(status_code=500, detail="Failed to create new run.") from e
 
-    Thread(target=start_async_run, args=(run_id, temp_data_file_path, read_prompts, max_recs, user_id, file_name)).start()
-    time.sleep(1)
-    cleanup_temp_files(None, temp_data_file_path)
+    try:
+        save_to_cache(temp_data_file_path, user_id, file_name)
+        logging.debug(f"Saved data file to cache for run {run_id}")
+    except Exception as e:
+        logging.exception("Error saving data file to cache")
+        cleanup_temp_files(None, temp_data_file_path)
+        raise HTTPException(status_code=500, detail="Failed to save data file to cache.") from e
 
-    return JSONResponse(status_code=200, content={'run_id': run_id, "data_columns": extracted_columns})
+    # Start asynchronous run in a separate thread
+    try:
+        logging.info(f"Starting asynchronous run for run ID: {run_id}")
+        Thread(
+            target=start_async_run,
+            args=(run_id, temp_data_file_path, read_prompts, max_recs, user_id, file_name)
+        ).start()
+        logging.debug("Asynchronous run thread started successfully")
+    except Exception as e:
+        logging.exception("Error starting asynchronous run")
+        cleanup_temp_files(None, temp_data_file_path)
+        raise HTTPException(status_code=500, detail="Failed to start the asynchronous process.") from e
+
+    # Cleanup temporary data file
+    try:
+        cleanup_temp_files(None, temp_data_file_path)
+        logging.debug(f"Cleaned up temporary data file at {temp_data_file_path}")
+    except Exception as e:
+        logging.warning(f"Failed to clean up temporary data file at {temp_data_file_path}: {str(e)}")
+
+    logging.info(f"upload_direct_prompt completed successfully for run ID: {run_id}")
+    return JSONResponse(
+        status_code=200,
+        content={'run_id': run_id, "data_columns": extracted_columns}
+    )
 
 
 @router.post("/execution/upload/prompts", tags=["Execution"])
