@@ -511,13 +511,6 @@ async def upload_direct_prompt(
         cleanup_temp_files(None, temp_data_file_path)
         raise HTTPException(status_code=500, detail="Failed to start the asynchronous process.") from e
 
-    # Cleanup temporary data file
-    try:
-        cleanup_temp_files(None, temp_data_file_path)
-        logging.debug(f"Cleaned up temporary data file at {temp_data_file_path}")
-    except Exception as e:
-        logging.warning(f"Failed to clean up temporary data file at {temp_data_file_path}: {str(e)}")
-
     logging.info(f"upload_direct_prompt completed successfully for run ID: {run_id}")
     return JSONResponse(
         status_code=200,
