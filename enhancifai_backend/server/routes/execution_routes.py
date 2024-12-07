@@ -303,7 +303,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
         raise HTTPException(status_code=500, detail="Failed to start the asynchronous process.") from e
 
     # Ensure files are cleaned up at the right time to avoid premature deletion
-    cleanup_temp_files(temp_prompt_file_path, None)
+    #cleanup_temp_files(temp_prompt_file_path, None)
 
     return JSONResponse(status_code=200, content={'run_id': run_id, "data_columns": extracted_columns})
 
