@@ -98,7 +98,8 @@ class BillingDbCore:
     def get_usage_by_model(cls, user_id, month=None, year=None):
         """
         Aggregate data by AI model, including tokens used, price per token, and total cost for each model.
-        Allows filtering by month and year.
+        Note: The `price_per_token` field in the database represents cost per 1000 tokens.
+            We divide by 1000 to get the correct total cost.
 
         Args:
             user_id (int): The user's ID.
@@ -134,8 +135,9 @@ class BillingDbCore:
             SELECT 
                 rl.engine_model AS ai_model_name,
                 SUM(rl.num_tokens) AS tokens_used,
-                ph.price_per_token AS price_per_token,
-                SUM(rl.num_tokens * ph.price_per_token) AS total_cost
+                ph.price_per_token AS price_per_token, 
+                -- price_per_token is per 1000 tokens, so divide by 1000 to get correct total cost
+                SUM(rl.num_tokens * ph.price_per_token / 1000.0) AS total_cost
             FROM enhancifai.run_logs rl
             JOIN enhancifai.runs r ON rl.run_id = r.id
             JOIN price_history ph ON rl.engine_model = ph.model_name
@@ -146,14 +148,17 @@ class BillingDbCore:
         """)
         raw_records = read_db.do('select', sql=sql, data=data) or []
 
-        # Convert total_cost to dollars, rounded to two decimal places
+        # Convert values to floats and round appropriately
         usage_by_model = []
         for record in raw_records:
+            # price_per_token is the price per 1000 tokens. Keep precision for clarity.
             record['price_per_token'] = float(Decimal(record['price_per_token']).quantize(Decimal('0.000001')))
+            # total_cost is now correctly computed; rounding to two decimals for display
             record['total_cost'] = float(Decimal(record['total_cost']).quantize(Decimal('0.01')))
             usage_by_model.append(record)
 
         return usage_by_model
+
 
     @classmethod
     def create_invoice(cls, user_id, amount_cents, description, billing_period_start, billing_period_end):
