@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta, date, time, timezone
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 import calendar
 from enhancifai_backend.database.access import read_db
 from enhancifai_backend.database.handlers.billing import BillingDbCore
@@ -160,8 +160,8 @@ def generate_monthly_invoices():
                                 else:
                                     usage_summary[key] = tokens
 
-                                amount_cents = int(Decimal(tokens) * Decimal(rate) * 100)
-                                total_amount_cents += amount_cents
+                                amount_cents = (Decimal(tokens) * Decimal(rate) * 100).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+                                total_amount_cents += int(amount_cents)
 
                             if total_amount_cents <= 0:
                                 logger.info(
