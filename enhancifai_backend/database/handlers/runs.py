@@ -20,7 +20,10 @@ class RunsDbCore:
         Any: Result of the write_db operation.
         """
         sql = schemafy("INSERT INTO enhancifai.runs (user_id, source_type, source_filename) VALUES (%s,%s,%s) RETURNING id;")
-        return write_db.do('execute', sql=sql, data=(user_id, source_type, source_filename))
+        result = write_db.do('execute', sql=sql, data=(user_id, source_type, source_filename))
+        if result:
+            return result['id']
+        return None
 
     @classmethod
     def new_run_call(cls, run_id, prompt, tokens_used):

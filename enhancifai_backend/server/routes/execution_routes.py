@@ -480,6 +480,8 @@ async def upload_direct_prompt(
 
     try:
         run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
+        if not run_id:
+            raise HTTPException(status_code=500, detail="Failed to created new run.")
         logging.info(f"Created new run with ID: {run_id}")
         runs_progress.add_run(run_id, None)
         logging.debug(f"Added run {run_id} to runs_progress")
