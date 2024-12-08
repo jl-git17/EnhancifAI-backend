@@ -175,8 +175,8 @@ async def download_invoice(
         # Build line items HTML table
         line_items_html = ""
         if line_items:
-            line_items_html = """
-            <h3>Usage Details</h3>
+            line_items_html = f"""
+            <h3 style="margin-top: 40px;">Usage Details</h3>
             <table class="line-items-table">
                 <thead>
                     <tr>
@@ -189,9 +189,10 @@ async def download_invoice(
                 </thead>
                 <tbody>
             """
-            for item in line_items:
+            for i, item in enumerate(line_items):
+                row_bg = "#f9f9f9" if i % 2 == 0 else "#fff"
                 line_items_html += f"""
-                <tr>
+                <tr style="background: {row_bg};">
                     <td>{item['date']}</td>
                     <td>{item['model']}</td>
                     <td>{item['tokens']}</td>
@@ -200,8 +201,7 @@ async def download_invoice(
                 </tr>
                 """
             line_items_html += "</tbody></table>"
-
-        # Improved invoice HTML
+        
         html_content = f"""
         <html>
         <head>
@@ -210,28 +210,45 @@ async def download_invoice(
             <style>
                 body {{
                     font-family: Arial, sans-serif;
-                    margin: 40px;
                     font-size: 14px;
                     color: #333;
+                    background: #f0f0f0;
+                    margin: 0;
+                    padding: 0;
                 }}
-                h1, h2, h3 {{
-                    margin-bottom: 0.5em;
+                .invoice-container {{
+                    max-width: 700px;
+                    margin: 40px auto;
+                    background: #fff;
+                    border-radius: 8px;
+                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                    padding: 40px;
                 }}
-                .header, .footer {{
+                .header {{
                     text-align: center;
-                    margin-bottom: 40px;
+                    padding: 20px;
+                    background: linear-gradient(to right, #1FBCFF, #66d0ff);
+                    border-radius: 8px 8px 0 0;
+                    margin: -40px -40px 20px -40px;
                 }}
                 .header h1 {{
-                    font-size: 24px;
-                    margin-bottom: 5px;
+                    font-size: 26px;
+                    color: #fff;
+                    margin: 0;
                 }}
                 .header p {{
-                    margin: 0;
                     font-size: 14px;
+                    color: #eaf9ff;
+                    margin: 5px 0 0 0;
                 }}
-                hr {{
+                h2, h3 {{
+                    color: #1FBCFF;
+                    margin-top: 30px;
+                    margin-bottom: 10px;
+                }}
+                .divider {{
                     border: none;
-                    border-bottom: 1px solid #ccc;
+                    border-bottom: 1px solid #1FBCFF;
                     margin: 20px 0;
                 }}
                 .details-table, .line-items-table {{
@@ -239,52 +256,64 @@ async def download_invoice(
                     border-collapse: collapse;
                     margin-bottom: 20px;
                 }}
-                .details-table td, .details-table th,
-                .line-items-table td, .line-items-table th {{
-                    padding: 8px;
-                    border-bottom: 1px solid #eee;
-                    vertical-align: top;
-                }}
                 .details-table th, .line-items-table th {{
                     text-align: left;
                     font-weight: bold;
+                    border-bottom: 2px solid #1FBCFF;
+                    padding: 8px;
+                }}
+                .details-table td, .line-items-table td {{
+                    padding: 8px;
+                    border-bottom: 1px solid #eee;
+                    vertical-align: top;
                 }}
                 .amount {{
                     font-size: 18px;
                     font-weight: bold;
                     color: #000;
                 }}
+                .footer {{
+                    text-align: center;
+                    margin-top: 40px;
+                }}
                 .footer p {{
                     font-size: 12px;
                     color: #999;
                 }}
+                .highlight-row th, .highlight-row td {{
+                    background: #eaf7ff;
+                }}
+                p {{
+                    line-height: 1.5em;
+                }}
             </style>
         </head>
         <body>
-            <div class="header">
-                <h1>Invoice</h1>
-                <p>Enhancifai Inc.<br>1234 AI Drive<br>Innovation City, AI 56789</p>
-            </div>
+            <div class="invoice-container">
+                <div class="header">
+                    <h1>Invoice</h1>
+                    <p>EnhancifAI Data Submission Portal</p>
+                </div>
 
-            <hr>
+                <h2>Invoice Details</h2>
+                <hr class="divider">
+                <table class="details-table">
+                    <tr><th>Invoice #</th><td>{invoice_number}</td></tr>
+                    <tr><th>Date Issued</th><td>{date_issued}</td></tr>
+                    <tr><th>Billing Period</th><td>{billing_period_start} to {billing_period_end}</td></tr>
+                    <tr><th>Description</th><td>{description}</td></tr>
+                    <tr><th>Status</th><td>{status}</td></tr>
+                    <tr><th>Payment Date</th><td>{payment_date}</td></tr>
+                    <tr class="highlight-row"><th>Amount Due</th><td class="amount">${amount:.2f}</td></tr>
+                </table>
 
-            <h2>Invoice Details</h2>
-            <table class="details-table">
-                <tr><th>Invoice #</th><td>{invoice_number}</td></tr>
-                <tr><th>Date Issued</th><td>{date_issued}</td></tr>
-                <tr><th>Billing Period</th><td>{billing_period_start} to {billing_period_end}</td></tr>
-                <tr><th>Description</th><td>{description}</td></tr>
-                <tr><th>Status</th><td>{status}</td></tr>
-                <tr><th>Payment Date</th><td>{payment_date}</td></tr>
-                <tr><th>Amount Due</th><td class="amount">${amount:.2f}</td></tr>
-            </table>
+                {line_items_html}
 
-            {line_items_html}
+                <p>Thank you for your business. Please contact our support team if you have any questions about this invoice.</p>
 
-            <p>Thank you for your business. Please contact our support team if you have any questions about this invoice.</p>
-
-            <div class="footer">
-                <p>&copy; {datetime.now().year} Enhancifai Inc.</p>
+                <div class="footer">
+                    <p>&copy; {datetime.now().year} EnhancifAI.</p>
+                </div>
             </div>
         </body>
         </html>
