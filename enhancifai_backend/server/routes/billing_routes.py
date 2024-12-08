@@ -154,26 +154,142 @@ async def download_invoice(
     _api_key: str = Depends(verify_secret_key)
 ):
     """
-    Download an invoice as a PDF file.
+    Download an invoice as a PDF file with itemized details.
     """
     try:
-        # Retrieve invoice data from the database
         invoice = BillingDbCore.get_invoice_by_id(user_id, invoice_id)
         if not invoice:
             raise HTTPException(status_code=404, detail="Invoice not found.")
-        
-        # Generate PDF content
+
+        invoice_number = invoice['invoice_number']
+        date_issued = invoice['date']
+        amount = invoice['invoice_amount']
+        status = invoice['payment_status']
+        payment_date = invoice['payment_date'] if invoice['payment_date'] else "N/A"
+        billing_period_start = invoice.get('billing_period_start', 'N/A')
+        billing_period_end = invoice.get('billing_period_end', 'N/A')
+        metadata = invoice.get('metadata', {})
+        description = metadata.get('description', 'N/A')
+        line_items = metadata.get('line_items', [])
+
+        # Build line items HTML table
+        line_items_html = ""
+        if line_items:
+            line_items_html = """
+            <h3>Usage Details</h3>
+            <table class="line-items-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Model</th>
+                        <th>Tokens</th>
+                        <th>Rate (USD/token)</th>
+                        <th>Subtotal (USD)</th>
+                    </tr>
+                </thead>
+                <tbody>
+            """
+            for item in line_items:
+                line_items_html += f"""
+                <tr>
+                    <td>{item['date']}</td>
+                    <td>{item['model']}</td>
+                    <td>{item['tokens']}</td>
+                    <td>${item['rate']:.6f}</td>
+                    <td>${item['amount']:.2f}</td>
+                </tr>
+                """
+            line_items_html += "</tbody></table>"
+
+        # Improved invoice HTML
         html_content = f"""
         <html>
+        <head>
+            <meta charset="UTF-8">
+            <title>Invoice #{invoice_number}</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    margin: 40px;
+                    font-size: 14px;
+                    color: #333;
+                }}
+                h1, h2, h3 {{
+                    margin-bottom: 0.5em;
+                }}
+                .header, .footer {{
+                    text-align: center;
+                    margin-bottom: 40px;
+                }}
+                .header h1 {{
+                    font-size: 24px;
+                    margin-bottom: 5px;
+                }}
+                .header p {{
+                    margin: 0;
+                    font-size: 14px;
+                }}
+                hr {{
+                    border: none;
+                    border-bottom: 1px solid #ccc;
+                    margin: 20px 0;
+                }}
+                .details-table, .line-items-table {{
+                    width: 100%;
+                    border-collapse: collapse;
+                    margin-bottom: 20px;
+                }}
+                .details-table td, .details-table th,
+                .line-items-table td, .line-items-table th {{
+                    padding: 8px;
+                    border-bottom: 1px solid #eee;
+                    vertical-align: top;
+                }}
+                .details-table th, .line-items-table th {{
+                    text-align: left;
+                    font-weight: bold;
+                }}
+                .amount {{
+                    font-size: 18px;
+                    font-weight: bold;
+                    color: #000;
+                }}
+                .footer p {{
+                    font-size: 12px;
+                    color: #999;
+                }}
+            </style>
+        </head>
         <body>
-            <h1>Invoice #{invoice['invoice_number']}</h1>
-            <p>Date: {invoice['date']}</p>
-            <p>Amount: ${invoice['invoice_amount']}</p>
-            <p>Status: {invoice['payment_status']}</p>
-            <!-- Add more invoice details as needed -->
+            <div class="header">
+                <h1>Invoice</h1>
+                <p>Enhancifai Inc.<br>1234 AI Drive<br>Innovation City, AI 56789</p>
+            </div>
+
+            <hr>
+
+            <h2>Invoice Details</h2>
+            <table class="details-table">
+                <tr><th>Invoice #</th><td>{invoice_number}</td></tr>
+                <tr><th>Date Issued</th><td>{date_issued}</td></tr>
+                <tr><th>Billing Period</th><td>{billing_period_start} to {billing_period_end}</td></tr>
+                <tr><th>Description</th><td>{description}</td></tr>
+                <tr><th>Status</th><td>{status}</td></tr>
+                <tr><th>Payment Date</th><td>{payment_date}</td></tr>
+                <tr><th>Amount Due</th><td class="amount">${amount:.2f}</td></tr>
+            </table>
+
+            {line_items_html}
+
+            <p>Thank you for your business. Please contact our support team if you have any questions about this invoice.</p>
+
+            <div class="footer">
+                <p>&copy; {datetime.now().year} Enhancifai Inc.</p>
+            </div>
         </body>
         </html>
         """
+
         pdf = HTML(string=html_content).write_pdf()
         return Response(
             content=pdf,

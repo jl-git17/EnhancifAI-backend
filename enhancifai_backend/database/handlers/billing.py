@@ -161,7 +161,7 @@ class BillingDbCore:
 
 
     @classmethod
-    def create_invoice(cls, user_id, amount_cents, description, billing_period_start, billing_period_end):
+    def create_invoice(cls, user_id, amount_cents, description, billing_period_start, billing_period_end, metadata=None):
         """
         Create an invoice and save it in the database.
 
@@ -171,6 +171,7 @@ class BillingDbCore:
             description (str): Description of the invoice.
             billing_period_start (date): Start of the billing period.
             billing_period_end (date): End of the billing period.
+            metadata (dict): Additional metadata including line items.
 
         Returns:
             dict: A dictionary containing the created invoice details or None if skipped.
@@ -186,6 +187,13 @@ class BillingDbCore:
                 logging.info(f"Skipping invoice for user {user_id}: invoice already exists for this period.")
                 return None
 
+            if metadata is None:
+                metadata = {'description': description}
+            else:
+                # Ensure description is included if not already
+                if 'description' not in metadata:
+                    metadata['description'] = description
+
             sql = schemafy("""
                 INSERT INTO enhancifai.stripe_invoices (
                     user_id, amount, status, created_at,
@@ -193,9 +201,8 @@ class BillingDbCore:
                 ) VALUES (%s, %s, 'open', NOW(), %s, %s, %s)
                 RETURNING invoice_id, amount, status, created_at, billing_period_start, billing_period_end;
             """)
-            data = (user_id, amount_cents, billing_period_start, billing_period_end, json.dumps({'description': description}))
+            data = (user_id, amount_cents, billing_period_start, billing_period_end, json.dumps(metadata))
             result = write_db.do('execute', sql=sql, data=data)
-            pass
             return {
                 'invoice_id': result['invoice_id'],
                 'amount': Decimal(result['amount']).quantize(Decimal('0.01')),
