@@ -291,8 +291,7 @@ async def download_invoice(
         <body>
             <div class="invoice-container">
                 <div class="header">
-                    <h1>Invoice</h1>
-                    <p>EnhancifAI Data Submission Portal</p>
+                    <h1>EnhancifAI - Invoice</h1>
                 </div>
 
                 <h2>Invoice Details</h2>
