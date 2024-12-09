@@ -170,13 +170,13 @@ async def download_invoice(
         billing_period_end = invoice.get('billing_period_end', 'N/A')
         metadata = invoice.get('metadata', {})
         description = metadata.get('description', 'N/A')
+        
+        # Normal token usage line items
         line_items = metadata.get('line_items', [])
-
-        # Build line items HTML table
         line_items_html = ""
         if line_items:
             line_items_html = f"""
-            <h3 style="margin-top: 40px;">Usage Details</h3>
+            <h3 style="margin-top: 40px;">Normal Token Usage Details</h3>
             <table class="line-items-table">
                 <thead>
                     <tr>
@@ -201,6 +201,37 @@ async def download_invoice(
                 </tr>
                 """
             line_items_html += "</tbody></table>"
+
+        # PI token usage line items
+        pi_line_items = metadata.get('pi_line_items', [])
+        pi_line_items_html = ""
+        if pi_line_items:
+            pi_line_items_html = f"""
+            <h3 style="margin-top: 40px;">PI Token Usage Details</h3>
+            <table class="line-items-table">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Model</th>
+                        <th>Tokens</th>
+                        <th>Rate (USD/token)</th>
+                        <th>Subtotal (USD)</th>
+                    </tr>
+                </thead>
+                <tbody>
+            """
+            for i, item in enumerate(pi_line_items):
+                row_bg = "#f9f9f9" if i % 2 == 0 else "#fff"
+                pi_line_items_html += f"""
+                <tr style="background: {row_bg};">
+                    <td>{item['date']}</td>
+                    <td>{item['model']}</td>
+                    <td>{item['tokens']}</td>
+                    <td>${item['rate']:.6f}</td>
+                    <td>${item['amount']:.2f}</td>
+                </tr>
+                """
+            pi_line_items_html += "</tbody></table>"
         
         html_content = f"""
         <html>
@@ -308,6 +339,8 @@ async def download_invoice(
 
                 {line_items_html}
 
+                {pi_line_items_html}
+
                 <p>Thank you for your business. Please contact our support team if you have any questions about this invoice.</p>
 
                 <div class="footer">
@@ -329,6 +362,7 @@ async def download_invoice(
     except Exception as e:
         print(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
+
 
 @router.post("/billing/invoice/pay/{invoice_id}", tags=["Billing"])
 async def pay_invoice(
