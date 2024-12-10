@@ -176,7 +176,7 @@ async def download_invoice(
         line_items_html = ""
         if line_items:
             line_items_html = f"""
-            <h3 style="margin-top: 40px;">Normal Token Usage Details</h3>
+            <h3 style="margin-top: 40px;">Execution Token Usage Details</h3>
             <table class="line-items-table">
                 <thead>
                     <tr>
@@ -207,7 +207,7 @@ async def download_invoice(
         pi_line_items_html = ""
         if pi_line_items:
             pi_line_items_html = f"""
-            <h3 style="margin-top: 40px;">PI Token Usage Details</h3>
+            <h3 style="margin-top: 40px;">Prompt Improver Token Usage Details</h3>
             <table class="line-items-table">
                 <thead>
                     <tr>
