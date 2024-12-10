@@ -38,7 +38,7 @@ CREATE TABLE IF NOT EXISTS enhancifai.stripe_invoices (
     invoice_id SERIAL PRIMARY KEY,
     user_id INT REFERENCES enhancifai.users(user_id),
     amount INT NOT NULL,
-    status VARCHAR(50),  -- e.g., paid, open, etc.
+    status VARCHAR(50),
     created_at TIMESTAMP DEFAULT now(),
     billing_period_start DATE,   -- New field
     billing_period_end DATE,     -- New field

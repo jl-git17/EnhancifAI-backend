@@ -1,5 +1,3 @@
-# enhancifai_backend/database/handlers/stripe.py
-
 from datetime import datetime, date
 import json
 import os

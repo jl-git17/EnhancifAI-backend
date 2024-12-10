@@ -198,7 +198,7 @@ class BillingDbCore:
                 INSERT INTO enhancifai.stripe_invoices (
                     user_id, amount, status, created_at,
                     billing_period_start, billing_period_end, metadata
-                ) VALUES (%s, %s, 'open', NOW(), %s, %s, %s)
+                ) VALUES (%s, %s, 'unpaid', NOW(), %s, %s, %s)
                 RETURNING invoice_id, amount, status, created_at, billing_period_start, billing_period_end;
             """)
             data = (user_id, amount_cents, billing_period_start, billing_period_end, json.dumps(metadata))
