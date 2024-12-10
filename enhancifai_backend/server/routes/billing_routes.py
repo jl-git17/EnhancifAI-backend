@@ -162,15 +162,42 @@ async def download_invoice(
             raise HTTPException(status_code=404, detail="Invoice not found.")
 
         invoice_number = invoice['invoice_number']
-        date_issued = invoice['date']
+        
+        # Format Date Issued
+        date_issued_raw = invoice['date']
+        date_issued = datetime.fromisoformat(date_issued_raw.replace('Z', '+00:00')).strftime('%B %d, %Y')
+
         amount = invoice['invoice_amount']
         status = invoice['payment_status']
-        payment_date = invoice['payment_date'] if invoice['payment_date'] else "N/A"
-        billing_period_start = invoice.get('billing_period_start', 'N/A')
-        billing_period_end = invoice.get('billing_period_end', 'N/A')
+        
+        # Format Payment Date or set to empty string
+        payment_date_raw = invoice.get('payment_date')
+        payment_date = datetime.fromisoformat(payment_date_raw.replace('Z', '+00:00')).strftime('%B %d, %Y')
+
+        # Format Billing Period
+        billing_period_start_raw = invoice.get('billing_period_start')
+        billing_period_end_raw = invoice.get('billing_period_end')
+        if billing_period_start_raw and billing_period_end_raw:
+            try:
+                billing_period_start = datetime.fromisoformat(billing_period_start_raw).strftime('%B %d, %Y')
+                billing_period_end = datetime.fromisoformat(billing_period_end_raw).strftime('%B %d, %Y')
+            except ValueError:
+                billing_period_start = billing_period_start_raw
+                billing_period_end = billing_period_end_raw
+        else:
+            billing_period_start = billing_period_start_raw or ""
+            billing_period_end = billing_period_end_raw or ""
+
         metadata = invoice.get('metadata', {})
         description = metadata.get('description', 'N/A')
         
+        # Status Coloring
+        status_color_map = {
+            'paid': '#28a745',      # Green
+            'unpaid': '#dc3545',   # Red
+        }
+        status_color = status_color_map.get(status, '#000000')  # Default to black
+
         # Normal token usage line items
         line_items = metadata.get('line_items', [])
         line_items_html = ""
@@ -191,9 +218,11 @@ async def download_invoice(
             """
             for i, item in enumerate(line_items):
                 row_bg = "#f9f9f9" if i % 2 == 0 else "#fff"
+
+                item_date = datetime.fromisoformat(item['date'].replace('Z', '+00:00')).strftime('%B %d, %Y')
                 line_items_html += f"""
                 <tr style="background: {row_bg};">
-                    <td>{item['date']}</td>
+                    <td>{item_date}</td>
                     <td>{item['model']}</td>
                     <td>{item['tokens']}</td>
                     <td>${item['rate']:.6f}</td>
@@ -222,9 +251,10 @@ async def download_invoice(
             """
             for i, item in enumerate(pi_line_items):
                 row_bg = "#f9f9f9" if i % 2 == 0 else "#fff"
+                item_date = datetime.fromisoformat(item['date'].replace('Z', '+00:00')).strftime('%B %d, %Y')
                 pi_line_items_html += f"""
                 <tr style="background: {row_bg};">
-                    <td>{item['date']}</td>
+                    <td>{item_date}</td>
                     <td>{item['model']}</td>
                     <td>{item['tokens']}</td>
                     <td>${item['rate']:.6f}</td>
@@ -332,7 +362,7 @@ async def download_invoice(
                     <tr><th>Date Issued</th><td>{date_issued}</td></tr>
                     <tr><th>Billing Period</th><td>{billing_period_start} to {billing_period_end}</td></tr>
                     <tr><th>Description</th><td>{description}</td></tr>
-                    <tr><th>Status</th><td>{status}</td></tr>
+                    <tr><th>Status</th><td style="color: {status_color};">{status}</td></tr>
                     <tr><th>Payment Date</th><td>{payment_date}</td></tr>
                     <tr class="highlight-row"><th>Amount Due</th><td class="amount">${amount:.2f}</td></tr>
                 </table>
@@ -362,7 +392,6 @@ async def download_invoice(
     except Exception as e:
         print(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
-
 
 @router.post("/billing/invoice/pay/{invoice_id}", tags=["Billing"])
 async def pay_invoice(
