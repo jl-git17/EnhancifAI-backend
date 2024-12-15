@@ -283,6 +283,7 @@ class BillingDbCore:
                 record['metadata'] = json.loads(record['metadata'])
             elif record['metadata'] is None:
                 record['metadata'] = {}
+            record['status'] = record['status'].upper()
             
             invoice_history.append(record)
 
