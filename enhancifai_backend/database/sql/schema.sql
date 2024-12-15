@@ -35,7 +35,8 @@ CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage_pi (
 );
 
 CREATE TABLE enhancifai.stripe_invoices (
-    invoice_id VARCHAR(25) PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
+    invoice_id VARCHAR(25) UNIQUE NOT NULL,
     user_id INT REFERENCES enhancifai.users(user_id),
     amount FLOAT NOT NULL,
     status VARCHAR(50),
