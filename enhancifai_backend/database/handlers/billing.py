@@ -256,7 +256,7 @@ class BillingDbCore:
         sql = schemafy("""
             SELECT 
                 TO_CHAR(si.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS date,
-                si.invoice_id AS invoice_number,
+                si.invoice_number,
                 si.amount AS invoice_amount,
                 TO_CHAR(si.paid_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS payment_date,
                 si.status AS payment_status,
