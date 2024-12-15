@@ -34,7 +34,7 @@ CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage_pi (
     created_at TIMESTAMP DEFAULT now()
 );
 
-CREATE TABLE enhancifai.stripe_invoices (
+CREATE TABLE IF NOT EXISTS enhancifai.stripe_invoices (
     id SERIAL PRIMARY KEY,
     invoice_id VARCHAR(25) UNIQUE NOT NULL,
     user_id INT REFERENCES enhancifai.users(user_id),
@@ -47,54 +47,35 @@ CREATE TABLE enhancifai.stripe_invoices (
     paid_at TIMESTAMP
 );
 
-DO $do$
+-- Create sequence if it does not exist
+CREATE SEQUENCE IF NOT EXISTS enhancifai.invoice_number_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+-- Create or replace function
+CREATE OR REPLACE FUNCTION enhancifai.generate_invoice_number()
+RETURNS TRIGGER AS $func$
 BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_class c
-        JOIN pg_namespace n ON n.oid = c.relnamespace
-        WHERE c.relname = 'invoice_number_seq' AND n.nspname = 'enhancifai'
-    ) THEN
-        CREATE SEQUENCE enhancifai.invoice_number_seq
-            START WITH 1
-            INCREMENT BY 1
-            NO MINVALUE
-            NO MAXVALUE
-            CACHE 1;
+    -- Reset the sequence at the start of a new month
+    IF to_char(NEW.created_at, 'YYYYMM') <> to_char(current_date, 'YYYYMM') THEN
+        PERFORM setval('enhancifai.invoice_number_seq', 1, false);
     END IF;
-END
-$do$ LANGUAGE plpgsql;
 
-DO $do$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_proc p
-        JOIN pg_namespace n ON n.oid = p.pronamespace
-        WHERE p.proname = 'generate_invoice_number' AND n.nspname = 'enhancifai'
-    ) THEN
-        CREATE OR REPLACE FUNCTION enhancifai.generate_invoice_number()
-        RETURNS TRIGGER AS $func$
-        BEGIN
-            -- Reset the sequence at the start of a new month
-            IF to_char(NEW.created_at, 'YYYYMM') <> to_char(current_date, 'YYYYMM') THEN
-                PERFORM setval('enhancifai.invoice_number_seq', 1, false);
-            END IF;
+    -- Assign the invoice_id using the specified format
+    NEW.invoice_id := CONCAT(
+        'INV-',
+        TO_CHAR(NEW.created_at, 'YYYYMM'),
+        '-',
+        LPAD(nextval('enhancifai.invoice_number_seq')::text, 7, '0') -- Seven-digit sequence
+    );
+    RETURN NEW;
+END;
+$func$ LANGUAGE plpgsql;
 
-            -- Assign the invoice_id using the specified format
-            NEW.invoice_id := CONCAT(
-                'INV-',
-                TO_CHAR(NEW.created_at, 'YYYYMM'),
-                '-',
-                LPAD(nextval('enhancifai.invoice_number_seq')::text, 7, '0') -- Seven-digit sequence
-            );
-            RETURN NEW;
-        END;
-        $func$ LANGUAGE plpgsql;
-    END IF;
-END
-$do$ LANGUAGE plpgsql;
-
+-- Create trigger if it does not exist
 DO $do$
 BEGIN
     IF NOT EXISTS (
@@ -113,6 +94,7 @@ BEGIN
     END IF;
 END
 $do$ LANGUAGE plpgsql;
+
 
 CREATE TABLE IF NOT EXISTS enhancifai.google_sheets_credentials (
     user_id INT REFERENCES enhancifai.users(user_id) UNIQUE,
