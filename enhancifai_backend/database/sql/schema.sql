@@ -45,9 +45,10 @@ CREATE TABLE IF NOT EXISTS enhancifai.stripe_invoices (
     metadata JSONB
 );
 
+
 -- Step 1: Add the invoice_number column if it doesn't exist
 ALTER TABLE enhancifai.stripe_invoices
-ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(20) UNIQUE NOT NULL DEFAULT '';
+ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(25) UNIQUE NOT NULL DEFAULT '';
 
 -- Step 2: Create the invoice_number_seq sequence if it doesn't exist
 CREATE SEQUENCE IF NOT EXISTS enhancifai.invoice_number_seq START 1;
@@ -66,7 +67,7 @@ BEGIN
         'INV-',
         TO_CHAR(NEW.created_at, 'YYYYMM'),
         '-',
-        LPAD(nextval('enhancifai.invoice_number_seq')::text, 4, '0')
+        LPAD(nextval('enhancifai.invoice_number_seq')::text, 7, '0')  -- Seven-digit sequence
     );
     RETURN NEW;
 END;
@@ -86,6 +87,7 @@ BEGIN
         EXECUTE FUNCTION enhancifai.generate_invoice_number();
     END IF;
 END $$;
+
 
 CREATE TABLE IF NOT EXISTS enhancifai.google_sheets_credentials (
     user_id INT REFERENCES enhancifai.users(user_id) UNIQUE,
