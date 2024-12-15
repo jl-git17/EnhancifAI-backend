@@ -81,8 +81,8 @@ BEGIN
                 PERFORM setval('enhancifai.invoice_number_seq', 1, false);
             END IF;
 
-            -- Assign the invoice_number using the specified format
-            NEW.invoice_number := CONCAT(
+            -- Assign the invoice_id using the specified format
+            NEW.invoice_id := CONCAT(  -- Changed from NEW.invoice_number to NEW.invoice_id
                 'INV-',
                 TO_CHAR(NEW.created_at, 'YYYYMM'),
                 '-',
