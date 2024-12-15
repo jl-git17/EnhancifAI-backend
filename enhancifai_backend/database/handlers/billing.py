@@ -383,7 +383,7 @@ class BillingDbCore:
         sql = schemafy("""
             SELECT 
                 TO_CHAR(si.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS date,
-                si.invoice_id AS invoice_number,
+                si.invoice_number,
                 si.amount AS invoice_amount_cents,
                 TO_CHAR(si.paid_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS payment_date,
                 si.status AS payment_status,
@@ -394,6 +394,44 @@ class BillingDbCore:
             WHERE si.user_id = %s AND si.invoice_id = %s;
         """)
         data = (user_id, invoice_id)
+        record = read_db.do('select_one', sql=sql, data=data)
+        if record:
+            # Convert amount from cents to dollars
+            amount_in_cents = Decimal(record['invoice_amount_cents'])
+            amount_in_dollars = (amount_in_cents / Decimal('100')).quantize(Decimal('0.01'))
+            record['invoice_amount'] = float(amount_in_dollars)
+            
+            # Handle possible None for payment_date
+            record['payment_date'] = record['payment_date'] if record['payment_date'] else None
+            
+            # Process metadata
+            if record['metadata'] and isinstance(record['metadata'], str):
+                record['metadata'] = json.loads(record['metadata'])
+            elif record['metadata'] is None:
+                record['metadata'] = {}
+        
+        return record
+    
+    @classmethod
+    def get_invoice_by_number(cls, user_id, invoice_number):
+        """
+        Retrieve a specific invoice for a user.
+        Returns amount in dollars as float rounded to two decimal places.
+        """
+        sql = schemafy("""
+            SELECT 
+                TO_CHAR(si.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS date,
+                si.invoice_number,
+                si.amount AS invoice_amount_cents,
+                TO_CHAR(si.paid_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS payment_date,
+                si.status AS payment_status,
+                TO_CHAR(si.billing_period_start, 'YYYY-MM-DD') AS billing_period_start,
+                TO_CHAR(si.billing_period_end, 'YYYY-MM-DD') AS billing_period_end,
+                si.metadata
+            FROM enhancifai.stripe_invoices si
+            WHERE si.user_id = %s AND si.invoice_number = %s;
+        """)
+        data = (user_id, invoice_number)
         record = read_db.do('select_one', sql=sql, data=data)
         if record:
             # Convert amount from cents to dollars
