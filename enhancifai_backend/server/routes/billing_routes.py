@@ -6,7 +6,7 @@ from decimal import Decimal
 import io
 import os
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Header, Query, Request, Response, status
 from fastapi.responses import JSONResponse, StreamingResponse
 from weasyprint import HTML
 
@@ -454,20 +454,22 @@ async def pay_invoice(
         return JSONResponse(status_code=500, content={"detail": "Internal server error."})
 
 @router.post("/stripe/webhook", tags=["Stripe"])
-async def stripe_webhook(request: Request):
+async def stripe_webhook(
+    request: Request,
+    stripe_signature: str = Header(None, alias="Stripe-Signature")
+):
     """
     Handle Stripe webhooks for invoice payment events.
     """
     endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
-    payload = await request.body()
-    sig_header = request.headers.get('stripe-signature')
-
     if not endpoint_secret:
         raise HTTPException(status_code=500, detail="Webhook secret not configured.")
-    
+
+    payload = await request.body()
+
     try:
         event = stripe.Webhook.construct_event(
-            payload, sig_header, endpoint_secret
+            payload, stripe_signature, endpoint_secret
         )
     except ValueError:
         # Invalid payload
@@ -477,17 +479,24 @@ async def stripe_webhook(request: Request):
         return JSONResponse(status_code=400, content={"detail": "Invalid signature"})
 
     # Handle the event
-    if event['type'] == 'checkout.session.completed':
-        session = event['data']['object']
-        invoice_id = session['metadata']['invoice_id']
-        payment_status = 'paid'  # Since payment was successful
-        # Update invoice status in the database
-        BillingDbCore.update_invoice_status(invoice_id, payment_status)
-    elif event['type'] == 'checkout.session.async_payment_failed':
-        session = event['data']['object']
-        invoice_id = session['metadata']['invoice_id']
-        payment_status = 'failed'
-        BillingDbCore.update_invoice_status(invoice_id, payment_status)
+    if event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        invoice_id = session["metadata"].get("invoice_id")
+        payment_status = "paid"  # Since payment was successful
+        if invoice_id:
+            BillingDbCore.update_invoice_status(invoice_id, payment_status)
+        else:
+            # Handle missing invoice_id in metadata
+            return JSONResponse(status_code=400, content={"detail": "Missing invoice_id in session metadata"})
+    elif event["type"] == "checkout.session.async_payment_failed":
+        session = event["data"]["object"]
+        invoice_id = session["metadata"].get("invoice_id")
+        payment_status = "failed"
+        if invoice_id:
+            BillingDbCore.update_invoice_status(invoice_id, payment_status)
+        else:
+            # Handle missing invoice_id in metadata
+            return JSONResponse(status_code=400, content={"detail": "Missing invoice_id in session metadata"})
     # ... handle other event types as needed
 
     return JSONResponse(status_code=200, content={"message": "Webhook received!"})
