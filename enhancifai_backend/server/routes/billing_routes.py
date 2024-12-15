@@ -158,6 +158,7 @@ async def download_invoice(
     """
     try:
         invoice = BillingDbCore.get_invoice_by_number(user_id, invoice_id)
+        print(invoice)
         if not invoice:
             raise HTTPException(status_code=404, detail="Invoice not found.")
 

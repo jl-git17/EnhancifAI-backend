@@ -383,6 +383,7 @@ class BillingDbCore:
         sql = schemafy("""
             SELECT 
                 TO_CHAR(si.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS date,
+                si.invoice_id,
                 si.invoice_number,
                 si.amount AS invoice_amount_cents,
                 TO_CHAR(si.paid_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS payment_date,
@@ -421,6 +422,7 @@ class BillingDbCore:
         sql = schemafy("""
             SELECT 
                 TO_CHAR(si.created_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS date,
+                si.invoice_id,
                 si.invoice_number,
                 si.amount AS invoice_amount_cents,
                 TO_CHAR(si.paid_at, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS payment_date,
