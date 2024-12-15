@@ -3,6 +3,7 @@
 from datetime import datetime
 import json
 import logging
+from titlecase import titlecase
 from typing import Optional
 from decimal import Decimal
 from enhancifai_backend.database.access import read_db, write_db
@@ -283,7 +284,9 @@ class BillingDbCore:
                 record['metadata'] = json.loads(record['metadata'])
             elif record['metadata'] is None:
                 record['metadata'] = {}
-            record['payment_status'] = record['payment_status'].upper()
+
+            record['payment_status'] = titlecase(record['payment_status'])
+
             
             invoice_history.append(record)
 

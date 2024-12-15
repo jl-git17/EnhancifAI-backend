@@ -42,6 +42,7 @@ setup(
         'WeasyPrint',
         'requests',
         'httpx == 0.23.0',
+        'titlecase'
     ],
     entry_points={
         'console_scripts': [
