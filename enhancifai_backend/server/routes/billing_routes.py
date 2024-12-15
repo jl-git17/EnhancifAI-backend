@@ -173,7 +173,10 @@ async def download_invoice(
         
         # Format Payment Date or set to empty string
         payment_date_raw = invoice.get('payment_date')
-        payment_date = datetime.fromisoformat(payment_date_raw.replace('Z', '+00:00')).strftime('%B %d, %Y')
+        if payment_date_raw:
+            payment_date = datetime.fromisoformat(payment_date_raw.replace('Z', '+00:00')).strftime('%B %d, %Y')
+        else:
+            payment_date = ""
 
         # Format Billing Period
         billing_period_start_raw = invoice.get('billing_period_start')
