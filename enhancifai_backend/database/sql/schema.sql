@@ -87,24 +87,6 @@ BEGIN
     END IF;
 END $$;
 
--- Step 5: Backfill invoice_number for existing records
-WITH updated AS (
-    SELECT invoice_id, created_at,
-           CONCAT(
-               'INV-',
-               TO_CHAR(created_at, 'YYYYMM'),
-               '-',
-               LPAD(nextval('enhancifai.invoice_number_seq')::text, 4, '0')
-           ) AS new_invoice_number
-    FROM enhancifai.stripe_invoices
-    WHERE invoice_number = ''
-    ORDER BY created_at, invoice_id
-)
-UPDATE enhancifai.stripe_invoices si
-SET invoice_number = u.new_invoice_number
-FROM updated u
-WHERE si.invoice_id = u.invoice_id;
-
 CREATE TABLE IF NOT EXISTS enhancifai.google_sheets_credentials (
     user_id INT REFERENCES enhancifai.users(user_id) UNIQUE,
     credentials BYTEA NOT NULL,
