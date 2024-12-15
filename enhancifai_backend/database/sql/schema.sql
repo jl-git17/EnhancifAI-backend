@@ -47,37 +47,72 @@ CREATE TABLE enhancifai.stripe_invoices (
     paid_at TIMESTAMP
 );
 
-CREATE SEQUENCE enhancifai.invoice_number_seq
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-CREATE OR REPLACE FUNCTION enhancifai.generate_invoice_number()
-RETURNS TRIGGER AS $$
+DO $$
 BEGIN
-    -- Reset the sequence at the start of a new month
-    IF to_char(NEW.created_at, 'YYYYMM') <> to_char(current_date, 'YYYYMM') THEN
-        PERFORM setval('enhancifai.invoice_number_seq', 1, false);
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_class c
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE c.relname = 'invoice_number_seq' AND n.nspname = 'enhancifai'
+    ) THEN
+        CREATE SEQUENCE enhancifai.invoice_number_seq
+            START WITH 1
+            INCREMENT BY 1
+            NO MINVALUE
+            NO MAXVALUE
+            CACHE 1;
     END IF;
+END
+$$;
 
-    -- Assign the invoice_number using the specified format
-    NEW.invoice_number := CONCAT(
-        'INV-',
-        TO_CHAR(NEW.created_at, 'YYYYMM'),
-        '-',
-        LPAD(nextval('enhancifai.invoice_number_seq')::text, 7, '0') -- Seven-digit sequence
-    );
-    RETURN NEW;
-END;
-$$ LANGUAGE plpgsql;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_proc p
+        JOIN pg_namespace n ON n.oid = p.pronamespace
+        WHERE p.proname = 'generate_invoice_number' AND n.nspname = 'enhancifai'
+    ) THEN
+        CREATE OR REPLACE FUNCTION enhancifai.generate_invoice_number()
+        RETURNS TRIGGER AS $$
+        BEGIN
+            -- Reset the sequence at the start of a new month
+            IF to_char(NEW.created_at, 'YYYYMM') <> to_char(current_date, 'YYYYMM') THEN
+                PERFORM setval('enhancifai.invoice_number_seq', 1, false);
+            END IF;
 
-CREATE TRIGGER trg_generate_invoice_number
-BEFORE INSERT ON enhancifai.stripe_invoices
-FOR EACH ROW
-EXECUTE FUNCTION enhancifai.generate_invoice_number();
+            -- Assign the invoice_number using the specified format
+            NEW.invoice_number := CONCAT(
+                'INV-',
+                TO_CHAR(NEW.created_at, 'YYYYMM'),
+                '-',
+                LPAD(nextval('enhancifai.invoice_number_seq')::text, 7, '0') -- Seven-digit sequence
+            );
+            RETURN NEW;
+        END;
+        $$ LANGUAGE plpgsql;
+    END IF;
+END
+$$;
 
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE t.tgname = 'trg_generate_invoice_number'
+          AND c.relname = 'stripe_invoices'
+          AND n.nspname = 'enhancifai'
+    ) THEN
+        CREATE TRIGGER trg_generate_invoice_number
+        BEFORE INSERT ON enhancifai.stripe_invoices
+        FOR EACH ROW
+        EXECUTE FUNCTION enhancifai.generate_invoice_number();
+    END IF;
+END
+$$;
 
 CREATE TABLE IF NOT EXISTS enhancifai.google_sheets_credentials (
     user_id INT REFERENCES enhancifai.users(user_id) UNIQUE,
