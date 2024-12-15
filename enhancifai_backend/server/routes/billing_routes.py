@@ -157,12 +157,12 @@ async def download_invoice(
     Download an invoice as a PDF file with itemized details.
     """
     try:
-        invoice = BillingDbCore.get_invoice_by_number(user_id, invoice_id)
+        invoice = BillingDbCore.get_invoice_by_id(user_id, invoice_id)
         print(invoice)
         if not invoice:
             raise HTTPException(status_code=404, detail="Invoice not found.")
 
-        invoice_number = invoice['invoice_number']
+        invoice_number = invoice['invoice_id']
         
         # Format Date Issued
         date_issued_raw = invoice['date']
@@ -408,7 +408,7 @@ async def pay_invoice(
     """
     try:
         # Retrieve invoice data
-        invoice = BillingDbCore.get_invoice_by_id(user_id, invoice_id)
+        invoice = BillingDbCore.get_invoice_by_number(user_id, invoice_id)
         if not invoice:
             raise HTTPException(status_code=404, detail="Invoice not found.")
         

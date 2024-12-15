@@ -34,59 +34,48 @@ CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage_pi (
     created_at TIMESTAMP DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS enhancifai.stripe_invoices (
-    invoice_id SERIAL PRIMARY KEY,
+CREATE TABLE enhancifai.stripe_invoices (
+    invoice_id VARCHAR(25) PRIMARY KEY,
     user_id INT REFERENCES enhancifai.users(user_id),
-    amount INT NOT NULL,
+    amount FLOAT NOT NULL,
     status VARCHAR(50),
     created_at TIMESTAMP DEFAULT now(),
     billing_period_start DATE,
     billing_period_end DATE,
-    metadata JSONB
+    metadata JSONB,
+    paid_at TIMESTAMP
 );
 
+CREATE SEQUENCE enhancifai.invoice_number_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
 
--- Step 1: Add the invoice_number column if it doesn't exist
-ALTER TABLE enhancifai.stripe_invoices
-ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(25) UNIQUE NOT NULL DEFAULT '';
-
--- Step 2: Create the invoice_number_seq sequence if it doesn't exist
-CREATE SEQUENCE IF NOT EXISTS enhancifai.invoice_number_seq START 1;
-
--- Step 3: Create the generate_invoice_number trigger function if it doesn't exist
 CREATE OR REPLACE FUNCTION enhancifai.generate_invoice_number()
 RETURNS TRIGGER AS $$
 BEGIN
-    -- Reset sequence if it's a new month
+    -- Reset the sequence at the start of a new month
     IF to_char(NEW.created_at, 'YYYYMM') <> to_char(current_date, 'YYYYMM') THEN
         PERFORM setval('enhancifai.invoice_number_seq', 1, false);
     END IF;
 
-    -- Generate the invoice_number
+    -- Assign the invoice_number using the specified format
     NEW.invoice_number := CONCAT(
         'INV-',
         TO_CHAR(NEW.created_at, 'YYYYMM'),
         '-',
-        LPAD(nextval('enhancifai.invoice_number_seq')::text, 7, '0')  -- Seven-digit sequence
+        LPAD(nextval('enhancifai.invoice_number_seq')::text, 7, '0') -- Seven-digit sequence
     );
     RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
 
--- Step 4: Create the trg_generate_invoice_number trigger if it doesn't exist
-DO $$
-BEGIN
-    IF NOT EXISTS (
-        SELECT 1
-        FROM pg_trigger
-        WHERE tgname = 'trg_generate_invoice_number'
-    ) THEN
-        CREATE TRIGGER trg_generate_invoice_number
-        BEFORE INSERT ON enhancifai.stripe_invoices
-        FOR EACH ROW
-        EXECUTE FUNCTION enhancifai.generate_invoice_number();
-    END IF;
-END $$;
+CREATE TRIGGER trg_generate_invoice_number
+BEFORE INSERT ON enhancifai.stripe_invoices
+FOR EACH ROW
+EXECUTE FUNCTION enhancifai.generate_invoice_number();
 
 
 CREATE TABLE IF NOT EXISTS enhancifai.google_sheets_credentials (
