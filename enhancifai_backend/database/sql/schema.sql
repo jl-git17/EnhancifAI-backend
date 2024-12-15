@@ -47,7 +47,7 @@ CREATE TABLE enhancifai.stripe_invoices (
     paid_at TIMESTAMP
 );
 
-DO $$
+DO $do$
 BEGIN
     IF NOT EXISTS (
         SELECT 1
@@ -63,9 +63,9 @@ BEGIN
             CACHE 1;
     END IF;
 END
-$$;
+$do$ LANGUAGE plpgsql;
 
-DO $$
+DO $do$
 BEGIN
     IF NOT EXISTS (
         SELECT 1
@@ -74,7 +74,7 @@ BEGIN
         WHERE p.proname = 'generate_invoice_number' AND n.nspname = 'enhancifai'
     ) THEN
         CREATE OR REPLACE FUNCTION enhancifai.generate_invoice_number()
-        RETURNS TRIGGER AS $$
+        RETURNS TRIGGER AS $func$
         BEGIN
             -- Reset the sequence at the start of a new month
             IF to_char(NEW.created_at, 'YYYYMM') <> to_char(current_date, 'YYYYMM') THEN
@@ -82,7 +82,7 @@ BEGIN
             END IF;
 
             -- Assign the invoice_id using the specified format
-            NEW.invoice_id := CONCAT(  -- Changed from NEW.invoice_number to NEW.invoice_id
+            NEW.invoice_id := CONCAT(
                 'INV-',
                 TO_CHAR(NEW.created_at, 'YYYYMM'),
                 '-',
@@ -90,12 +90,12 @@ BEGIN
             );
             RETURN NEW;
         END;
-        $$ LANGUAGE plpgsql;
+        $func$ LANGUAGE plpgsql;
     END IF;
 END
-$$;
+$do$ LANGUAGE plpgsql;
 
-DO $$
+DO $do$
 BEGIN
     IF NOT EXISTS (
         SELECT 1
@@ -112,7 +112,7 @@ BEGIN
         EXECUTE FUNCTION enhancifai.generate_invoice_number();
     END IF;
 END
-$$;
+$do$ LANGUAGE plpgsql;
 
 CREATE TABLE IF NOT EXISTS enhancifai.google_sheets_credentials (
     user_id INT REFERENCES enhancifai.users(user_id) UNIQUE,
