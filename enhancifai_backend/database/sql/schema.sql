@@ -40,10 +40,70 @@ CREATE TABLE IF NOT EXISTS enhancifai.stripe_invoices (
     amount INT NOT NULL,
     status VARCHAR(50),
     created_at TIMESTAMP DEFAULT now(),
-    billing_period_start DATE,   -- New field
-    billing_period_end DATE,     -- New field
-    metadata JSONB                     -- Optional: To store additional metadata
+    billing_period_start DATE,
+    billing_period_end DATE,
+    metadata JSONB
 );
+
+-- Step 1: Add the invoice_number column if it doesn't exist
+ALTER TABLE enhancifai.stripe_invoices
+ADD COLUMN IF NOT EXISTS invoice_number VARCHAR(20) UNIQUE NOT NULL DEFAULT '';
+
+-- Step 2: Create the invoice_number_seq sequence if it doesn't exist
+CREATE SEQUENCE IF NOT EXISTS enhancifai.invoice_number_seq START 1;
+
+-- Step 3: Create the generate_invoice_number trigger function if it doesn't exist
+CREATE OR REPLACE FUNCTION enhancifai.generate_invoice_number()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Reset sequence if it's a new month
+    IF to_char(NEW.created_at, 'YYYYMM') <> to_char(current_date, 'YYYYMM') THEN
+        PERFORM setval('enhancifai.invoice_number_seq', 1, false);
+    END IF;
+
+    -- Generate the invoice_number
+    NEW.invoice_number := CONCAT(
+        'INV-',
+        TO_CHAR(NEW.created_at, 'YYYYMM'),
+        '-',
+        LPAD(nextval('enhancifai.invoice_number_seq')::text, 4, '0')
+    );
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Step 4: Create the trg_generate_invoice_number trigger if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_trigger
+        WHERE tgname = 'trg_generate_invoice_number'
+    ) THEN
+        CREATE TRIGGER trg_generate_invoice_number
+        BEFORE INSERT ON enhancifai.stripe_invoices
+        FOR EACH ROW
+        EXECUTE FUNCTION enhancifai.generate_invoice_number();
+    END IF;
+END $$;
+
+-- Step 5: Backfill invoice_number for existing records
+WITH updated AS (
+    SELECT invoice_id, created_at,
+           CONCAT(
+               'INV-',
+               TO_CHAR(created_at, 'YYYYMM'),
+               '-',
+               LPAD(nextval('enhancifai.invoice_number_seq')::text, 4, '0')
+           ) AS new_invoice_number
+    FROM enhancifai.stripe_invoices
+    WHERE invoice_number = ''
+    ORDER BY created_at, invoice_id
+)
+UPDATE enhancifai.stripe_invoices si
+SET invoice_number = u.new_invoice_number
+FROM updated u
+WHERE si.invoice_id = u.invoice_id;
 
 CREATE TABLE IF NOT EXISTS enhancifai.google_sheets_credentials (
     user_id INT REFERENCES enhancifai.users(user_id) UNIQUE,
