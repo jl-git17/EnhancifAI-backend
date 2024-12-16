@@ -1,4 +1,5 @@
 import os
+import re
 
 def schemafy(data: str) -> str:
     schema = os.getenv('DB_SCHEMA')
