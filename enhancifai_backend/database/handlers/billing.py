@@ -150,8 +150,8 @@ class BillingDbCore:
 
         # Adjust data tuple based on whether month and year are provided
         if month is not None and year is not None:
-            # Pass user_id, month, year for run_logs and pil, month, year for prompt_improver_run_logs
-            data = (user_id, user_id, month, year, month, year)
+            # Correct the order: user_id, month, year, user_id, month, year
+            data = (user_id, month, year, user_id, month, year)
         else:
             # Pass user_id twice for run_logs and pil
             data = (user_id, user_id)
@@ -178,6 +178,7 @@ class BillingDbCore:
     def _get_placeholder(cls, user_id):
         # Helper method to return the correct placeholder for user_id
         return '%s'
+
 
     @classmethod
     def create_invoice(cls, user_id, amount_cents, description, billing_period_start, billing_period_end, metadata=None):
