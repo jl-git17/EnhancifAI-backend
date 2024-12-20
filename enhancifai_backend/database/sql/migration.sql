@@ -74,3 +74,6 @@ ALTER COLUMN amount TYPE FLOAT USING amount::FLOAT;
 
 ALTER TABLE enhancifai.users
 ADD COLUMN IF NOT EXISTS last_invoice_run_at TIMESTAMPTZ;
+
+ALTER TABLE enhancifai.prompt_improver_run_logs
+ADD COLUMN IF NOT EXISTS user_id INT REFERENCES enhancifai.users(user_id);

@@ -86,17 +86,13 @@ class RunLogsDbCore:
         return read_db.do('select', sql=sql, data=(start, end)) or []
 
 class PromptImproverRunLogsDbCore:
-    """
-    A class used to handle operations related to prompt improver run logs in the database.
-    """
-
     @classmethod
-    def insert_log(cls, user_name, engine_model, log_timestamp, time_elapsed, num_prompts, num_tokens, errors=None):
+    def insert_log(cls, user_id, engine_model, log_timestamp, time_elapsed, num_prompts, num_tokens, errors=None):
         """
         Insert a log entry into the prompt_improver_run_logs table.
 
         Parameters:
-        user_name (str): The name of the user.
+        user_id (int): The ID of the user.
         engine_model (str): The engine model used.
         log_timestamp (datetime): The timestamp of the log.
         time_elapsed (float): Time elapsed during the run.
@@ -109,30 +105,32 @@ class PromptImproverRunLogsDbCore:
         """
         sql = schemafy("""
             INSERT INTO enhancifai.prompt_improver_run_logs (
-                user_name, engine_model, log_timestamp,
+                user_id, engine_model, log_timestamp,
                 time_elapsed, num_prompts,
                 num_tokens, errors)
             VALUES (%s, %s, %s, %s, %s, %s, %s);
         """)
         return write_db.do(
             'execute', sql=sql, data=(
-                user_name, engine_model, log_timestamp,
+                user_id, engine_model, log_timestamp,
                 time_elapsed, num_prompts,
                 num_tokens, errors
             )
         )
 
+
     @classmethod
-    def retrieve_logs_by_date_range(cls, start, end=None):
+    def retrieve_logs_by_user_and_date_range(cls, user_id, start, end=None):
         """
-        Retrieve logs within a specified date range.
+        Retrieve logs for a specific user within a specified date range.
 
         Parameters:
+        user_id (int): The ID of the user.
         start (datetime or str): The start date of the range.
         end (datetime or str, optional): The end date of the range. Defaults to None.
 
         Returns:
-        list: A list of logs within the specified date range.
+        list: A list of logs within the specified date range for the user.
         """
         # Convert start to a datetime object if not already
         if not isinstance(start, datetime):
@@ -152,7 +150,8 @@ class PromptImproverRunLogsDbCore:
         sql = schemafy("""
             SELECT * 
             FROM enhancifai.prompt_improver_run_logs
-            WHERE log_timestamp BETWEEN %s AND %s
+            WHERE user_id = %s AND log_timestamp BETWEEN %s AND %s
             ORDER BY log_id;
         """)
-        return read_db.do('select', sql=sql, data=(start, end)) or []
+        return read_db.do('select', sql=sql, data=(user_id, start, end)) or []
+

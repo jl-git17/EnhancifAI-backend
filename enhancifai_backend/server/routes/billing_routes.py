@@ -110,7 +110,7 @@ async def get_monthly_balance(
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.get("/billing/usage-by-model", tags=["Billing"])
-async def get_usage_by_model(
+async def get_usage_by_model_endpoint(
     month: int = Depends(get_default_month),
     year: int = Depends(get_default_year),
     user_id: int = Depends(get_current_user_id),
@@ -129,7 +129,7 @@ async def get_usage_by_model(
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         print(e)
-        return JSONResponse(status_code=500, content={"detail": str(e)})
+        return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
 
 @router.get("/billing/invoice-history", tags=["Billing"])
@@ -549,7 +549,7 @@ async def download_monthly_activity_logs(
 
         # Retrieve logs from the database
         normal_logs = RunLogsDbCore.retrieve_logs_by_date_range(start_date, end_date)
-        pi_logs = PromptImproverRunLogsDbCore.retrieve_logs_by_date_range(start_date, end_date)
+        pi_logs = PromptImproverRunLogsDbCore.retrieve_logs_by_user_and_date_range(user_id, start_date, end_date)
 
         # Prepare CSV output
         output = io.StringIO()
