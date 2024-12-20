@@ -109,10 +109,8 @@ class BillingDbCore:
 
             # Filters for both run_logs and prompt_improver_run_logs
             date_filter = "AND (EXTRACT(MONTH FROM cl.log_timestamp) = %s AND EXTRACT(YEAR FROM cl.log_timestamp) = %s)"
-            data = (month, year, month, year, user_id)
         else:
             date_filter = ""
-            data = (user_id,)
 
         sql = schemafy(f"""
             WITH price_history AS (
@@ -149,10 +147,10 @@ class BillingDbCore:
 
         # Adjust data tuple based on whether month and year are provided
         if month is not None and year is not None:
-            # Pass user_id twice for both tables and month/year twice for filtering
-            data = (month, year, month, year, user_id)
+            # Pass user_id, month, year for both subqueries
+            data = (user_id, month, year, user_id, month, year)
         else:
-            # Pass user_id once for both tables
+            # Pass user_id twice for both subqueries
             data = (user_id, user_id)
 
         raw_records = read_db.do('select', sql=sql, data=data) or []
