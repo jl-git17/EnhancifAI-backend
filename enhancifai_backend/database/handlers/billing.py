@@ -107,10 +107,12 @@ class BillingDbCore:
             if not (2000 <= year <= current_year):
                 raise ValueError("Invalid year.")
 
-            # Filters for both run_logs and prompt_improver_run_logs
-            date_filter = "AND (EXTRACT(MONTH FROM cl.log_timestamp) = %s AND EXTRACT(YEAR FROM cl.log_timestamp) = %s)"
+            # Define separate date_filters for each subquery with correct aliases
+            date_filter_rl = "AND (EXTRACT(MONTH FROM rl.log_timestamp) = %s AND EXTRACT(YEAR FROM rl.log_timestamp) = %s)"
+            date_filter_pil = "AND (EXTRACT(MONTH FROM pil.log_timestamp) = %s AND EXTRACT(YEAR FROM pil.log_timestamp) = %s)"
         else:
-            date_filter = ""
+            date_filter_rl = ""
+            date_filter_pil = ""
 
         sql = schemafy(f"""
             WITH price_history AS (
@@ -125,13 +127,13 @@ class BillingDbCore:
                 SELECT rl.engine_model, rl.num_tokens, rl.log_timestamp
                 FROM enhancifai.run_logs rl
                 JOIN enhancifai.runs r ON rl.run_id = r.id
-                WHERE r.user_id = {cls._get_placeholder(user_id)} {date_filter}
+                WHERE r.user_id = {cls._get_placeholder(user_id)} {date_filter_rl}
 
                 UNION ALL
 
                 SELECT pil.engine_model, pil.num_tokens, pil.log_timestamp
                 FROM enhancifai.prompt_improver_run_logs pil
-                WHERE pil.user_id = {cls._get_placeholder(user_id)} {date_filter}
+                WHERE pil.user_id = {cls._get_placeholder(user_id)} {date_filter_pil}
             )
             SELECT 
                 cl.engine_model AS ai_model_name,
@@ -147,10 +149,10 @@ class BillingDbCore:
 
         # Adjust data tuple based on whether month and year are provided
         if month is not None and year is not None:
-            # Pass user_id, month, year for both subqueries
+            # Pass user_id, month, year for run_logs and pil, month, year for prompt_improver_run_logs
             data = (user_id, month, year, user_id, month, year)
         else:
-            # Pass user_id twice for both subqueries
+            # Pass user_id twice for run_logs and pil
             data = (user_id, user_id)
 
         raw_records = read_db.do('select', sql=sql, data=data) or []
@@ -170,6 +172,7 @@ class BillingDbCore:
     def _get_placeholder(cls, user_id):
         # Helper method to return the correct placeholder for user_id
         return '%s'
+
 
 
     @classmethod
