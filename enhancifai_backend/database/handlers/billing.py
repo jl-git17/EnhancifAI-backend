@@ -1,5 +1,3 @@
-# enhancifai_backend/database/handlers/billing.py
-
 from datetime import datetime
 import json
 import logging
@@ -98,17 +96,8 @@ class BillingDbCore:
     @classmethod
     def get_usage_by_model(cls, user_id, month=None, year=None):
         """
-        Aggregate data by AI model, including tokens used, price per token, and total cost for each model.
-        Note: The `price_per_token` field in the database represents cost per 1000 tokens.
-            We divide by 1000 to get the correct total cost.
-
-        Args:
-            user_id (int): The user's ID.
-            month (int, optional): The month for which to retrieve data (1-12).
-            year (int, optional): The year for which to retrieve data.
-
-        Returns:
-            list: A list of dictionaries containing usage data by model.
+        Aggregate data by AI model, including tokens used from both Normal and Prompt Improver usages,
+        price per token, and total cost for each model.
         """
         if month is not None and year is not None:
             # Validate month and year
@@ -118,8 +107,9 @@ class BillingDbCore:
             if not (2000 <= year <= current_year):
                 raise ValueError("Invalid year.")
 
-            date_filter = "AND EXTRACT(MONTH FROM rl.log_timestamp) = %s AND EXTRACT(YEAR FROM rl.log_timestamp) = %s"
-            data = (user_id, month, year)
+            # Filters for both run_logs and prompt_improver_run_logs
+            date_filter = "AND (EXTRACT(MONTH FROM cl.log_timestamp) = %s AND EXTRACT(YEAR FROM cl.log_timestamp) = %s)"
+            data = (month, year, month, year, user_id)
         else:
             date_filter = ""
             data = (user_id,)
@@ -132,21 +122,39 @@ class BillingDbCore:
                     effective_date,
                     LEAD(effective_date, 1, '9999-12-31') OVER (PARTITION BY model_name ORDER BY effective_date) AS next_effective_date
                 FROM enhancifai.model_price_history
+            ),
+            combined_logs AS (
+                SELECT rl.engine_model, rl.num_tokens, rl.log_timestamp
+                FROM enhancifai.run_logs rl
+                JOIN enhancifai.runs r ON rl.run_id = r.id
+                WHERE r.user_id = {cls._get_placeholder(user_id)} {date_filter}
+
+                UNION ALL
+
+                SELECT pil.engine_model, pil.num_tokens, pil.log_timestamp
+                FROM enhancifai.prompt_improver_run_logs pil
+                WHERE pil.user_id = {cls._get_placeholder(user_id)} {date_filter}
             )
             SELECT 
-                rl.engine_model AS ai_model_name,
-                SUM(rl.num_tokens) AS tokens_used,
+                cl.engine_model AS ai_model_name,
+                SUM(cl.num_tokens) AS tokens_used,
                 ph.price_per_token AS price_per_token, 
-                -- price_per_token is per 1000 tokens, so divide by 1000 to get correct total cost
-                SUM(rl.num_tokens * ph.price_per_token / 1000.0) AS total_cost
-            FROM enhancifai.run_logs rl
-            JOIN enhancifai.runs r ON rl.run_id = r.id
-            JOIN price_history ph ON rl.engine_model = ph.model_name
-                AND rl.log_timestamp::date >= ph.effective_date
-                AND rl.log_timestamp::date < ph.next_effective_date
-            WHERE r.user_id = %s {date_filter}
+                SUM(cl.num_tokens * ph.price_per_token / 1000.0) AS total_cost
+            FROM combined_logs cl
+            JOIN price_history ph ON cl.engine_model = ph.model_name
+                AND cl.log_timestamp::date >= ph.effective_date
+                AND cl.log_timestamp::date < ph.next_effective_date
             GROUP BY ai_model_name, ph.price_per_token;
         """)
+
+        # Adjust data tuple based on whether month and year are provided
+        if month is not None and year is not None:
+            # Pass user_id twice for both tables and month/year twice for filtering
+            data = (month, year, month, year, user_id)
+        else:
+            # Pass user_id once for both tables
+            data = (user_id, user_id)
+
         raw_records = read_db.do('select', sql=sql, data=data) or []
 
         # Convert values to floats and round appropriately
@@ -159,6 +167,11 @@ class BillingDbCore:
             usage_by_model.append(record)
 
         return usage_by_model
+
+    @classmethod
+    def _get_placeholder(cls, user_id):
+        # Helper method to return the correct placeholder for user_id
+        return '%s'
 
 
     @classmethod

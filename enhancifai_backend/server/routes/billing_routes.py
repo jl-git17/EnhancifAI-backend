@@ -1,5 +1,4 @@
-# enhancifai_backend/server/routes/billing_routes.py
-
+import calendar
 import csv
 from datetime import datetime
 from decimal import Decimal
@@ -13,6 +12,7 @@ from weasyprint import HTML
 import stripe
 
 from enhancifai_backend.database.handlers.billing import BillingDbCore
+from enhancifai_backend.database.handlers.run_logs import PromptImproverRunLogsDbCore, RunLogsDbCore
 from enhancifai_backend.server.utils import get_current_user_id, verify_secret_key
 
 router = APIRouter()
@@ -523,4 +523,74 @@ async def get_rate_card(
         return JSONResponse(status_code=200, content={"rates": rates})
     except Exception as e:
         print(e)
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+
+@router.get("/billing/logs/{month}/{year}", tags=["Billing"])
+async def download_monthly_activity_logs(
+    month: int,
+    year: int,
+    user_id: int = Depends(get_current_user_id),
+    _api_key: str = Depends(verify_secret_key)
+):
+    """
+    Download the user's activity logs (normal usage and PI usage) for a specified month and year.
+    """
+    try:
+        # Validate the month and year
+        if month < 1 or month > 12:
+            raise HTTPException(status_code=400, detail="Invalid month. Must be between 1 and 12.")
+        if year < 2000 or year > datetime.now().year:
+            raise HTTPException(status_code=400, detail="Invalid year.")
+
+        # Calculate the start and end dates for the month
+        start_date = datetime(year, month, 1)
+        days_in_month = calendar.monthrange(year, month)[1]
+        end_date = datetime(year, month, days_in_month, 23, 59, 59)
+
+        # Retrieve logs from the database
+        normal_logs = RunLogsDbCore.retrieve_logs_by_date_range(start_date, end_date)
+        pi_logs = PromptImproverRunLogsDbCore.retrieve_logs_by_date_range(start_date, end_date)
+
+        # Prepare CSV output
+        output = io.StringIO()
+        writer = csv.writer(output)
+
+        # Write headers
+        writer.writerow(["Source", "Timestamp", "Model", "Tokens", "Prompts", "Errors", "Time Elapsed (s)"])
+        
+        # Write normal logs
+        for log in normal_logs:
+            writer.writerow([
+                "Normal Usage",
+                log['log_timestamp'].strftime('%Y-%m-%d %H:%M:%S'),
+                log['engine_model'],
+                log['num_tokens'],
+                log['num_prompts'],
+                log['errors'] if log['errors'] else "",
+                log['time_elapsed']
+            ])
+
+        # Write PI logs
+        for log in pi_logs:
+            writer.writerow([
+                "Prompt Improver",
+                log['log_timestamp'].strftime('%Y-%m-%d %H:%M:%S'),
+                log['engine_model'],
+                log['num_tokens'],
+                log['num_prompts'],
+                log['errors'] if log['errors'] else "",
+                log['time_elapsed']
+            ])
+
+        # Reset buffer position
+        output.seek(0)
+
+        # Return as a streaming response
+        response = StreamingResponse(iter([output.getvalue()]), media_type="text/csv")
+        response.headers["Content-Disposition"] = f"attachment; filename=activity_logs_{year}_{month:02}.csv"
+        return response
+
+    except HTTPException as e:
+        raise e
+    except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
