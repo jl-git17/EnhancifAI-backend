@@ -77,3 +77,26 @@ ADD COLUMN IF NOT EXISTS last_invoice_run_at TIMESTAMPTZ;
 
 ALTER TABLE enhancifai.prompt_improver_run_logs
 ADD COLUMN IF NOT EXISTS user_id INT REFERENCES enhancifai.users(user_id);
+
+-- Migration script to enforce constraints
+
+-- Step 1: Add a CHECK constraint to ensure effective_date is the first of the month
+ALTER TABLE enhancifai.model_price_history
+ADD CONSTRAINT check_effective_date_first_of_month
+CHECK (effective_date = DATE_TRUNC('month', effective_date));
+
+-- Step 2: Create a trigger to prevent updates to past rates
+CREATE OR REPLACE FUNCTION prevent_past_rate_updates()
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.effective_date < DATE_TRUNC('month', CURRENT_DATE) THEN
+        RAISE EXCEPTION 'Cannot update rates for past months';
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_prevent_past_rate_updates
+BEFORE UPDATE ON enhancifai.model_price_history
+FOR EACH ROW
+EXECUTE FUNCTION prevent_past_rate_updates();
