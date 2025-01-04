@@ -80,23 +80,24 @@ ADD COLUMN IF NOT EXISTS user_id INT REFERENCES enhancifai.users(user_id);
 
 -- Migration script to enforce constraints
 
--- Step 1: Check if the constraint already exists before adding it
+-- Step 1: Add a CHECK constraint to ensure effective_date is the first of the month
 DO $$ 
 BEGIN
     IF NOT EXISTS (
         SELECT 1
         FROM pg_constraint
         WHERE conname = 'check_effective_date_first_of_month'
+            AND conrelid = 'enhancifai.model_price_history'::regclass
     ) THEN
         ALTER TABLE enhancifai.model_price_history
-        ADD CONSTRAINT check_effective_date_first_of_month
-        CHECK (effective_date = DATE_TRUNC('month', effective_date));
+            ADD CONSTRAINT check_effective_date_first_of_month
+            CHECK (effective_date = DATE_TRUNC('month', effective_date));
     END IF;
-END $$;
+END 
+$$;
 
-
--- Step 2: Create a trigger to prevent updates to past rates
-CREATE OR REPLACE FUNCTION prevent_past_rate_updates()
+-- Step 2: Create or replace the function to prevent updates to past rates
+CREATE OR REPLACE FUNCTION enhancifai.prevent_past_rate_updates()
 RETURNS TRIGGER AS $$
 BEGIN
     IF NEW.effective_date < DATE_TRUNC('month', CURRENT_DATE) THEN
@@ -106,7 +107,22 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER trg_prevent_past_rate_updates
-BEFORE UPDATE ON enhancifai.model_price_history
-FOR EACH ROW
-EXECUTE FUNCTION prevent_past_rate_updates();
+-- Step 3: Create the trigger only if it does not already exist
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_trigger t
+        JOIN pg_class c ON c.oid = t.tgrelid
+        JOIN pg_namespace n ON n.oid = c.relnamespace
+        WHERE t.tgname = 'trg_prevent_past_rate_updates'
+          AND c.relname = 'model_price_history'
+          AND n.nspname = 'enhancifai'
+    ) THEN
+        CREATE TRIGGER trg_prevent_past_rate_updates
+        BEFORE UPDATE ON enhancifai.model_price_history
+        FOR EACH ROW
+        EXECUTE FUNCTION enhancifai.prevent_past_rate_updates();
+    END IF;
+END
+$$ LANGUAGE plpgsql;
