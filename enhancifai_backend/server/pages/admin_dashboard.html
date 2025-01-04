@@ -167,10 +167,11 @@
             margin-bottom: 5px;
         }
 
-        .billing-entry .form-group input {
+        .billing-entry .form-group input,
+        .billing-entry .form-group select {
             flex: 1;
-            width: 100%; /* Make inputs take full width */
-            max-width: 300px; /* Optional: Set a maximum width for inputs */
+            width: 100%; /* Make inputs/select take full width */
+            max-width: 300px; /* Optional: Set a maximum width */
         }
 
         .btn-remove {
@@ -605,21 +606,31 @@
             modelNameLabel.textContent = 'Model Name:';
             modelNameLabel.setAttribute('for', `model_name_${Date.now()}`);
 
-            const modelNameInput = document.createElement('input');
-            modelNameInput.type = 'text';
-            modelNameInput.classList.add('form-control');
-            modelNameInput.id = `model_name_${Date.now()}`;
-            modelNameInput.name = 'model_name';
-            modelNameInput.value = model.model_name;
-            modelNameInput.placeholder = 'Enter model name';
+            // Replace text input with a dropdown (minimal changes to the existing code)
+            const modelNameSelect = document.createElement('select');
+            modelNameSelect.classList.add('form-control');
+            modelNameSelect.id = `model_name_${Date.now()}`;
+            modelNameSelect.name = 'model_name';
 
+            // Possible options
+            const options = ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"];
+            options.forEach(opt => {
+                const optionEl = document.createElement('option');
+                optionEl.value = opt;
+                optionEl.textContent = opt;
+                if (model.model_name === opt) {
+                    optionEl.selected = true;
+                }
+                modelNameSelect.appendChild(optionEl);
+            });
+
+            // If model_name is present (existing entry), disable the select to mimic read-only
             if (model.model_name) {
-                // If model name is provided (existing entry), make it read-only
-                modelNameInput.readOnly = true;
+                modelNameSelect.disabled = true;
             }
 
             modelNameGroup.appendChild(modelNameLabel);
-            modelNameGroup.appendChild(modelNameInput);
+            modelNameGroup.appendChild(modelNameSelect);
 
             // Form Group for Price per 1,000 Tokens
             const priceGroup = document.createElement('div');
@@ -684,10 +695,10 @@
 
             const billingEntries = document.querySelectorAll('.billing-entry');
             billingEntries.forEach(entry => {
-                const modelNameInput = entry.querySelector('input[name="model_name"]');
+                const modelNameSelect = entry.querySelector('select[name="model_name"]');
                 const priceInput = entry.querySelector('input[name="price_per_token"]');
 
-                const model_name = modelNameInput.value.trim();
+                const model_name = modelNameSelect.value.trim();
                 let price_per_token_display = parseFloat(priceInput.value);
                 
                 if (model_name && !isNaN(price_per_token_display)) {

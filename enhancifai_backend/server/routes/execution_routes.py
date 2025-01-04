@@ -35,7 +35,7 @@ EXCEL_MIME_TYPES = ['application/vnd.ms-excel',
 
 class EngineType(str, Enum):
     gpt_4_o = "gpt-4o"
-    gpt_4_o_mini = "gpt-4-turbo-preview"
+    gpt_4_o_mini = "gpt-4o-mini"
     gpt_3_5_turbo = "gpt-3.5-turbo"
 
 router = APIRouter()
