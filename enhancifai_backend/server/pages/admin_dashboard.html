@@ -185,6 +185,18 @@
             gap: 10px;
             margin-bottom: 15px;
         }
+
+        /* Add this snippet to override the default .alert display and positioning for billing success message */
+        #billing-success-message {
+            display: none;               /* Hide by default */
+            position: fixed;             /* Fix to the top */
+            top: 56px;                   /* Just below the fixed navbar height */
+            left: 50%;                   /* Center horizontally */
+            transform: translateX(-50%);
+            z-index: 9999;              /* Ensure it stays above other elements */
+            /* Remove mt-3 below if you want it flush with the top */
+            /* margin-top: 0 !important; */
+        }
     </style>    
 </head>
 <body>
@@ -300,6 +312,9 @@
             <div class="tab-pane fade" id="billing" role="tabpanel" aria-labelledby="billing-tab">
                 <div class="container mt-4">
                     <h1>Billing Settings</h1>
+                    <div id="billing-success-message" class="alert alert-success mt-3">
+                        Billing settings saved successfully!
+                    </div>
                     <form id="billing-form">
                         <div class="billing-buttons">
                             <button type="button" id="add-model-price" class="btn btn-secondary btn-sm">Add Model Price</button>
@@ -308,7 +323,6 @@
                         <div id="model-prices-container">
                             <!-- Model prices will be dynamically loaded here -->
                         </div>
-                        <div id="billing-success-message" class="alert alert-success mt-3">Billing settings saved successfully!</div>
                     </form>
                 </div>
             </div>
