@@ -671,10 +671,9 @@ async def ai_prompt_improver(prompt_data: PromptImproveRequest, _: str = Depends
         if not new_prompt or not isinstance(new_prompt,dict):
             raise HTTPException(status_code=404, detail="Error in processing request.")
         # save to log file
-        _name = UsersDbCore.get_user_by_id(user_id)['name'] or f"user_{user_id}"
         end_time = time.time()
         PromptImproverRunLogsDbCore.insert_log(
-            user_name=_name,
+            user_id=user_id,
             engine_model="gpt-4o-mini",
             log_timestamp=datetime.now(tz=timezone.utc),
             time_elapsed=end_time - start_time,
