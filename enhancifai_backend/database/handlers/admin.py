@@ -101,10 +101,10 @@ class ModelPricesDbCore:
         """
         Update model price and insert into history.
         """
-        # Insert new price into model_price_history
+        # Insert new price into model_price_history with effective_date set to first of the month
         sql = schemafy("""
             INSERT INTO enhancifai.model_price_history (model_name, price_per_token, effective_date)
-            VALUES (%s, %s, %s)
+            VALUES (%s, %s, DATE_TRUNC('month', %s)::date)
             ON CONFLICT (model_name, effective_date) DO UPDATE
             SET price_per_token = EXCLUDED.price_per_token;
         """)
