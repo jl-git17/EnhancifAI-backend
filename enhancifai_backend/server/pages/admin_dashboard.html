@@ -739,6 +739,10 @@
             .then(result => {
                 console.log('Billing settings updated:', result);
                 billingSuccessMessage.style.display = 'block';
+                // Hide after 3 seconds (3000 ms)
+                setTimeout(() => {
+                    billingSuccessMessage.style.display = 'none';
+                }, 3000);
                 loadModelPrices(); // Reload model prices to reflect changes
             })
             .catch(error => {
