@@ -126,3 +126,6 @@ BEGIN
     END IF;
 END
 $$ LANGUAGE plpgsql;
+
+ALTER TABLE enhancifai.prompt_improver_run_logs
+    DROP COLUMN IF EXISTS user_name;

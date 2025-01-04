@@ -197,7 +197,6 @@ CREATE INDEX IF NOT EXISTS idx_run_logs_log_timestamp
 
 CREATE TABLE IF NOT EXISTS enhancifai.prompt_improver_run_logs (
     log_id SERIAL PRIMARY KEY,
-    user_name VARCHAR(100) NOT NULL,
     engine_model VARCHAR(50) NOT NULL,
     log_timestamp TIMESTAMP DEFAULT NOW(),
     time_elapsed FLOAT CHECK (time_elapsed >= 0),
@@ -207,9 +206,6 @@ CREATE TABLE IF NOT EXISTS enhancifai.prompt_improver_run_logs (
 );
 
 -- Create indexes to optimize query performance
-CREATE INDEX IF NOT EXISTS idx_prompt_improver_user_name 
-    ON enhancifai.prompt_improver_run_logs(user_name);
-
 CREATE INDEX IF NOT EXISTS idx_prompt_improver_engine_model 
     ON enhancifai.prompt_improver_run_logs(engine_model);
 
