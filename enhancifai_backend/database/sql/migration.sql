@@ -80,10 +80,20 @@ ADD COLUMN IF NOT EXISTS user_id INT REFERENCES enhancifai.users(user_id);
 
 -- Migration script to enforce constraints
 
--- Step 1: Add a CHECK constraint to ensure effective_date is the first of the month
-ALTER TABLE enhancifai.model_price_history
-ADD CONSTRAINT check_effective_date_first_of_month
-CHECK (effective_date = DATE_TRUNC('month', effective_date));
+-- Step 1: Check if the constraint already exists before adding it
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'check_effective_date_first_of_month'
+    ) THEN
+        ALTER TABLE enhancifai.model_price_history
+        ADD CONSTRAINT check_effective_date_first_of_month
+        CHECK (effective_date = DATE_TRUNC('month', effective_date));
+    END IF;
+END $$;
+
 
 -- Step 2: Create a trigger to prevent updates to past rates
 CREATE OR REPLACE FUNCTION prevent_past_rate_updates()
