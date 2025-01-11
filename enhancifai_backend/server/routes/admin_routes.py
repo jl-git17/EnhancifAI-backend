@@ -247,7 +247,7 @@ async def get_prompt_improver_logs_runs_csv(
     #     raise HTTPException(status_code=403, detail="Unauthorized Access")
 
     # Retrieve logs from the database
-    logs = PromptImproverRunLogsDbCore.retrieve_logs_by_date_range(
+    logs = PromptImproverRunLogsDbCore.retrieve_logs_by_user_and_date_range(
         start_date, end_date
     )
 
