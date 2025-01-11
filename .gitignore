@@ -11,3 +11,5 @@ client_secret*
 .project/
 ec_output.txt
 export_code.py
+.notes/
+batched/
