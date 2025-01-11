@@ -332,6 +332,8 @@ async def upload_direct_prompt(
     data_file: UploadFile = File(None),
     json_data: str = Body(None),
     max_records: bool = Form(...),
+    batched_processing: bool = Form(False),
+    performance_optimization: bool = Form(False),
     _: str = Depends(verify_secret_key),
     user_id: int = Depends(get_current_user_id)
 ):
