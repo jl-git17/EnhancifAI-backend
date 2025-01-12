@@ -525,6 +525,24 @@ async def get_rate_card(
         print(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
+@router.get("/billing/rate-card/history", tags=["Billing"])
+async def get_rate_card_history(
+    user_id: int = Depends(get_current_user_id),
+    _api_key: str = Depends(verify_secret_key)
+):
+    """
+    Retrieve the historical rate card data, showing rates per month.
+    """
+    try:
+        rate_history = BillingDbCore.get_rate_card_history()
+        # Process the rate_history to include price_per_1000_tokens
+        for rate in rate_history:
+            rate['price_per_1000_tokens'] = float(Decimal(rate['price_per_token'])) * 1000
+        return JSONResponse(status_code=200, content={"rate_history": rate_history})
+    except Exception as e:
+        print(e)
+        return JSONResponse(status_code=500, content={"detail": str(e)})
+
 @router.get("/billing/logs/{month}/{year}", tags=["Billing"])
 async def download_monthly_activity_logs(
     month: int,

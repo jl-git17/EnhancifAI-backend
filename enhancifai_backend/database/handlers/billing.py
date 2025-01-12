@@ -392,6 +392,31 @@ class BillingDbCore:
 
         return read_db.do('select', sql=sql, data=data)
 
+    @classmethod
+    def get_rate_card_history(cls):
+        """
+        Retrieve the historical rate card data, showing rates per month for each AI model.
+        Returns a list of dictionaries containing year_month, model_name, and price_per_token.
+        """
+        try:
+            sql = schemafy("""
+                SELECT
+                    TO_CHAR(effective_date, 'YYYY-MM') AS year_month,
+                    model_name,
+                    price_per_token
+                FROM enhancifai.model_price_history
+                ORDER BY effective_date ASC, model_name ASC;
+            """)
+            rate_history = read_db.do('select', sql=sql, data=[])
+            
+            # Optionally, format the effective_date if needed
+            # For example, ensure year_month is in 'YYYY-MM' format as a string
+            # This is already handled in the SQL query using TO_CHAR
+
+            return rate_history
+        except Exception as e:
+            logging.error(f"Error retrieving rate card history: {str(e)}")
+            raise
 
     @classmethod
     def get_invoice_by_id(cls, user_id, invoice_id):
