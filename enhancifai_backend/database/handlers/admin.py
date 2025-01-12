@@ -110,3 +110,41 @@ class ModelPricesDbCore:
         """)
         data = (model_name, price_per_token, effective_date)
         write_db.do('execute', sql=sql, data=data)
+
+    @classmethod
+    def get_earliest_effective_month(cls):
+        """
+        Return the earliest month (YYYY-MM-01) in the model_price_history.
+        If none, return None.
+        """
+        sql = schemafy("""
+            SELECT MIN(effective_date) as earliest_date
+            FROM enhancifai.model_price_history;
+        """)
+        result = read_db.do('select_one', sql=sql)
+        return result['earliest_date'] if result and result['earliest_date'] else None
+
+    @classmethod
+    def get_model_prices_for_month(cls, year, month):
+        """
+        Get all model prices that were in effect for a specific year-month.
+        
+        We define 'in effect' as any record whose effective_date is in that month
+        (i.e., [YYYY-MM-01, YYYY-MM-31]).
+        
+        You may choose to show exactly the entries from that month or 
+        the price that was effective as of that month by querying the 
+        latest price <= year-month.
+        For simplicity, let's just fetch the rows with matching year-month.
+        """
+        start_of_month = f"{year}-{month:02d}-01"
+        # Postgres trick to add 1 month and subtract 1 day:
+        # or use date_trunc + interval
+        sql = schemafy(f"""
+            SELECT model_name, price_per_token, effective_date
+            FROM enhancifai.model_price_history
+            WHERE effective_date >= DATE_TRUNC('month', DATE '{start_of_month}')
+              AND effective_date <  (DATE_TRUNC('month', DATE '{start_of_month}') + INTERVAL '1 month')
+            ORDER BY model_name;
+        """)
+        return read_db.do('select', sql=sql)

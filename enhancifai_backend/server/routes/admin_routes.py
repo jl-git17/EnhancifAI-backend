@@ -321,3 +321,32 @@ async def update_model_prices(
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Basic"},
         )
+
+@router.get("/admin/billing/model-prices/earliest", tags=["Admin"])
+async def get_earliest_effective_month(credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        earliest = ModelPricesDbCore.get_earliest_effective_month()
+        return {"earliest_month": earliest}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+
+@router.get("/admin/billing/model-prices/{year}/{month}", tags=["Admin"])
+async def get_model_prices_for_month(
+    year: int,
+    month: int,
+    credentials: HTTPBasicCredentials = Depends(security)
+):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        prices = ModelPricesDbCore.get_model_prices_for_month(year, month)
+        return {"model_prices": prices}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
