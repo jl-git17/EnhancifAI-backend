@@ -405,7 +405,7 @@ class BillingDbCore:
                     model_name,
                     price_per_token
                 FROM enhancifai.model_price_history
-                ORDER BY effective_date ASC, model_name ASC;
+                ORDER BY effective_date ASC, model_name DESC;
             """)
             rate_history = read_db.do('select', sql=sql, data=[])
             
