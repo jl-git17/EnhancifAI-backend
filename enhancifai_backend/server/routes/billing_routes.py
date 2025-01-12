@@ -519,7 +519,7 @@ async def get_rate_card(
         rates = BillingDbCore.get_rate_card(month, year)
         # Convert price_per_token to float with four decimal places
         for rate in rates:
-            rate['price_per_token'] = float(Decimal(rate['price_per_token']))
+            rate['price_per_1000_tokens'] = float(Decimal(rate['price_per_token'])) * 1000
         return JSONResponse(status_code=200, content={"rates": rates})
     except Exception as e:
         print(e)
