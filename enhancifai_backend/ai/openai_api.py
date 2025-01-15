@@ -88,7 +88,7 @@ class OpenAIConnector:
             'columns': columns,
             'rows': rows,
         }
-        #print(f"payload:  {payload}")
+        print(f"payload:  {payload}")
 
         max_attempts = 3
         _err = None
