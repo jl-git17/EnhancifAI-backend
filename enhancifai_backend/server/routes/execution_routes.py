@@ -112,7 +112,7 @@ def extract_columns_from_file(file_path):
     return extracted_columns
 
 def start_async_run(run_id, data_file, prompts, max_recs, user_id, file_name, batched_processing=False, performance_optimization=False):
-    asyncio.run(process_run(run_id, data_file, prompts, max_recs, user_id, file_name, batched_processing=batched_processing))
+    asyncio.run(process_run(run_id, data_file, prompts, max_recs, user_id, file_name, batched_processing=batched_processing, performance_optimization=performance_optimization))
 
 async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name,
                         batched_processing=False, performance_optimization=False):
