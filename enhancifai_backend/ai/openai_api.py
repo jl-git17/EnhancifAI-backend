@@ -38,56 +38,8 @@ DEFAULT_PROMPT = (
     "about the symptoms for which the drug Lyrica Caps 50mg 90s is prescribed.'"
 )
 
-DEFAULT_PROMPT_BATCHED = json.dumps({
-    "input_format": {
-        "query": "string",
-        "payload": {"columns": "object", "rows": "array"}
-    },
-    "instructions": {
-        "task": "For each row, create concise text using relevant columns. Embed query formatting if any. Return a JSON array matching row count.",
-        "output_format": {
-            "type": "json_array",
-            "description": "JSON array of text (one per row).",
-            "enforcement": "Valid JSON only."
-        },
-        "handling_incomplete_data": {
-            "rule": "If data is missing, return 'Incomplete data'."
-        },
-        "rules": [
-            "Do not skip rows.",
-            "Be concise.",
-            "Embed formatting if present.",
-            "No intros, self-references, or repetition.",
-            "Output JSON array only."
-        ]
-    },
-    "example": {
-        "input": {
-            "query": "Format churn risk as 'Risk: <value>'.",
-            "payload": {
-                "columns": {
-                    "A": "ID", "B": "Sub Start", "C": "Avg Spend",
-                    "D": "Margin", "E": "Churn", "F": "Tx Count",
-                    "G": "Avg Tx Val", "H": "Days Since 1st", "I": "Fav Category"
-                },
-                "rows": [
-                    {"A": "1", "E": "5"},
-                    {"A": "2", "E": "4"},
-                    {"A": "3", "E": "5"},
-                    {"A": "4", "E": "3"},
-                    {"A": "5", "E": ""}
-                ]
-            }
-        },
-        "output": [
-            "Risk: High risk",
-            "Risk: Medium risk",
-            "Risk: High risk",
-            "Risk: Low risk",
-            "Risk: Incomplete data"
-        ]
-    }
-})
+DEFAULT_PROMPT_BATCHED = json.dumps({"input_format":{"query":"string","payload":{"columns":"object","rows":"array"}},"instructions":{"task":"Generate concise text per row from relevant columns with query formatting. Return a JSON array with one entry per row.","output_format":{"type":"json_array","description":"Array of text strings, one per row.","enforcement":"Valid JSON only."},"handling_incomplete_data":{"rule":"If data missing, return 'Incomplete data'."},"rules":["Include all rows.","Be concise.","Apply formatting.","No intros, self-references, or repeats.","Only output JSON array."]},"example":{"input":{"query":"Format churn risk as 'Risk: <value>'.","payload":{"columns":{"A":"ID","B":"Sub Start","C":"Avg Spend","D":"Margin","E":"Churn","F":"Tx Count","G":"Avg Tx Val","H":"Days Since 1st","I":"Fav Category"},"rows":[{"A":"1","E":"5"},{"A":"2","E":"4"},{"A":"3","E":"5"},{"A":"4","E":"3"},{"A":"5","E":""}]}},"output":["Risk: High","Risk: Medium","Risk: High","Risk: Low","Risk: Incomplete data"]}})
+
 
 def extract_and_parse_json(raw_data):
     """
