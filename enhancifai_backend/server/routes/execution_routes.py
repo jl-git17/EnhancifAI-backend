@@ -111,10 +111,11 @@ def extract_columns_from_file(file_path):
     extracted_columns = [columns]
     return extracted_columns
 
-def start_async_run(run_id, data_file, prompts, max_recs, user_id, file_name, batched_processing=False):
+def start_async_run(run_id, data_file, prompts, max_recs, user_id, file_name, batched_processing=False, performance_optimization=False):
     asyncio.run(process_run(run_id, data_file, prompts, max_recs, user_id, file_name, batched_processing=batched_processing))
 
-async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name, batched_processing=False):
+async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name,
+                        batched_processing=False, performance_optimization=False):
     # Guess the MIME type based on the file extension
     mime_type, _ = mimetypes.guess_type(data_file)
 
@@ -126,7 +127,8 @@ async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name, 
             max_recs=max_recs,
             user_id=user_id,
             filename=file_name,
-            batched_processing=batched_processing
+            batched_processing=batched_processing,
+            performance_optimization=performance_optimization
         )
     elif mime_type in EXCEL_MIME_TYPES:
         results = await handle_excel_file(
@@ -136,7 +138,8 @@ async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name, 
             max_recs=max_recs,
             user_id=user_id,
             filename=file_name,
-            batched_processing=batched_processing
+            batched_processing=batched_processing,
+            performance_optimization=performance_optimization
         )
     else:
         # Handle unsupported file types or add more conditions for other types
@@ -513,8 +516,12 @@ async def upload_direct_prompt(
                 read_prompts,
                 max_recs,
                 user_id,
-                file_name,
-                batched_processing  # <-- pass this down
+                file_name
+            ),
+                kwargs={
+                    "batched_processing": batched_processing,
+                    "performance_optimization": performance_optimization
+                }
             )
         ).start()
         logging.debug("Asynchronous run thread started successfully")

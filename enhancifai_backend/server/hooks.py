@@ -18,21 +18,19 @@ pi_ai_connection = OpenAIConnector("gpt-4o-mini")  # TODO env var
 
 def get_ai_connection():
     engine = AdminSettings.get_ai_engine()
-    #print(f"Getting ai: {engine}")
     if engine == 'gemini':
         return GeminiConnector()
     else:
         return OpenAIConnector(engine)
 
-async def handle_csv_file(csv_file, prompts, max_recs, run_id, user_id, filename, batched_processing=False):
+async def handle_csv_file(csv_file, prompts, max_recs, run_id, user_id, filename,
+                          batched_processing=False, performance_optimization=False):
     """
-    Handle CSV file processing.
-    This version receives `batched_processing` so the CSVHandler
-    can do specialized logic if needed.
+    Handle CSV file processing, including new 'batched_processing' and
+    'performance_optimization' parameters.
     """
-    temp_csv_file_path = csv_file  # This now directly uses the path provided
+    temp_csv_file_path = csv_file
 
-    # Generate a unique file name using the current time
     unique_filename = f"processed_{uuid.uuid4()}_{int(time.time()*1000)}.csv"
     processed_csv_path = os.path.join('/tmp', unique_filename)
 
@@ -46,10 +44,10 @@ async def handle_csv_file(csv_file, prompts, max_recs, run_id, user_id, filename
         engine=engine,
         user_id=user_id,
         filename=filename,
-        batched_processing=batched_processing
+        batched_processing=batched_processing,
+        performance_optimization=performance_optimization
     )
 
-    # Load, validate, and process
     loaded = csv_handler.load_csv()
     if loaded is True:
         results = csv_handler.process_csv(prompts, max_records=max_recs)
@@ -72,11 +70,11 @@ async def handle_csv_file(csv_file, prompts, max_recs, run_id, user_id, filename
     }
     return response_data
 
-async def handle_excel_file(excel_file, prompts, max_recs, run_id, user_id, filename, batched_processing=False):
+async def handle_excel_file(excel_file, prompts, max_recs, run_id, user_id, filename,
+                            batched_processing=False, performance_optimization=False):
     """
-    Handle Excel file processing.
-    This version receives `batched_processing` so the ExcelHandler
-    can do specialized logic if needed.
+    Handle Excel file processing, including 'batched_processing' and
+    'performance_optimization'.
     """
     temp_excel_file_path = excel_file
     file_extension = os.path.splitext(temp_excel_file_path)[1]
@@ -94,7 +92,8 @@ async def handle_excel_file(excel_file, prompts, max_recs, run_id, user_id, file
         engine=engine,
         user_id=user_id,
         filename=filename,
-        batched_processing=batched_processing
+        batched_processing=batched_processing,
+        performance_optimization=performance_optimization
     )
     print("Loaded excel handler")
 
