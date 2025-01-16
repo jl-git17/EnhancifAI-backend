@@ -184,6 +184,141 @@ class OpenAIConnector:
         else:
             print("Failed to get answer from OpenAI API after 3 attempts.")
             return {'content': _err, 'tokens': 0}
+    
+    def process_csv_rows(self, columns: list, rows: list[dict], query: str, run_id: int) -> list[dict]:
+        """
+        Process multiple CSV rows in a single OpenAI call for performance optimization.
+        
+        Returns a list of dictionaries, each containing:
+            {
+            "content": <the AI-generated answer for that row>,
+            "tokens": <the token usage for this batch (shared)>,
+            "engine_used": <which engine was used>
+            }
+        The returned list is aligned with the order of `rows` input.
+        """
+
+        if RunsDbCore.is_run_cancelled(run_id):
+            raise RuntimeError("Job cancelled.")
+
+        # We'll pass all rows at once to the model as JSON:
+        payload = {
+            'columns': columns,
+            'rows': rows  # entire list of row dicts
+        }
+
+        max_attempts = 3
+        _err = None
+
+        # Use the same logic your single-row method uses:
+        self.engine = rate_limit_manager.can_make_api_call(model=self.engine, run_id=run_id)
+
+        for attempt in range(max_attempts):
+            try:
+                # For clarity, instruct the AI:
+                # 1) We show it the query and the entire 'payload' with many rows.
+                # 2) We TELL it to return exactly one answer per row in a JSON list
+                #    so we can map them back properly.
+                messages = [
+                    {
+                        "role": "system",
+                        "content": (
+                            "- You are an assistant with expertise in data analysis and can use your general knowledge "
+                            "to answer.\n"
+                            "- Focus on providing direct answers to the user's queries based on the JSON data. "
+                            "Do not repeat or mention the JSON data or provide introductory statements in your responses.\n"
+                            "- Return your final answer as a JSON array with the same length as the list of rows. "
+                            "Each item in the array corresponds to the same row index in the input.\n"
+                            "- Keep responses brief and relevant.\n"
+                            "- Avoid referring to yourself as AI.\n"
+                        )
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "I am ready to process multiple rows in one request. Please provide them."
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"{query}:\n\n"
+                            f"Here are multiple rows in JSON:\n"
+                            f"```{json.dumps(payload)}```\n\n"
+                            "Please return an array of answers, one for each row, in JSON. "
+                            "For example: `[ \"answer-for-row-1\", \"answer-for-row-2\", ...]`."
+                        )
+                    }
+                ]
+
+                completion = self.client.chat.completions.create(
+                    model=self.engine,
+                    messages=messages,
+                    temperature=0.5,
+                )
+
+                raw_data = completion.choices[0].message.content
+                tokens_used = completion.usage.total_tokens
+
+                # Rate limit manager housekeeping
+                rate_limit_manager.update_make_api_call(self.engine, tokens_used=tokens_used)
+
+                user_id = RunsDbCore.get_user_id(run_id)
+                UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
+
+                # Attempt to parse the AI's response as JSON array
+                #
+                # The AI hopefully returns something like:
+                #   ["answer for row 0", "answer for row 1", ...]
+                # or an array of objects. We'll do minimal validation.
+                try:
+                    parsed = json.loads(raw_data)
+                    # If it's not a list, we treat it as error
+                    if not isinstance(parsed, list):
+                        raise ValueError("Expected a JSON array, got something else.")
+
+                    # Build the output. Each row gets a dict with the row's content, tokens, etc.
+                    # Use the same tokens for each item because the call is shared
+                    results = []
+                    for answer in parsed:
+                        # If it's just a string, wrap it up. If it's a dict, also handle it
+                        content_text = answer if isinstance(answer, str) else json.dumps(answer)
+                        results.append({
+                            "content": content_text.strip(),
+                            "tokens": tokens_used,
+                            "engine_used": self.engine
+                        })
+
+                    return results
+
+                except json.JSONDecodeError:
+                    # The AI returned something that's not valid JSON. We'll treat that as an error
+                    print(f"Failed to parse JSON array from AI: {raw_data}")
+                    raise RuntimeError("AI did not return valid JSON array")
+
+            except Exception as e:
+                print(e)
+                if hasattr(e, 'status_code'):
+                    if e.status_code == 429:
+                        # Rate-limiting
+                        match = RATE_LIMIT_PATTERN.search(e.body['message']) if hasattr(e, 'body') else None
+                        if match:
+                            delay = float(match.group(1))
+                        else:
+                            delay = 5
+                        sleep_time = delay * BUFFER_MULTIPLIER
+                        print(f"Rate limit. Waiting {sleep_time} seconds...")
+                        time.sleep(sleep_time)
+                else:
+                    _err = e
+                    if attempt < max_attempts - 1:
+                        time.sleep(1 * (2 ** attempt))
+
+        # If we got here, attempts all failed
+        if _err is None:
+            raise RuntimeError("Failed to get answer from OpenAI API after 3 attempts.")
+        else:
+            print("Failed to get answer from OpenAI API after 3 attempts.")
+            return [{'content': str(_err), 'tokens': 0, 'engine_used': self.engine}]
+
 
     def improve_prompt(self, prompt: str, user_id: int):
         _err = None

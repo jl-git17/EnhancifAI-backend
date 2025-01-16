@@ -173,22 +173,30 @@ class ExcelHandler:
         return result
 
     def process_chunk(self, start_idx, chunk_data, prompt_config):
+        """
+        Similar logic as CSVHandler, but adapted for Excel data.
+        """
         if self._is_run_cancelled():
             return []
 
+        # Create the column mapping and pick which columns are referenced by this prompt
         columns_list = self.create_column_mapping()
         selected_columns = self.get_selected_columns(prompt_config, columns_list)
 
+        # Collect row subsets
         to_send = []
         indexes = []
         for i, row in enumerate(chunk_data):
             actual_idx = start_idx + i
             if self._is_run_cancelled():
                 return []
+            
+            # Filter row, converting datetimes if needed:
             subset = self._filter_excel_row(row, selected_columns)
             to_send.append(subset)
             indexes.append(actual_idx)
 
+        # One call to AI for all rows in this chunk
         batch_data = self.ai_connector.process_csv_rows(
             columns=columns_list,
             rows=to_send,
@@ -210,11 +218,14 @@ class ExcelHandler:
                     self.overflow = True
 
                 self.total_tokens += item.get('tokens', 0)
+
+                # Bump row completion count
                 if actual_idx in self.row_completion:
                     self.row_completion[actual_idx] += 1
                 else:
                     self.row_completion[actual_idx] = 1
 
+                # Update progress
                 self.prompt_progress += 1
                 runs_progress.update_progress(self.run_id, self.prompt_progress)
 

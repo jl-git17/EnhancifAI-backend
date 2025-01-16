@@ -191,46 +191,42 @@ class CSVHandler:
 
     def process_chunk(self, start_idx, chunk_data, prompt_config, columns_list):
         """
-        New logic if performance_optimization=True:
-        We send multiple rows at once to the AI in one request.
+        Send multiple rows (chunk_data) in one request to the AI.
+        'chunk_data' is a list of row dictionaries.
         """
         if self._is_run_cancelled():
             return []
 
-        # Prepare data for batch request
-        # chunk_data is a list of dict-rows
-        # We'll gather only the selected columns, but for each row
+        # Choose the columns used by this prompt
         selected_columns = self.get_selected_columns(prompt_config, columns_list)
+        
+        # Build a list of filtered row dicts, parallel to 'chunk_data'
         to_send = []
         indexes = []
         for i, row in enumerate(chunk_data):
             actual_idx = start_idx + i
             if self._is_run_cancelled():
                 return []
-            # Filter the row by columns
+            # Filter each row by the selected columns
             subset = {k: row[k] for k in selected_columns if k in row}
             to_send.append(subset)
             indexes.append(actual_idx)
 
-        # We'll call an imaginary "process_csv_rows" method on the AI connector
-        # (If your AI connector doesn’t have such a method, implement it with minimal changes.)
-        # We can fallback to single calls in a loop; but let's do the minimal direct approach:
-
+        # Now call 'process_csv_rows' on the AI connector **once** for the entire chunk
         batch_data = self.ai_connector.process_csv_rows(
             columns=columns_list,
             rows=to_send,
             query=prompt_config['prompt'],
             run_id=self.run_id
         )
+        # 'batch_data' should be a list of dicts, one per row in 'to_send'
 
-        # Suppose "batch_data" returns a list of dicts parallel to the 'to_send' list
-        # We'll build individual results
-        results_for_chunk = []
         output_heading = prompt_config['output_heading']
-
+        results_for_chunk = []
         with self.lock:
             for i, item in enumerate(batch_data):
                 actual_idx = indexes[i]
+                # Build a result dict for this row
                 result = {
                     "row_index": actual_idx,
                     "prompt_number": prompt_config['prompt_number'],
@@ -241,14 +237,18 @@ class CSVHandler:
                     self.overflow = True
 
                 self.total_tokens += item.get('tokens', 0)
+
+                # Bump row completion
                 self._increment_row_completion(actual_idx)
 
+                # Update progress once per row in the chunk
                 self.prompt_progress += 1
                 runs_progress.update_progress(self.run_id, self.prompt_progress)
 
                 results_for_chunk.append(result)
 
         return results_for_chunk
+
 
     def get_selected_columns(self, prompt_config, letter_to_column):
         selected_columns = prompt_config['columns']
