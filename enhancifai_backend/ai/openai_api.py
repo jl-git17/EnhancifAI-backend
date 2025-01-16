@@ -38,15 +38,66 @@ DEFAULT_PROMPT = (
     "about the symptoms for which the drug Lyrica Caps 50mg 90s is prescribed.'"
 )
 
-DEFAULT_PROMPT_BATCHED = (
-    "- You are a data analysis assistant.\n"
-    "- For each row in the JSON data, generate a concise answer based on the relevant columns.\n"
-    "- Always return a JSON array with one answer per row, matching the row index. Ensure the array has the same length as the input rows.\n"
-    "- If a row is incomplete or contains missing data, respond with \"Incomplete data\" for that row.\n"
-    "- Do not skip rows, and ensure each row has a corresponding answer in the output array.\n"
-    "- Example output: `[\"answer-for-row-1\", \"answer-for-row-2\", ...]`.\n"
-    "- Be brief, relevant, and do not refer to yourself or include introductions.\n"
-)
+DEFAULT_PROMPT_BATCHED = json.dumps({
+    "role": "system",
+    "content": {
+        "input_format": {
+                "query": "string",
+                "payload": {
+                "columns": "object",
+                "rows": "array"
+            }
+        },
+        "instructions": {
+                "task": "For each row in the 'payload.rows', generate a concise answer based on the relevant columns and the 'query'.",
+                "output_format": {
+                "type": "json_array",
+                "description": "An array with one answer per row, matching the row index. The output array must have the same length as the number of input rows."
+            },
+            "handling_incomplete_data": {
+                "rule": "If a row is incomplete or contains missing data, the corresponding output should be 'Incomplete data'."
+            },
+            "rules": [
+                "Do not skip rows. Ensure every row has a corresponding answer in the output array.",
+                "Be concise and relevant to the 'query'.",
+                "Do not refer to yourself, include introductions, or repeat information unnecessarily."
+            ]
+        },
+        "example": {
+            "input": {
+                "query": "Determine churn risk based on 'Monthly Churn Rate'.",
+                "payload": {
+                    "columns": {
+                        "A": "Customer ID",
+                        "B": "Subscription Start Date",
+                        "C": "Average Monthly Spend",
+                        "D": "Profit Margin",
+                        "E": "Monthly Churn Rate",
+                        "F": "Transaction Count",
+                        "G": "Average Transaction Value",
+                        "H": "Days Since First Purchase",
+                        "I": "Most Frequent Product Category"
+                    },
+                    "rows": [
+                        {"A": "6", "B": "44372", "C": "622", "D": "32", "E": "5", "F": "9", "G": "60", "H": "200", "I": "Apparel"},
+                        {"A": "7", "B": "44392", "C": "753", "D": "30", "E": "4", "F": "11", "G": "48", "H": "170", "I": "Home & Kitchen"},
+                        {"A": "8", "B": "44409", "C": "34", "D": "33", "E": "5", "F": "8", "G": "50", "H": "150", "I": "Electronics"},
+                        {"A": "9", "B": "44449", "C": "99", "D": "25", "E": "3", "F": "14", "G": "52", "H": "120", "I": "Sports & Outdoors"},
+                        {"A": "10", "B": "44474", "C": "", "D": "29", "E": "6", "F": "5", "G": "30", "H": "90", "I": "Beauty & Health"}
+                    ]
+                }
+            },
+            "output": [
+                "High risk",
+                "Medium risk",
+                "High risk",
+                "Low risk",
+                "Incomplete data"
+            ]
+        }
+    }
+})
+
 
 
 class PromptImproverSettings:
@@ -267,14 +318,11 @@ class OpenAIConnector:
                     },
                     {
                         "role": "assistant",
-                        "content": "I am ready to process multiple rows in one request. Please provide them."
+                        "content": "I am ready to process."
                     },
                     {
                         "role": "user",
-                        "content": (
-                            f"{query}:\n\n"
-                            f"```{json.dumps(payload)}```\n\n"
-                        )
+                        "content": json.dumps({"query": query, "payload": payload})
                     }
                 ]
 
