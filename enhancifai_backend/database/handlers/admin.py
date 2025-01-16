@@ -143,8 +143,7 @@ class ModelPricesDbCore:
         sql = schemafy(f"""
             SELECT model_name, price_per_token, effective_date
             FROM enhancifai.model_price_history
-            WHERE effective_date >= DATE_TRUNC('month', DATE '{start_of_month}')
-              AND effective_date <  (DATE_TRUNC('month', DATE '{start_of_month}') + INTERVAL '1 month')
+            WHERE effective_date = DATE_TRUNC('month', DATE '{start_of_month}')
             ORDER BY model_name;
         """)
         return read_db.do('select', sql=sql)
