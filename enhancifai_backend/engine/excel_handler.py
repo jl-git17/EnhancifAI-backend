@@ -45,8 +45,6 @@ class ExcelHandler:
         self.total_tokens = 0
         self.batched_processing = batched_processing
         self.performance_optimization = performance_optimization
-        print(f"Debug: batched_processing={batched_processing}, performance_optimization={performance_optimization}")
-        print(f"Debug types: batched_processing={type(batched_processing)}, performance_optimization={type(performance_optimization)}")
 
     def _is_run_cancelled(self):
         return RunsDbCore.is_run_cancelled(self.run_id)

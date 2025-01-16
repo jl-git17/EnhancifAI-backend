@@ -83,7 +83,6 @@ async def handle_excel_file(excel_file, prompts, max_recs, run_id, user_id, file
     processed_excel_path = os.path.join('/tmp', unique_filename)
 
     engine = AdminSettings.get_ai_engine()
-    print("Loading excel handler")
     excel_handler = ExcelHandler(
         run_id=run_id,
         file_path=temp_excel_file_path,
@@ -95,10 +94,8 @@ async def handle_excel_file(excel_file, prompts, max_recs, run_id, user_id, file
         batched_processing=batched_processing,
         performance_optimization=performance_optimization
     )
-    print("Loaded excel handler")
 
     if excel_handler.load_excel():
-        print(f"Processing Excel {temp_excel_file_path}")
         results = excel_handler.process_excel(prompts, max_records=max_recs)
         if RunsDbCore.is_run_cancelled(run_id):
             RunsDbCore.cancel_run(run_id)

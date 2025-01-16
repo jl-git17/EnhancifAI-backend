@@ -220,11 +220,8 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
 
     if json_data:
         try:
-            print(json_data)
             _json_data = json.loads(json_data)
-            print(_json_data)
             sheet_name = _json_data['sheet_name']
-            print(f"Sheet name: {sheet_name}")
             data_json = _json_data['data']
             with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx') as temp_data_file:
                 temp_data_file_path = temp_data_file.name
@@ -243,9 +240,6 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
         data_file_suffix = file_suffix_map.get(data_file.content_type, None)
         prompt_file_suffix = file_suffix_map.get(prompt_file.content_type, None)
         file_name = data_file.filename
-
-        # Debugging: Log the content type
-        print(f"Received data file with content type: {data_file.content_type}")
         
         if not data_file_suffix:
             raise HTTPException(status_code=400, detail="Invalid data file type")
@@ -258,16 +252,11 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
             temp_data_file_path = temp_data_file.name
             data_contents = await data_file.read()
             
-            # Debugging: Check the size of the file contents
-            print(f"Data file contents size: {len(data_contents)} bytes")
-            
             temp_data_file.write(data_contents)
             temp_data_file.flush()
 
             # Debugging: Verify the temporary file creation
-            if os.path.exists(temp_data_file_path):
-                print(f"Temporary data file created successfully at {temp_data_file_path}")
-            else:
+            if not os.path.exists(temp_data_file_path):
                 print(f"Failed to create temp file at {temp_data_file_path}")
     else:
         raise HTTPException(status_code=400, detail="Either data file or JSON data must be provided.")

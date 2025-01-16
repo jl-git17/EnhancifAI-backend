@@ -49,20 +49,20 @@ DEFAULT_PROMPT_BATCHED = json.dumps({
             }
         },
         "instructions": {
-            "task": "For each row in the 'payload.rows', process the query to generate a concise, plain text answer based on the relevant column.",
+            "task": "For each row in 'payload.rows', process the query to generate a concise, plain text answer based on relevant columns.",
             "output_format": {
                 "type": "json_array",
-                "description": "An array with one answer per row, matching the row index. The output array must have the same length as the number of input rows.",
-                "enforcement": "Always return the output as a valid JSON array in the specified format. Do not return any other type or structure."
+                "description": "A JSON array with one answer per row, matching the row index and input row count.",
+                "enforcement": "Always return a valid JSON array in this format. Do not use any other structure."
             },
             "handling_incomplete_data": {
-                "rule": "If a row is incomplete or contains missing data, the corresponding output should be 'Incomplete data'."
+                "rule": "For rows with missing or incomplete data, return 'Incomplete data'."
             },
             "rules": [
-                "Do not skip rows. Ensure every row has a corresponding answer in the output array.",
-                "Be concise and relevant to the 'query'.",
-                "Do not refer to yourself, include introductions, or repeat information unnecessarily.",
-                "Strictly adhere to the specified output format at all times."
+                "Do not skip rows. Provide one answer for every row.",
+                "Keep answers concise and relevant to the query.",
+                "Avoid introductions, self-references, or repeating information.",
+                "Always follow the specified output format."
             ]
         },
         "example": {
@@ -99,8 +99,6 @@ DEFAULT_PROMPT_BATCHED = json.dumps({
         }
     }
 })
-
-
 
 class PromptImproverSettings:
     def __init__(self, prompt: str=PI_DEFAULT_PROMPT, ai_engine: str=PI_DEFAULT_AI_ENGINE):
@@ -147,7 +145,6 @@ class OpenAIConnector:
 
     def __init__(self, engine) -> None:
         self.engine = engine
-        print(self.engine)
         #self.temperature = temperature
         #self.top_p = top_p
         # Initialize OpenAI client with API key
@@ -169,7 +166,7 @@ class OpenAIConnector:
             'columns': columns,
             'rows': rows,
         }
-        print(f"payload:  {payload}")
+        print(f"Length of payload: {len(payload['rows'])}")
 
         max_attempts = 3
         _err = None
@@ -206,6 +203,8 @@ class OpenAIConnector:
                     #temperature=self.temperature,
                     #top_p=self.top_p
                 )
+
+                print("AI API call successful.")
 
                 data = completion.choices[0].message.content
                 tokens_used = completion.usage.total_tokens
@@ -299,8 +298,6 @@ class OpenAIConnector:
             'rows': transformed_rows      # Use transformed rows with letter keys
         }
 
-        print(f"payload:  {payload}")
-
         max_attempts = 3
         _err = None
 
@@ -351,8 +348,6 @@ class OpenAIConnector:
                 #   ["answer for row 0", "answer for row 1", ...]
                 # or an array of objects. We'll do minimal validation.
                 try:
-                    print(f"Raw data: {raw_data}")
-                    print(f"Type: {type(raw_data)}")
                     parsed = json.loads(raw_data)
                     # If it's not a list, we treat it as error
                     if not isinstance(parsed, list):
@@ -448,7 +443,7 @@ class OpenAIConnector:
 
                 data = completion.choices[0].message.content
                 tokens_used = completion.usage.total_tokens
-                print(data)
+
                 new_prompt = data.replace("```", "").strip()
                 UsersDbCore.add_user_token_usage_pi(user_id, self.engine, tokens_used)
                 return {"content": new_prompt, "tokens": tokens_used, 'engine_used': self.engine}

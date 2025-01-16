@@ -44,8 +44,6 @@ class CSVHandler:
         self.total_tokens = 0
         self.batched_processing = batched_processing
         self.performance_optimization = performance_optimization
-        print(f"Debug: batched_processing={batched_processing}, performance_optimization={performance_optimization}")
-        print(f"Debug types: batched_processing={type(batched_processing)}, performance_optimization={type(performance_optimization)}")
 
     def _is_run_cancelled(self):
         return RunsDbCore.is_run_cancelled(self.run_id)
@@ -54,7 +52,6 @@ class CSVHandler:
         encodings = ['utf-8', 'ISO-8859-1', 'Windows-1252']
         errors = []
         for encoding in encodings:
-            print(f"Attempting to read CSV with encoding '{encoding}'")
             try:
                 with open(self.file_path, mode='r', newline='', encoding=encoding) as file:
                     csv_reader = csv.DictReader(file)
