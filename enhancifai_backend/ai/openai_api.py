@@ -300,6 +300,7 @@ class OpenAIConnector:
                 # or an array of objects. We'll do minimal validation.
                 try:
                     print(f"Raw data: {raw_data}")
+                    print(f"Type: {type(raw_data)}")
                     parsed = json.loads(raw_data)
                     # If it's not a list, we treat it as error
                     if not isinstance(parsed, list):
