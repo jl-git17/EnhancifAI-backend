@@ -39,8 +39,6 @@ DEFAULT_PROMPT = (
 )
 
 DEFAULT_PROMPT_BATCHED = json.dumps({
-  "role": "system",
-  "content": {
     "input_format": {
       "query": "string",
       "payload": {
@@ -98,8 +96,7 @@ DEFAULT_PROMPT_BATCHED = json.dumps({
         "Risk: Incomplete data"
       ]
     }
-  }
-})
+  })
 
 class PromptImproverSettings:
     def __init__(self, prompt: str=PI_DEFAULT_PROMPT, ai_engine: str=PI_DEFAULT_AI_ENGINE):
