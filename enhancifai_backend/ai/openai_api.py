@@ -2,6 +2,7 @@ import json
 import os
 import re
 import time
+from typing import Dict, List
 from fastapi import HTTPException
 from openai import OpenAI
 
@@ -196,15 +197,23 @@ class OpenAIConnector:
             print("Failed to get answer from OpenAI API after 3 attempts.")
             return {'content': _err, 'tokens': 0}
     
-    def process_csv_rows(self, columns: list, rows: list[dict], query: str, run_id: int) -> list[dict]:
+    def process_csv_rows(
+        self,
+        columns: Dict[str, str],
+        rows: List[Dict[str, str]],
+        query: str,
+        run_id: int
+    ) -> List[Dict[str, object]]:
         """
         Process multiple CSV rows in a single OpenAI call for performance optimization.
-        
+
+        Converts row keys from descriptive names to their corresponding letter representations.
+
         Returns a list of dictionaries, each containing:
             {
-            "content": <the AI-generated answer for that row>,
-            "tokens": <the token usage for this batch (shared)>,
-            "engine_used": <which engine was used>
+                "content": <the AI-generated answer for that row>,
+                "tokens": <the token usage for this batch (shared)>,
+                "engine_used": <which engine was used>
             }
         The returned list is aligned with the order of `rows` input.
         """
@@ -212,10 +221,26 @@ class OpenAIConnector:
         if RunsDbCore.is_run_cancelled(run_id):
             raise RuntimeError("Job cancelled.")
 
-        # We'll pass all rows at once to the model as JSON:
+        # Create a reverse mapping from column names to letters
+        name_to_letter = {v: k for k, v in columns.items()}
+
+        # Transform each row's keys from names to letters
+        transformed_rows = []
+        for row in rows:
+            transformed_row = {}
+            for name, value in row.items():
+                letter = name_to_letter.get(name)
+                if letter:
+                    transformed_row[letter] = value
+                else:
+                    # Handle unexpected column names
+                    raise ValueError(f"Column name '{name}' does not exist in columns mapping.")
+            transformed_rows.append(transformed_row)
+
+        # Construct the payload with transformed rows
         payload = {
-            'columns': columns,
-            'rows': rows  # entire list of row dicts
+            'columns': columns,          # Keep columns as is (letter to name)
+            'rows': transformed_rows      # Use transformed rows with letter keys
         }
 
         print(f"payload:  {payload}")
@@ -271,10 +296,17 @@ class OpenAIConnector:
                 #   ["answer for row 0", "answer for row 1", ...]
                 # or an array of objects. We'll do minimal validation.
                 try:
+                    print(f"Raw data: {raw_data}")
                     parsed = json.loads(raw_data)
                     # If it's not a list, we treat it as error
                     if not isinstance(parsed, list):
                         raise ValueError("Expected a JSON array, got something else.")
+
+                    # Ensure the number of answers matches the number of rows
+                    if len(parsed) != len(rows):
+                        raise ValueError(
+                            f"Number of answers ({len(parsed)}) does not match number of rows ({len(rows)})."
+                        )
 
                     # Build the output. Each row gets a dict with the row's content, tokens, etc.
                     # Use the same tokens for each item because the call is shared
@@ -296,7 +328,7 @@ class OpenAIConnector:
                     raise RuntimeError("AI did not return valid JSON array")
 
             except Exception as e:
-                print(e)
+                print(f"Attempt {attempt + 1} failed with error: {e}")
                 if hasattr(e, 'status_code'):
                     if e.status_code == 429:
                         # Rate-limiting
@@ -306,12 +338,14 @@ class OpenAIConnector:
                         else:
                             delay = 5
                         sleep_time = delay * BUFFER_MULTIPLIER
-                        print(f"Rate limit. Waiting {sleep_time} seconds...")
+                        print(f"Rate limit reached. Waiting {sleep_time} seconds before retrying...")
                         time.sleep(sleep_time)
                 else:
                     _err = e
                     if attempt < max_attempts - 1:
-                        time.sleep(1 * (2 ** attempt))
+                        backoff_time = 2 ** attempt
+                        print(f"Error encountered. Retrying in {backoff_time} seconds...")
+                        time.sleep(backoff_time)
 
         # If we got here, attempts all failed
         if _err is None:
