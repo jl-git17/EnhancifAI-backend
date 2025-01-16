@@ -42,17 +42,18 @@ DEFAULT_PROMPT_BATCHED = json.dumps({
     "role": "system",
     "content": {
         "input_format": {
-                "query": "string",
-                "payload": {
+            "query": "string",
+            "payload": {
                 "columns": "object",
                 "rows": "array"
             }
         },
         "instructions": {
-                "task": "For each row in the 'payload.rows', generate a concise answer based on the relevant columns and the 'query'.",
-                "output_format": {
+            "task": "For each row in the 'payload.rows', generate a concise, plain text answer based on the relevant columns and the 'query'.",
+            "output_format": {
                 "type": "json_array",
-                "description": "An array with one answer per row, matching the row index. The output array must have the same length as the number of input rows."
+                "description": "An array with one answer per row, matching the row index. The output array must have the same length as the number of input rows.",
+                "enforcement": "Always return the output as a valid JSON array in the specified format. Do not return any other type or structure."
             },
             "handling_incomplete_data": {
                 "rule": "If a row is incomplete or contains missing data, the corresponding output should be 'Incomplete data'."
@@ -60,12 +61,13 @@ DEFAULT_PROMPT_BATCHED = json.dumps({
             "rules": [
                 "Do not skip rows. Ensure every row has a corresponding answer in the output array.",
                 "Be concise and relevant to the 'query'.",
-                "Do not refer to yourself, include introductions, or repeat information unnecessarily."
+                "Do not refer to yourself, include introductions, or repeat information unnecessarily.",
+                "Strictly adhere to the specified output format at all times."
             ]
         },
         "example": {
             "input": {
-                "query": "Determine churn risk based on 'Monthly Churn Rate'.",
+                "query": "Assess churn risk based on 'Monthly Churn Rate'.",
                 "payload": {
                     "columns": {
                         "A": "Customer ID",
@@ -79,11 +81,11 @@ DEFAULT_PROMPT_BATCHED = json.dumps({
                         "I": "Most Frequent Product Category"
                     },
                     "rows": [
-                        {"A": "6", "B": "44372", "C": "622", "D": "32", "E": "5", "F": "9", "G": "60", "H": "200", "I": "Apparel"},
-                        {"A": "7", "B": "44392", "C": "753", "D": "30", "E": "4", "F": "11", "G": "48", "H": "170", "I": "Home & Kitchen"},
-                        {"A": "8", "B": "44409", "C": "34", "D": "33", "E": "5", "F": "8", "G": "50", "H": "150", "I": "Electronics"},
-                        {"A": "9", "B": "44449", "C": "99", "D": "25", "E": "3", "F": "14", "G": "52", "H": "120", "I": "Sports & Outdoors"},
-                        {"A": "10", "B": "44474", "C": "", "D": "29", "E": "6", "F": "5", "G": "30", "H": "90", "I": "Beauty & Health"}
+                        {"A": "1", "E": "5"},
+                        {"A": "2", "E": "4"},
+                        {"A": "3", "E": "5"},
+                        {"A": "4", "E": "3"},
+                        {"A": "5", "E": ""}
                     ]
                 }
             },
