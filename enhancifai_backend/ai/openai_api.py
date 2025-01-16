@@ -49,7 +49,7 @@ DEFAULT_PROMPT_BATCHED = json.dumps({
             }
         },
         "instructions": {
-            "task": "For each row in the 'payload.rows', generate a concise, plain text answer based on the relevant columns and the 'query'.",
+            "task": "For each row in the 'payload.rows', process the query to generate a concise, plain text answer based on the relevant column.",
             "output_format": {
                 "type": "json_array",
                 "description": "An array with one answer per row, matching the row index. The output array must have the same length as the number of input rows.",
