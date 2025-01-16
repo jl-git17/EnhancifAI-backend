@@ -83,7 +83,7 @@ class CSVHandler:
 
         # If batched_processing is True, let's increase concurrency
         # (One minimal approach to allow more data to process simultaneously)
-        max_workers = 4 if self.batched_processing else MAX_THREADS
+        max_workers = 5 if self.batched_processing else MAX_THREADS
 
         results = []
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
