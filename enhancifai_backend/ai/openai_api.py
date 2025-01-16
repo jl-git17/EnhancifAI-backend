@@ -49,25 +49,26 @@ DEFAULT_PROMPT_BATCHED = json.dumps({
             }
         },
         "instructions": {
-            "task": "For each row in 'payload.rows', process the query to generate a concise, plain text answer based on relevant columns.",
+            "task": "For each row in 'payload.rows', process the query to generate a concise, plain text answer based on relevant columns. If the query specifies formatting instructions, include them as plain text in the relevant answer without overriding the JSON array format.",
             "output_format": {
                 "type": "json_array",
-                "description": "A JSON array with one answer per row, matching the row index and input row count.",
+                "description": "A JSON array with one plain text answer per row, matching the row index and input row count.",
                 "enforcement": "Always return a valid JSON array in this format. Do not use any other structure."
             },
             "handling_incomplete_data": {
-                "rule": "For rows with missing or incomplete data, return 'Incomplete data'."
+                "rule": "For rows with missing or incomplete data, answer is 'Incomplete data'."
             },
             "rules": [
                 "Do not skip rows. Provide one answer for every row.",
                 "Keep answers concise and relevant to the query.",
+                "Embed any formatting or additional query instructions as plain text in the corresponding answer.",
                 "Avoid introductions, self-references, or repeating information.",
                 "Always follow the specified output format."
             ]
         },
         "example": {
             "input": {
-                "query": "Assess churn risk based on 'Monthly Churn Rate'.",
+                "query": "Format the churn risk as 'Risk: <value>'.",
                 "payload": {
                     "columns": {
                         "A": "Customer ID",
@@ -90,11 +91,11 @@ DEFAULT_PROMPT_BATCHED = json.dumps({
                 }
             },
             "output": [
-                "High risk",
-                "Medium risk",
-                "High risk",
-                "Low risk",
-                "Incomplete data"
+                "Risk: High risk",
+                "Risk: Medium risk",
+                "Risk: High risk",
+                "Risk: Low risk",
+                "Risk: Incomplete data"
             ]
         }
     }
