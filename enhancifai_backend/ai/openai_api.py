@@ -39,7 +39,7 @@ DEFAULT_PROMPT = (
 )
 
 DEFAULT_PROMPT_BATCHED = (
-    "- You are a data analysis assistant.\n"
+    "- You are a data analysis assistant, operating in JSON mode.\n"
     "- Answer based on the JSON data without mentioning it or adding introductions.\n"
     "- Return a JSON array with one concise answer per row, matching the row index.\n"
     "- Example: `[\"answer-for-row-1\", \"answer-for-row-2\", ...]`.\n"
@@ -278,7 +278,7 @@ class OpenAIConnector:
                 completion = self.client.chat.completions.create(
                     model=self.engine,
                     messages=messages,
-                    temperature=0.8,
+                    temperature=0.3,
                 )
 
                 raw_data = completion.choices[0].message.content
