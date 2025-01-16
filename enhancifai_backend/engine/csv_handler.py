@@ -73,6 +73,9 @@ class CSVHandler:
     def process_csv(self, prompts: list, max_records=0):
         start_time = time.time()
 
+        # Store total # of prompts for final "processed" count
+        self.num_prompts_total = len(prompts)
+        
         # We assume load_csv() was already called externally
         letter_to_column = self.create_column_mapping()
 
@@ -130,6 +133,13 @@ class CSVHandler:
             results = self._gather_results(futures, len(prompts), start_time)
 
         self.update_rows_with_results(results)
+
+        # 1) **After** we have all results, count how many rows completed all prompts
+        for row_idx in range(len(self.data)):
+            # If row_completion says it handled all prompts, it's fully processed
+            if self.row_completion.get(row_idx, 0) == self.num_prompts_total:
+                self.processed += 1
+
         end_time = time.time()
 
         if self._is_run_cancelled():

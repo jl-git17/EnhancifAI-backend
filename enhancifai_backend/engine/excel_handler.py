@@ -63,6 +63,9 @@ class ExcelHandler:
     def process_excel(self, prompts: list, max_records=0):
         start_time = time.time()
 
+        # Store total # of prompts
+        self.num_prompts_total = len(prompts)
+
         total_records = min(len(self.data), max_records) if max_records > 0 else len(self.data)
         total_tasks = total_records * len(prompts)
         runs_progress.add_run(self.run_id, total_tasks)
@@ -109,6 +112,11 @@ class ExcelHandler:
             results = self._gather_results(futures, start_time)
 
         self.update_rows_with_results(results)
+
+        # 1) After all results, count completed rows
+        for row_idx in range(len(self.data)):
+            if self.row_completion.get(row_idx, 0) == self.num_prompts_total:
+                self.processed += 1
         end_time = time.time()
 
         if self._is_run_cancelled():
