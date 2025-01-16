@@ -314,10 +314,6 @@ class OpenAIConnector:
                         "content": DEFAULT_PROMPT_BATCHED
                     },
                     {
-                        "role": "assistant",
-                        "content": "I am ready to process."
-                    },
-                    {
                         "role": "user",
                         "content": json.dumps({"query": query, "payload": payload})
                     }
