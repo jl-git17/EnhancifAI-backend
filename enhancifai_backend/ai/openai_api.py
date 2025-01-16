@@ -343,6 +343,8 @@ class OpenAIConnector:
                 user_id = RunsDbCore.get_user_id(run_id)
                 UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
 
+                time.sleep(1)
+
                 # Attempt to parse the AI's response as JSON array
                 #
                 # The AI hopefully returns something like:
