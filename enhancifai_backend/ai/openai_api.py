@@ -331,7 +331,7 @@ class OpenAIConnector:
                 completion = self.client.chat.completions.create(
                     model=self.engine,
                     messages=messages,
-                    temperature=0.6,
+                    temperature=0.8,
                 )
 
                 raw_data = completion.choices[0].message.content
