@@ -22,6 +22,30 @@ PI_DEFAULT_PROMPT = (
 PI_DEFAULT_AI_ENGINE = "gpt-4o-mini"
 ADMIN_USER_ID = int(os.getenv('ADMIN_USER_ID'))
 
+DEFAULT_PROMPT = (
+    "- You are an assistant with expertise in data analysis and can use your general knowledge "
+    "to answer.\n"
+    "- Focus on providing direct answers to the user's queries based on the JSON data. "
+    "Do not repeat or mention the JSON data or provide introductory statements in your responses.\n"
+    "- Keep responses brief, relevant, and focused on the query at hand.\n"
+    "- If unable to process a row or if the query requires information beyond the data, "
+    "respond appropriately.\n"
+    "- Avoid referring to yourself as AI.\n"
+    "- Example of a good response: 'OFEV 100mg is commonly prescribed for treating idiopathic "
+    "pulmonary fibrosis.'"
+    "- Another example of a good response: 'Unfortunately, I do not have enough information "
+    "about the symptoms for which the drug Lyrica Caps 50mg 90s is prescribed.'"
+)
+
+DEFAULT_PROMPT_BATCHED = (
+    "- You are a data analysis assistant.\n"
+    "- Answer based on the JSON data without mentioning it or adding introductions.\n"
+    "- Return a JSON array with one concise answer per row, matching the row index.\n"
+    "- Example: `[\"answer-for-row-1\", \"answer-for-row-2\", ...]`.\n"
+    "- Be brief, relevant, and avoid referring to yourself.\n"
+)
+
+
 class PromptImproverSettings:
     def __init__(self, prompt: str=PI_DEFAULT_PROMPT, ai_engine: str=PI_DEFAULT_AI_ENGINE):
         self._prompt = prompt
@@ -102,20 +126,7 @@ class OpenAIConnector:
                 messages = [
                     {
                         "role": "system",
-                        "content": (
-                            "- You are an assistant with expertise in data analysis and can use your general knowledge "
-                            "to answer.\n"
-                            "- Focus on providing direct answers to the user's queries based on the JSON data. "
-                            "Do not repeat or mention the JSON data or provide introductory statements in your responses.\n"
-                            "- Keep responses brief, relevant, and focused on the query at hand.\n"
-                            "- If unable to process a row or if the query requires information beyond the data, "
-                            "respond appropriately.\n"
-                            "- Avoid referring to yourself as AI.\n"
-                            "- Example of a good response: 'OFEV 100mg is commonly prescribed for treating idiopathic "
-                            "pulmonary fibrosis.'"
-                            "- Another example of a good response: 'Unfortunately, I do not have enough information "
-                            "about the symptoms for which the drug Lyrica Caps 50mg 90s is prescribed.'"
-                        )
+                        "content": DEFAULT_PROMPT
                     },
                     {
                         "role": "assistant",
@@ -207,6 +218,8 @@ class OpenAIConnector:
             'rows': rows  # entire list of row dicts
         }
 
+        print(f"payload:  {payload}")
+
         max_attempts = 3
         _err = None
 
@@ -222,16 +235,7 @@ class OpenAIConnector:
                 messages = [
                     {
                         "role": "system",
-                        "content": (
-                            "- You are an assistant with expertise in data analysis and can use your general knowledge "
-                            "to answer.\n"
-                            "- Focus on providing direct answers to the user's queries based on the JSON data. "
-                            "Do not repeat or mention the JSON data or provide introductory statements in your responses.\n"
-                            "- Return your final answer as a JSON array with the same length as the list of rows. "
-                            "Each item in the array corresponds to the same row index in the input.\n"
-                            "- Keep responses brief and relevant.\n"
-                            "- Avoid referring to yourself as AI.\n"
-                        )
+                        "content": DEFAULT_PROMPT_BATCHED
                     },
                     {
                         "role": "assistant",
@@ -241,10 +245,7 @@ class OpenAIConnector:
                         "role": "user",
                         "content": (
                             f"{query}:\n\n"
-                            f"Here are multiple rows in JSON:\n"
                             f"```{json.dumps(payload)}```\n\n"
-                            "Please return an array of answers, one for each row, in JSON. "
-                            "For example: `[ \"answer-for-row-1\", \"answer-for-row-2\", ...]`."
                         )
                     }
                 ]
@@ -252,11 +253,10 @@ class OpenAIConnector:
                 completion = self.client.chat.completions.create(
                     model=self.engine,
                     messages=messages,
-                    temperature=0.5,
+                    temperature=0.8,
                 )
 
                 raw_data = completion.choices[0].message.content
-                print(f"AI Raw data: {raw_data}")
                 tokens_used = completion.usage.total_tokens
 
                 # Rate limit manager housekeeping
