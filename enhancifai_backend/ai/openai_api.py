@@ -93,8 +93,8 @@ class OpenAIConnector:
     """Class to manage connections and requests to OpenAI API."""
 
     def __init__(self, engine) -> None:
-        print(self.engine)
         self.engine = engine
+        print(self.engine)
         #self.temperature = temperature
         #self.top_p = top_p
         # Initialize OpenAI client with API key
