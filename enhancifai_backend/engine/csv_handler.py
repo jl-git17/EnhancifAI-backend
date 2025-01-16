@@ -75,7 +75,7 @@ class CSVHandler:
 
         # Store total # of prompts for final "processed" count
         self.num_prompts_total = len(prompts)
-        
+
         # We assume load_csv() was already called externally
         letter_to_column = self.create_column_mapping()
 
@@ -184,6 +184,8 @@ class CSVHandler:
         with self.lock:
             self.total_tokens += data.get('tokens', 0)
             self._increment_row_completion(idx)
+            self.prompt_progress += 1
+            runs_progress.update_progress(self.run_id, self.prompt_progress)
 
         return result
 
@@ -240,6 +242,9 @@ class CSVHandler:
 
                 self.total_tokens += item.get('tokens', 0)
                 self._increment_row_completion(actual_idx)
+
+                self.prompt_progress += 1
+                runs_progress.update_progress(self.run_id, self.prompt_progress)
 
                 results_for_chunk.append(result)
 

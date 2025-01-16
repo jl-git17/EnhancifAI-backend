@@ -166,6 +166,9 @@ class ExcelHandler:
                 self.row_completion[idx] += 1
             else:
                 self.row_completion[idx] = 1
+            
+            self.prompt_progress += 1
+            runs_progress.update_progress(self.run_id, self.prompt_progress)
 
         return result
 
@@ -211,6 +214,10 @@ class ExcelHandler:
                     self.row_completion[actual_idx] += 1
                 else:
                     self.row_completion[actual_idx] = 1
+
+                self.prompt_progress += 1
+                runs_progress.update_progress(self.run_id, self.prompt_progress)
+
                 results_for_chunk.append(result)
 
         return results_for_chunk
