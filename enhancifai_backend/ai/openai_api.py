@@ -353,7 +353,7 @@ class OpenAIConnector:
                     parsed = json.loads(raw_data)
                     # If it's not a list, we treat it as error
                     if not isinstance(parsed, list):
-                        raise ValueError("Expected a JSON array, got something else.")
+                        raise ValueError("Expected a JSON array, got something else.\n" + raw_data)
 
                     # Ensure the number of answers matches the number of rows
                     if len(parsed) != len(rows):
