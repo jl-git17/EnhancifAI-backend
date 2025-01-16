@@ -39,66 +39,66 @@ DEFAULT_PROMPT = (
 )
 
 DEFAULT_PROMPT_BATCHED = json.dumps({
-    "role": "system",
-    "content": {
-        "input_format": {
-            "query": "string",
-            "payload": {
-                "columns": "object",
-                "rows": "array"
-            }
-        },
-        "instructions": {
-            "task": "For each row in 'payload.rows', process the query to generate a concise, plain text answer based on relevant columns. If the query specifies formatting instructions, include them as plain text in the relevant answer without overriding the JSON array format.",
-            "output_format": {
-                "type": "json_array",
-                "description": "A JSON array with one plain text answer per row, matching the row index and input row count.",
-                "enforcement": "Always return a valid JSON array in this format. Do not use any other structure."
-            },
-            "handling_incomplete_data": {
-                "rule": "For rows with missing or incomplete data, answer is 'Incomplete data'."
-            },
-            "rules": [
-                "Do not skip rows. Provide one answer for every row.",
-                "Keep answers concise and relevant to the query.",
-                "Embed any formatting or additional query instructions as plain text in the corresponding answer.",
-                "Avoid introductions, self-references, or repeating information.",
-                "Always follow the specified output format."
-            ]
-        },
-        "example": {
-            "input": {
-                "query": "Format the churn risk as 'Risk: <value>'.",
-                "payload": {
-                    "columns": {
-                        "A": "Customer ID",
-                        "B": "Subscription Start Date",
-                        "C": "Average Monthly Spend",
-                        "D": "Profit Margin",
-                        "E": "Monthly Churn Rate",
-                        "F": "Transaction Count",
-                        "G": "Average Transaction Value",
-                        "H": "Days Since First Purchase",
-                        "I": "Most Frequent Product Category"
-                    },
-                    "rows": [
-                        {"A": "1", "E": "5"},
-                        {"A": "2", "E": "4"},
-                        {"A": "3", "E": "5"},
-                        {"A": "4", "E": "3"},
-                        {"A": "5", "E": ""}
-                    ]
-                }
-            },
-            "output": [
-                "Risk: High risk",
-                "Risk: Medium risk",
-                "Risk: High risk",
-                "Risk: Low risk",
-                "Risk: Incomplete data"
-            ]
+  "role": "system",
+  "content": {
+    "input_format": {
+      "query": "string",
+      "payload": {
+        "columns": "object",
+        "rows": "array"
+      }
+    },
+    "instructions": {
+      "task": "Generate a concise plain text answer for each row in 'payload.rows' using relevant columns. If the query specifies formatting, include it as plain text in the answer. Always return a JSON array matching the row count.",
+      "output_format": {
+        "type": "json_array",
+        "description": "A JSON array of plain text answers, each answer corresponding to a row index.",
+        "enforcement": "Always return a valid JSON array. No other structure."
+      },
+      "handling_incomplete_data": {
+        "rule": "For rows with missing or incomplete data, answer 'Incomplete data'."
+      },
+      "rules": [
+        "Do not skip rows.",
+        "Keep answers concise and relevant.",
+        "Embed formatting instructions in the text if provided.",
+        "Avoid introductions, self-references, or repetition.",
+        "Respect the output format."
+      ]
+    },
+    "example": {
+      "input": {
+        "query": "Format the churn risk as 'Risk: <value>'.",
+        "payload": {
+          "columns": {
+            "A": "Customer ID",
+            "B": "Subscription Start Date",
+            "C": "Average Monthly Spend",
+            "D": "Profit Margin",
+            "E": "Monthly Churn Rate",
+            "F": "Transaction Count",
+            "G": "Average Transaction Value",
+            "H": "Days Since First Purchase",
+            "I": "Most Frequent Product Category"
+          },
+          "rows": [
+            { "A": "1", "E": "5" },
+            { "A": "2", "E": "4" },
+            { "A": "3", "E": "5" },
+            { "A": "4", "E": "3" },
+            { "A": "5", "E": "" }
+          ]
         }
+      },
+      "output": [
+        "Risk: High risk",
+        "Risk: Medium risk",
+        "Risk: High risk",
+        "Risk: Low risk",
+        "Risk: Incomplete data"
+      ]
     }
+  }
 })
 
 class PromptImproverSettings:
@@ -333,7 +333,9 @@ class OpenAIConnector:
                 )
 
                 raw_data = completion.choices[0].message.content
-                print(raw_data)
+                
+                print("AI API call successful.")
+
                 tokens_used = completion.usage.total_tokens
 
                 # Rate limit manager housekeeping
