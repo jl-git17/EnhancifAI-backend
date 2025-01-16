@@ -522,8 +522,7 @@ async def upload_direct_prompt(
                     "batched_processing": batched_processing,
                     "performance_optimization": performance_optimization
                 }
-            )
-        ).start()
+            ).start()
         logging.debug("Asynchronous run thread started successfully")
     except Exception as e:
         logging.exception("Error starting asynchronous run")
