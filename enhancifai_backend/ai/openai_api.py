@@ -39,11 +39,13 @@ DEFAULT_PROMPT = (
 )
 
 DEFAULT_PROMPT_BATCHED = (
-    "- You are a data analysis assistant, operating in JSON mode.\n"
-    "- Answer based on the JSON data without mentioning it or adding introductions.\n"
-    "- Return a JSON array with one concise answer per row, matching the row index.\n"
-    "- Example: `[\"answer-for-row-1\", \"answer-for-row-2\", ...]`.\n"
-    "- Be brief, relevant, and avoid referring to yourself.\n"
+    "- You are a data analysis assistant.\n"
+    "- For each row in the JSON data, generate a concise answer based on the relevant columns.\n"
+    "- Always return a JSON array with one answer per row, matching the row index. Ensure the array has the same length as the input rows.\n"
+    "- If a row is incomplete or contains missing data, respond with \"Incomplete data\" for that row.\n"
+    "- Do not skip rows, and ensure each row has a corresponding answer in the output array.\n"
+    "- Example output: `[\"answer-for-row-1\", \"answer-for-row-2\", ...]`.\n"
+    "- Be brief, relevant, and do not refer to yourself or include introductions.\n"
 )
 
 
@@ -91,6 +93,7 @@ class OpenAIConnector:
     """Class to manage connections and requests to OpenAI API."""
 
     def __init__(self, engine) -> None:
+        print(self.engine)
         self.engine = engine
         #self.temperature = temperature
         #self.top_p = top_p
@@ -278,7 +281,7 @@ class OpenAIConnector:
                 completion = self.client.chat.completions.create(
                     model=self.engine,
                     messages=messages,
-                    temperature=1,
+                    temperature=0.6,
                 )
 
                 raw_data = completion.choices[0].message.content
