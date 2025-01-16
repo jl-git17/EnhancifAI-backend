@@ -40,63 +40,95 @@ DEFAULT_PROMPT = (
 
 DEFAULT_PROMPT_BATCHED = json.dumps({
     "input_format": {
-      "query": "string",
-      "payload": {
-        "columns": "object",
-        "rows": "array"
-      }
+        "query": "string",
+        "payload": {"columns": "object", "rows": "array"}
     },
     "instructions": {
-      "task": "For each row, produce concise text using relevant columns. If the query includes formatting, embed it. Return a JSON array matching the row count.",
-      "output_format": {
-        "type": "json_array",
-        "description": "A JSON array of text answers (one per row).",
-        "enforcement": "Must be valid JSON only."
-      },
-      "handling_incomplete_data": {
-        "rule": "If data is missing/incomplete, answer 'Incomplete data'."
-      },
-      "rules": [
-        "Do not skip rows.",
-        "Keep answers concise.",
-        "Embed formatting if any.",
-        "No intros, self-references, or repetition.",
-        "Follow the JSON array format."
-      ]
+        "task": "For each row, create concise text using relevant columns. Embed query formatting if any. Return a JSON array matching row count.",
+        "output_format": {
+            "type": "json_array",
+            "description": "JSON array of text (one per row).",
+            "enforcement": "Valid JSON only."
+        },
+        "handling_incomplete_data": {
+            "rule": "If data is missing, return 'Incomplete data'."
+        },
+        "rules": [
+            "Do not skip rows.",
+            "Be concise.",
+            "Embed formatting if present.",
+            "No intros, self-references, or repetition.",
+            "Output JSON array only."
+        ]
     },
     "example": {
-      "input": {
-        "query": "Format the churn risk as 'Risk: <value>'.",
-        "payload": {
-          "columns": {
-            "A": "ID",
-            "B": "Sub Start",
-            "C": "Avg Spend",
-            "D": "Margin",
-            "E": "Churn",
-            "F": "Tx Count",
-            "G": "Avg Tx Val",
-            "H": "Days Since 1st",
-            "I": "Fav Category"
-          },
-          "rows": [
-            { "A": "1", "E": "5" },
-            { "A": "2", "E": "4" },
-            { "A": "3", "E": "5" },
-            { "A": "4", "E": "3" },
-            { "A": "5", "E": "" }
-          ]
-        }
-      },
-      "output": [
-        "Risk: High risk",
-        "Risk: Medium risk",
-        "Risk: High risk",
-        "Risk: Low risk",
-        "Risk: Incomplete data"
-      ]
+        "input": {
+            "query": "Format churn risk as 'Risk: <value>'.",
+            "payload": {
+                "columns": {
+                    "A": "ID", "B": "Sub Start", "C": "Avg Spend",
+                    "D": "Margin", "E": "Churn", "F": "Tx Count",
+                    "G": "Avg Tx Val", "H": "Days Since 1st", "I": "Fav Category"
+                },
+                "rows": [
+                    {"A": "1", "E": "5"},
+                    {"A": "2", "E": "4"},
+                    {"A": "3", "E": "5"},
+                    {"A": "4", "E": "3"},
+                    {"A": "5", "E": ""}
+                ]
+            }
+        },
+        "output": [
+            "Risk: High risk",
+            "Risk: Medium risk",
+            "Risk: High risk",
+            "Risk: Low risk",
+            "Risk: Incomplete data"
+        ]
     }
 })
+
+def extract_and_parse_json(raw_data):
+    """
+    Extracts JSON content from raw data which may or may not be wrapped in Markdown code blocks.
+    
+    Args:
+        raw_data (str): The raw input string containing JSON data.
+    
+    Returns:
+        list: The parsed JSON array.
+    
+    Raises:
+        ValueError: If JSON parsing fails or the parsed data is not a list.
+    """
+    # Regular expression pattern to match JSON within ```json code blocks
+    code_block_pattern = r'```json\s*\n(.*?)\n```'
+    
+    # Attempt to find JSON within code blocks
+    match = re.search(code_block_pattern, raw_data, re.DOTALL | re.IGNORECASE)
+    
+    if match:
+        json_str = match.group(1).strip()
+        print("Extracted JSON from code block.")
+    else:
+        # If no code block is found, assume the entire raw_data is JSON
+        json_str = raw_data.strip()
+        print("No code block detected. Using entire raw_data as JSON.")
+    
+    try:
+        # Parse the JSON string
+        parsed = json.loads(json_str)
+        
+        # Validate that the parsed data is a list
+        if not isinstance(parsed, list):
+            raise ValueError(f"Expected a JSON array, got {type(parsed).__name__}.\nContent: {json_str}")
+        
+        return parsed
+    
+    except json.JSONDecodeError as jde:
+        raise ValueError(f"JSON decoding failed: {jde.msg}\nContent: {json_str}") from jde
+
 
 class PromptImproverSettings:
     def __init__(self, prompt: str=PI_DEFAULT_PROMPT, ai_engine: str=PI_DEFAULT_AI_ENGINE):
@@ -345,11 +377,7 @@ class OpenAIConnector:
                 #   ["answer for row 0", "answer for row 1", ...]
                 # or an array of objects. We'll do minimal validation.
                 try:
-                    parsed = json.loads(raw_data)
-                    # If it's not a list, we treat it as error
-                    if not isinstance(parsed, list):
-                        raise ValueError("Expected a JSON array, got something else.\n" + raw_data)
-
+                    parsed = extract_and_parse_json(raw_data)
                     # Ensure the number of answers matches the number of rows
                     if len(parsed) != len(rows):
                         raise ValueError(
