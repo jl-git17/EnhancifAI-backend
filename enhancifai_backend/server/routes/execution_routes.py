@@ -111,10 +111,10 @@ def extract_columns_from_file(file_path):
     extracted_columns = [columns]
     return extracted_columns
 
-def start_async_run(run_id, data_file, prompts, max_recs, user_id, file_name):
-    asyncio.run(process_run(run_id, data_file, prompts, max_recs, user_id, file_name))
+def start_async_run(run_id, data_file, prompts, max_recs, user_id, file_name, batched_processing=False):
+    asyncio.run(process_run(run_id, data_file, prompts, max_recs, user_id, file_name, batched_processing=batched_processing))
 
-async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name):
+async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name, batched_processing=False):
     # Guess the MIME type based on the file extension
     mime_type, _ = mimetypes.guess_type(data_file)
 
@@ -125,7 +125,8 @@ async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name):
             prompts=prompts,
             max_recs=max_recs,
             user_id=user_id,
-            filename=file_name
+            filename=file_name,
+            batched_processing=batched_processing
         )
     elif mime_type in EXCEL_MIME_TYPES:
         results = await handle_excel_file(
@@ -134,7 +135,8 @@ async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name):
             prompts=prompts,
             max_recs=max_recs,
             user_id=user_id,
-            filename=file_name
+            filename=file_name,
+            batched_processing=batched_processing
         )
     else:
         # Handle unsupported file types or add more conditions for other types
@@ -500,12 +502,20 @@ async def upload_direct_prompt(
         cleanup_temp_files(None, temp_data_file_path)
         raise HTTPException(status_code=500, detail="Failed to save data file to cache.") from e
 
-    # Start asynchronous run in a separate thread
+    # Start asynchronous run in a separate thread, passing batched_processing
     try:
         logging.info(f"Starting asynchronous run for run ID: {run_id}")
         Thread(
             target=start_async_run,
-            args=(run_id, temp_data_file_path, read_prompts, max_recs, user_id, file_name)
+            args=(  
+                run_id,
+                temp_data_file_path,
+                read_prompts,
+                max_recs,
+                user_id,
+                file_name,
+                batched_processing  # <-- pass this down
+            )
         ).start()
         logging.debug("Asynchronous run thread started successfully")
     except Exception as e:

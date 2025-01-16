@@ -13,11 +13,21 @@ from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.runs_progress import runs_progress
 
-
+# Default threads if batched_processing=False
 MAX_THREADS = 2
 
 class ExcelHandler:
-    def __init__(self, file_path, output_file, ai_connector, run_id, engine, user_id, filename):
+    def __init__(
+        self,
+        file_path,
+        output_file,
+        ai_connector,
+        run_id,
+        engine,
+        user_id,
+        filename,
+        batched_processing=False
+    ):
         self.file_path = file_path
         self.filename = filename
         self.output_file = output_file
@@ -33,6 +43,7 @@ class ExcelHandler:
         self.errors = []
         self.overflow = False
         self.total_tokens = 0
+        self.batched_processing = batched_processing
 
     def _is_run_cancelled(self):
         return RunsDbCore.is_run_cancelled(self.run_id)
@@ -48,67 +59,24 @@ class ExcelHandler:
             print(f"Error loading Excel file: {e}")
             return False
 
-    def process_row(self, idx, row, prompt_config, columns_list):
-        if self._is_run_cancelled():
-            #print(f"Run {self.run_id} is cancelled. Skipping row {idx}.")
-            return None
-        RunsDbCore.set_run_checkin(self.run_id)
-
-        result = {"row_index": idx, "prompt_number": prompt_config['prompt_number']}
-        output_heading = prompt_config['output_heading']
-
-        # Get the selected columns for this prompt
-        selected_columns = self.get_selected_columns(prompt_config, columns_list)
-
-        # Filter the row to only include selected columns
-        filtered_row = {k: row[k] for k in selected_columns if k in row}
-
-        # Convert datetime objects and numpy datetime64 objects to strings in ISO format
-        for k, v in filtered_row.items():
-            if isinstance(v, datetime):
-                filtered_row[k] = v.isoformat()
-            elif isinstance(v, np.datetime64):
-                # Convert numpy datetime64 to a standard Python datetime object before formatting
-                timestamp = pd.to_datetime(str(v))  # Using pandas to convert to datetime.datetime
-                filtered_row[k] = timestamp.isoformat()
-
-        # Call the OpenAIConnector with the filtered row
-        data = self.ai_connector.process_csv_row(
-            columns=columns_list,
-            rows=filtered_row,
-            query=prompt_config['prompt'],
-            run_id=self.run_id
-        )
-        # Save token usage
-        if data['engine_used'] != self.engine:
-            self.overflow = True
-        #result[f"tokens_{output_heading}"] = data.get("tokens", "")
-        result[f"{output_heading}"] = data.get("content", "")
-
-        with self.lock:
-            self.total_tokens += data.get('tokens', 0)
-            if idx in self.row_completion:
-                self.row_completion[idx] += 1
-            else:
-                self.row_completion[idx] = 1
-
-        return result
-
     def process_excel(self, prompts: list, max_records=0):
         start_time = time.time()
 
-        loaded = self.load_excel()
+        loaded = True  # Because we already call load_excel() from outside
         if not loaded:
             return {"total_records": 0, "processed_records": 0, "time_elapsed": 0}
 
         letter_to_column = self.create_column_mapping()
 
         total_records = min(len(self.data), max_records) if max_records > 0 else len(self.data)
-        total_tasks = total_records * len(prompts)  # Calculate total tasks as records times prompts
-        runs_progress.add_run(self.run_id, total_tasks)  # Use total tasks for progress tracking
-        results = []
+        total_tasks = total_records * len(prompts)
+        runs_progress.add_run(self.run_id, total_tasks)
 
-        with ThreadPoolExecutor(max_workers=MAX_THREADS) as executor:
+        # If batched_processing is True, let's increase concurrency
+        max_workers = 4 if self.batched_processing else MAX_THREADS
+
+        results = []
+        with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {}
             processed_rows_set = set()
 
@@ -117,7 +85,7 @@ class ExcelHandler:
                     break
 
                 for prompt_config in prompts:
-                    if self._is_run_cancelled():  # Check if the run is cancelled
+                    if self._is_run_cancelled():
                         print(f"Run {self.run_id} cancelled, stopping processing.")
                         if self._is_run_cancelled():
                             end_time = time.time()
@@ -127,7 +95,7 @@ class ExcelHandler:
                                 engine_model=self.engine,
                                 log_timestamp=datetime.now(tz=timezone.utc),
                                 num_rows_processed=self.processed,
-                                time_elapsed= end_time - start_time,
+                                time_elapsed=end_time - start_time,
                                 num_rows_in_file=len(self.data),
                                 num_prompts=len(prompts),
                                 num_tokens=self.total_tokens,
@@ -135,7 +103,6 @@ class ExcelHandler:
                                 filename=self.filename,
                                 overflow=self.overflow
                             )
-                            # if job status changed in the leftover threads, make sure DB is consistent
                             RunsDbCore.cancel_run(self.run_id)
                             return {
                                 "total_records": len(self.data),
@@ -147,13 +114,20 @@ class ExcelHandler:
                             }
                     selected_columns = self.get_selected_columns(prompt_config, letter_to_column)
                     if selected_columns:
-                        future = executor.submit(self.process_row, idx, row, prompt_config, letter_to_column)
+                        future = executor.submit(
+                            self.process_row,
+                            idx,
+                            row,
+                            prompt_config,
+                            letter_to_column
+                        )
                         futures[future] = idx
                         if self.ai_connector.rate_limit is True:
                             time.sleep(0.2)
+
             num_prompts = len(prompts)
             for future in as_completed(futures):
-                if self._is_run_cancelled():  # Check if the run is cancelled
+                if self._is_run_cancelled():
                     print(f"Run {self.run_id} cancelled, stopping processing.")
                     if self._is_run_cancelled():
                         end_time = time.time()
@@ -171,7 +145,6 @@ class ExcelHandler:
                             filename=self.filename,
                             overflow=self.overflow
                         )
-                        # if job status changed in the leftover threads, make sure DB is consistent
                         RunsDbCore.cancel_run(self.run_id)
                         return {
                             "total_records": len(self.data),
@@ -188,7 +161,7 @@ class ExcelHandler:
 
                     with self.lock:
                         self.prompt_progress += 1
-                        runs_progress.update_progress(self.run_id, self.prompt_progress)  # Update progress for each prompt
+                        runs_progress.update_progress(self.run_id, self.prompt_progress)
                         if self.row_completion.get(row_index, 0) == num_prompts:
                             if row_index not in processed_rows_set:
                                 processed_rows_set.add(row_index)
@@ -204,11 +177,11 @@ class ExcelHandler:
         if self._is_run_cancelled():
             RunLogsDbCore.insert_log(
                 run_id=self.run_id,
-                user_name=UsersDbCore.get_user_by_id(self.user_id)['name'] or f"user_{self.user_id}",
+                user_name=_name,
                 engine_model=self.engine,
                 log_timestamp=datetime.now(tz=timezone.utc),
                 num_rows_processed=self.processed,
-                time_elapsed=time.time() - start_time,
+                time_elapsed=end_time - start_time,
                 num_rows_in_file=len(self.data),
                 num_prompts=len(prompts),
                 num_tokens=self.total_tokens,
@@ -216,7 +189,6 @@ class ExcelHandler:
                 filename=self.filename,
                 overflow=self.overflow
             )
-            # if job status changed in the leftover threads, make sure DB is consistent
             RunsDbCore.cancel_run(self.run_id)
             return {
                 "total_records": len(self.data),
@@ -252,11 +224,51 @@ class ExcelHandler:
             "errors": self.errors
         }
 
+    def process_row(self, idx, row, prompt_config, columns_list):
+        if self._is_run_cancelled():
+            return None
+        RunsDbCore.set_run_checkin(self.run_id)
+
+        result = {
+            "row_index": idx,
+            "prompt_number": prompt_config['prompt_number']
+        }
+        output_heading = prompt_config['output_heading']
+
+        # Filter only selected columns
+        selected_columns = self.get_selected_columns(prompt_config, columns_list)
+        filtered_row = {k: row[k] for k in selected_columns if k in row}
+
+        # Convert datetime-like objects
+        for k, v in filtered_row.items():
+            if isinstance(v, datetime):
+                filtered_row[k] = v.isoformat()
+            elif isinstance(v, np.datetime64):
+                timestamp = pd.to_datetime(str(v))
+                filtered_row[k] = timestamp.isoformat()
+
+        data = self.ai_connector.process_csv_row(
+            columns=columns_list,
+            rows=filtered_row,
+            query=prompt_config['prompt'],
+            run_id=self.run_id
+        )
+        if data['engine_used'] != self.engine:
+            self.overflow = True
+        result[f"{output_heading}"] = data.get("content", "")
+
+        with self.lock:
+            self.total_tokens += data.get('tokens', 0)
+            if idx in self.row_completion:
+                self.row_completion[idx] += 1
+            else:
+                self.row_completion[idx] = 1
+
+        return result
+
     def create_column_mapping(self):
-        # Assuming that the first row contains column headers
         if not self.data:
             return {}
-
         columns = list(self.data[0].keys())
         letter_to_column = {}
         for index, column in enumerate(columns):
@@ -265,7 +277,6 @@ class ExcelHandler:
         return letter_to_column
 
     def column_index_to_letter(self, index):
-        # This method converts a column index to a column letter (supports more than 26 columns)
         if index < 26:
             return string.ascii_uppercase[index]
         else:
@@ -280,48 +291,31 @@ class ExcelHandler:
             return [letter_to_column.get(letter) for letter in selected_columns_letters if letter in letter_to_column]
 
     def update_rows_with_results(self, results):
-        # Initialize a new list for the updated data with ordered columns
         updated_data = []
-
-        # Iterate over the original data rows
         for idx, row in enumerate(self.data):
-            # Start with original columns for the new row
             new_row = {k: v for k, v in row.items()}
-
-            # Find the results for this row and sort them by the prompt number
             row_results = [res for res in results if res and res['row_index'] == idx]
-            # Sorting using the prompt number
             row_results_sorted = sorted(row_results, key=lambda x: int(x['prompt_number']))
 
-            # Initialize the total tokens counter for the row
             total_tokens = 0
-
-            # Add the sorted results to the new row dictionary and calculate total tokens
             for result in row_results_sorted:
-                new_row.update({k: v for k, v in result.items() if k != 'row_index' and k != 'prompt_number'})
-                # If the result key starts with 'tokens_', add its value to the total tokens
+                new_row.update({
+                    k: v for k, v in result.items()
+                    if k not in ('row_index', 'prompt_number')
+                })
                 for key, value in result.items():
                     if key.startswith('tokens_'):
                         try:
-                            total_tokens += int(value)  # Ensure the value is an integer
+                            total_tokens += int(value)
                         except ValueError:
-                            # In case the value is not an integer, print an error or handle it accordingly
                             print(f"Warning: Non-integer value '{value}' encountered in {key} for row {idx}")
 
-            # Add the total tokens to the new row
-            #new_row['Total Tokens'] = total_tokens
-
-            # Append the new row to the updated data list
             updated_data.append(new_row)
-
-        # Replace the original data with updated data
         self.data = updated_data
 
     def save_excel(self):
         if not self.data:
             print("No data to save.")
             return
-
-        # Convert the data back to DataFrame for saving
         df = pd.DataFrame(self.data)
         df.to_excel(self.output_file, index=False)

@@ -1,4 +1,3 @@
-
 import os
 from tempfile import NamedTemporaryFile
 import time
@@ -15,7 +14,7 @@ from enhancifai_backend.engine.csv_handler import CSVHandler
 from enhancifai_backend.engine.excel_handler import ExcelHandler
 from enhancifai_backend.server.utils import AdminSettings
 
-pi_ai_connection = OpenAIConnector("gpt-4o-mini") #TODO env var
+pi_ai_connection = OpenAIConnector("gpt-4o-mini")  # TODO env var
 
 def get_ai_connection():
     engine = AdminSettings.get_ai_engine()
@@ -25,8 +24,12 @@ def get_ai_connection():
     else:
         return OpenAIConnector(engine)
 
-async def handle_csv_file(csv_file, prompts, max_recs, run_id, user_id, filename):
-    # Handle CSV File directly using the file path
+async def handle_csv_file(csv_file, prompts, max_recs, run_id, user_id, filename, batched_processing=False):
+    """
+    Handle CSV file processing.
+    This version receives `batched_processing` so the CSVHandler
+    can do specialized logic if needed.
+    """
     temp_csv_file_path = csv_file  # This now directly uses the path provided
 
     # Generate a unique file name using the current time
@@ -35,13 +38,20 @@ async def handle_csv_file(csv_file, prompts, max_recs, run_id, user_id, filename
 
     engine = AdminSettings.get_ai_engine()
 
-    # Initialize CSVHandler with the file paths
-    csv_handler = CSVHandler(run_id=run_id, file_path=temp_csv_file_path, output_file=processed_csv_path, ai_connector=get_ai_connection(), engine=engine, user_id=user_id, filename=filename)
+    csv_handler = CSVHandler(
+        run_id=run_id,
+        file_path=temp_csv_file_path,
+        output_file=processed_csv_path,
+        ai_connector=get_ai_connection(),
+        engine=engine,
+        user_id=user_id,
+        filename=filename,
+        batched_processing=batched_processing
+    )
 
-    # Load, validate, and process the CSV
+    # Load, validate, and process
     loaded = csv_handler.load_csv()
     if loaded is True:
-        #print(f"Processing CSV {temp_csv_file_path}")
         results = csv_handler.process_csv(prompts, max_records=max_recs)
         if RunsDbCore.is_run_cancelled(run_id):
             RunsDbCore.cancel_run(run_id)
@@ -62,19 +72,30 @@ async def handle_csv_file(csv_file, prompts, max_recs, run_id, user_id, filename
     }
     return response_data
 
-async def handle_excel_file(excel_file, prompts, max_recs, run_id, user_id, filename):
-    # It's already a file path, use it directly
+async def handle_excel_file(excel_file, prompts, max_recs, run_id, user_id, filename, batched_processing=False):
+    """
+    Handle Excel file processing.
+    This version receives `batched_processing` so the ExcelHandler
+    can do specialized logic if needed.
+    """
     temp_excel_file_path = excel_file
-
-    # Extract the file extension from the path for uniqueness in processing
     file_extension = os.path.splitext(temp_excel_file_path)[1]
-    
+
     unique_filename = f"processed_{uuid.uuid4()}_{int(time.time()*1000)}{file_extension}"
     processed_excel_path = os.path.join('/tmp', unique_filename)
 
     engine = AdminSettings.get_ai_engine()
     print("Loading excel handler")
-    excel_handler = ExcelHandler(run_id=run_id, file_path=temp_excel_file_path, output_file=processed_excel_path, ai_connector=get_ai_connection(), engine=engine, user_id=user_id, filename=filename)
+    excel_handler = ExcelHandler(
+        run_id=run_id,
+        file_path=temp_excel_file_path,
+        output_file=processed_excel_path,
+        ai_connector=get_ai_connection(),
+        engine=engine,
+        user_id=user_id,
+        filename=filename,
+        batched_processing=batched_processing
+    )
     print("Loaded excel handler")
 
     if excel_handler.load_excel():
