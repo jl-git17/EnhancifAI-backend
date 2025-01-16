@@ -47,21 +47,21 @@ DEFAULT_PROMPT_BATCHED = json.dumps({
       }
     },
     "instructions": {
-      "task": "Generate a concise plain text answer for each row in 'payload.rows' using relevant columns. If the query specifies formatting, include it as plain text in the answer. Always return a JSON array matching the row count.",
+      "task": "For each row, produce concise text using relevant columns. If the query includes formatting, embed it. Return a JSON array matching the row count.",
       "output_format": {
         "type": "json_array",
-        "description": "A JSON array of plain text answers, each answer corresponding to a row index.",
-        "enforcement": "Always return a valid JSON array. No other structure."
+        "description": "A JSON array of text answers (one per row).",
+        "enforcement": "Must be valid JSON only."
       },
       "handling_incomplete_data": {
-        "rule": "For rows with missing or incomplete data, answer 'Incomplete data'."
+        "rule": "If data is missing/incomplete, answer 'Incomplete data'."
       },
       "rules": [
         "Do not skip rows.",
-        "Keep answers concise and relevant.",
-        "Embed formatting instructions in the text if provided.",
-        "Avoid introductions, self-references, or repetition.",
-        "Respect the output format."
+        "Keep answers concise.",
+        "Embed formatting if any.",
+        "No intros, self-references, or repetition.",
+        "Follow the JSON array format."
       ]
     },
     "example": {
@@ -69,15 +69,15 @@ DEFAULT_PROMPT_BATCHED = json.dumps({
         "query": "Format the churn risk as 'Risk: <value>'.",
         "payload": {
           "columns": {
-            "A": "Customer ID",
-            "B": "Subscription Start Date",
-            "C": "Average Monthly Spend",
-            "D": "Profit Margin",
-            "E": "Monthly Churn Rate",
-            "F": "Transaction Count",
-            "G": "Average Transaction Value",
-            "H": "Days Since First Purchase",
-            "I": "Most Frequent Product Category"
+            "A": "ID",
+            "B": "Sub Start",
+            "C": "Avg Spend",
+            "D": "Margin",
+            "E": "Churn",
+            "F": "Tx Count",
+            "G": "Avg Tx Val",
+            "H": "Days Since 1st",
+            "I": "Fav Category"
           },
           "rows": [
             { "A": "1", "E": "5" },
@@ -96,7 +96,7 @@ DEFAULT_PROMPT_BATCHED = json.dumps({
         "Risk: Incomplete data"
       ]
     }
-  })
+})
 
 class PromptImproverSettings:
     def __init__(self, prompt: str=PI_DEFAULT_PROMPT, ai_engine: str=PI_DEFAULT_AI_ENGINE):
