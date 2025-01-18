@@ -317,9 +317,7 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            "You are an assistant with expertise in data analysis. You will be given data in a custom format where each line represents a row, "
-                            "and each row contains 'column_name=column_value' pairs. Your task is to process the input and output one line of text for each line "
-                            "of input, corresponding to the requested calculation. Do not use JSON, lists, or any additional formatting—output the result as plain text."
+                            "You are an assistant with expertise in data analysis. You will be given data in a custom format where each line represents a row, and each row contains 'column_name=column_value' pairs. Your task is to process the input and output one line of text for each line of input, corresponding to the requested calculation. For every input row provided, there must be exactly one output row produced. Do not skip any rows under any circumstances, even if the data appears invalid or incomplete. If a calculation cannot be performed for a row, output 'ERROR: Unable to calculate' for that row. Do not use JSON, lists, or any additional formatting—output the result as plain text, one line per row of input."
                         )
                     },
                     {
