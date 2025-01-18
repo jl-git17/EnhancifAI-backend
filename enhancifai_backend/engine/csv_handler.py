@@ -92,7 +92,11 @@ class CSVHandler:
         # Duplicate-check end
 
         # Basic concurrency approach
-        max_workers = 4 if self.batched_processing else DEFAULT_MAX_THREADS
+        max_workers = DEFAULT_MAX_THREADS
+        if self.batched_processing:
+            max_workers = 4
+        elif self.performance_optimization:
+            max_workers = 1
 
         results = []
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
