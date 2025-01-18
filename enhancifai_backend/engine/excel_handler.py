@@ -72,6 +72,15 @@ class ExcelHandler:
 
         max_workers = 4 if self.batched_processing else DEFAULT_MAX_THREADS
 
+        # Duplicate-check start
+        seen_rows = set()
+        for row in self.data:
+            row_tuple = tuple(sorted(row.items()))
+            if row_tuple in seen_rows:
+                raise ValueError("Duplicate row found in Excel data.")
+            seen_rows.add(row_tuple)
+        # Duplicate-check end
+
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
             futures = {}
 
