@@ -331,7 +331,7 @@ class OpenAIConnector:
                 completion = self.client.chat.completions.create(
                     model=self.engine,
                     messages=messages,
-                    temperature=0,
+                    temperature=0.6,
                     stop=["\n\n"],
                 )
 
