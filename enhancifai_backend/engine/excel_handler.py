@@ -70,7 +70,12 @@ class ExcelHandler:
         total_tasks = total_records * len(prompts)
         runs_progress.add_run(self.run_id, total_tasks)
 
-        max_workers = 4 if self.batched_processing else DEFAULT_MAX_THREADS
+        # Basic concurrency approach
+        max_workers = DEFAULT_MAX_THREADS
+        if self.batched_processing:
+            max_workers = 4
+        elif self.performance_optimization:
+            max_workers = 2
 
         # Duplicate-check start
         seen_rows = set()
@@ -103,7 +108,7 @@ class ExcelHandler:
 
             else:
                 # NEW approach: chunk multiple rows => single AI call
-                chunk_size = 5
+                chunk_size = 2
                 for prompt_config in prompts:
                     print(prompt_config)
                     for start_idx in range(0, total_records, chunk_size):

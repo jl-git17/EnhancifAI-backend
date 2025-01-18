@@ -96,7 +96,7 @@ class CSVHandler:
         if self.batched_processing:
             max_workers = 4
         elif self.performance_optimization:
-            max_workers = 1
+            max_workers = 2
 
         results = []
         with ThreadPoolExecutor(max_workers=max_workers) as executor:
@@ -125,7 +125,7 @@ class CSVHandler:
                             futures[future] = idx
             else:
                 # NEW approach: send multiple rows in one AI call if performance_optimization
-                chunk_size = 5
+                chunk_size = 2
                 for prompt_config in prompts:
                     print(prompt_config)
                     for start_idx in range(0, total_records, chunk_size):
