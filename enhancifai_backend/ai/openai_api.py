@@ -303,35 +303,29 @@ class OpenAIConnector:
         # Use the same logic your single-row method uses:
         self.engine = rate_limit_manager.can_make_api_call(model=self.engine, run_id=run_id)
 
-        # Change from JSON to CSV approach for performance_optimization
-        # 1) Convert rows to lines of CSV text
+        # Instead of CSV lines:
         sorted_letters = sorted(columns.keys())
-        header_row = [columns[l] for l in sorted_letters]
-        csv_lines = [",".join(header_row)]
+        lines = []
         for row in transformed_rows:
-            row_values = [str(row.get(l, "")) for l in sorted_letters]
-            csv_lines.append(",".join(row_values))
-        csv_data = "\n".join(csv_lines)
+            row_parts = [f"{columns[l]}={row.get(l, '')}" for l in sorted_letters]
+            lines.append(", ".join(row_parts))
+        custom_data = "\n".join(lines)
 
         for attempt in range(max_attempts):
             try:
-                # For clarity, instruct the AI:
-                # 1) We show it the query and the entire 'payload' with many rows.
-                # 2) We TELL it to return exactly one answer per row in a JSON list
-                #    so we can map them back properly.
                 messages = [
                     {
                         "role": "system",
                         "content": (
                             "You are an assistant with expertise in data analysis. "
-                            "Below is CSV data followed by a query. "
-                            "Output one line of text for each CSV row (excluding header). "
+                            "Below is the data in a custom format, each line is a row with 'column_name=column_value' entries. "
+                            "Output one line of text for each line of input. "
                             "No JSON, no extra formatting."
                         )
                     },
                     {
                         "role": "user",
-                        "content": f"Query: {query}\n\nCSV:\n{csv_data}"
+                        "content": f"Query: {query}\n\nDATA:\n{custom_data}"
                     }
                 ]
 
