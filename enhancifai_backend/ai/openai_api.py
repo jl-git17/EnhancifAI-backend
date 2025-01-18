@@ -222,10 +222,10 @@ class OpenAIConnector:
 
             except Exception as e:
                 print(e)
-                if e.status_code == 429: # pylint: disable=no-member
+                if e.status_code == 429: # pylint: disable:no-member
                     try:
                         # Use the compiled pattern to search the string
-                        match = RATE_LIMIT_PATTERN.search(e.body['message']) # pylint: disable=no-member
+                        match = RATE_LIMIT_PATTERN.search(e.body['message']) # pylint: disable:no-member
                         # Extract the number of seconds
                         if match:
                             delay = float(match.group(1))
@@ -303,6 +303,16 @@ class OpenAIConnector:
         # Use the same logic your single-row method uses:
         self.engine = rate_limit_manager.can_make_api_call(model=self.engine, run_id=run_id)
 
+        # Change from JSON to CSV approach for performance_optimization
+        # 1) Convert rows to lines of CSV text
+        sorted_letters = sorted(columns.keys())
+        header_row = [columns[l] for l in sorted_letters]
+        csv_lines = [",".join(header_row)]
+        for row in transformed_rows:
+            row_values = [str(row.get(l, "")) for l in sorted_letters]
+            csv_lines.append(",".join(row_values))
+        csv_data = "\n".join(csv_lines)
+
         for attempt in range(max_attempts):
             try:
                 # For clarity, instruct the AI:
@@ -312,11 +322,16 @@ class OpenAIConnector:
                 messages = [
                     {
                         "role": "system",
-                        "content": DEFAULT_PROMPT_BATCHED
+                        "content": (
+                            "You are an assistant with expertise in data analysis. "
+                            "Below is CSV data followed by a query. "
+                            "Output one line of text for each CSV row (excluding header). "
+                            "No JSON, no extra formatting."
+                        )
                     },
                     {
                         "role": "user",
-                        "content": json.dumps({"query": query, "payload": payload})
+                        "content": f"Query: {query}\n\nCSV:\n{csv_data}"
                     }
                 ]
 
@@ -349,21 +364,18 @@ class OpenAIConnector:
                 #   ["answer for row 0", "answer for row 1", ...]
                 # or an array of objects. We'll do minimal validation.
                 try:
-                    parsed = extract_and_parse_json(raw_data)
-                    # Ensure the number of answers matches the number of rows
-                    if len(parsed) != len(rows):
+                    parsed_response_lines = raw_data.strip().split("\n")
+                    if len(parsed_response_lines) != len(rows):
                         raise ValueError(
-                            f"Number of answers ({len(parsed)}) does not match number of rows ({len(rows)})."
+                            f"Number of answers ({len(parsed_response_lines)}) does not match number of rows ({len(rows)})."
                         )
 
                     # Build the output. Each row gets a dict with the row's content, tokens, etc.
                     # Use the same tokens for each item because the call is shared
                     results = []
-                    for answer in parsed:
-                        # If it's just a string, wrap it up. If it's a dict, also handle it
-                        content_text = answer if isinstance(answer, str) else json.dumps(answer)
+                    for line in parsed_response_lines:
                         results.append({
-                            "content": content_text.strip(),
+                            "content": line.strip(),
                             "tokens": tokens_used,
                             "engine_used": self.engine
                         })
