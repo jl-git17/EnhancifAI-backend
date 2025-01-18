@@ -82,6 +82,15 @@ class CSVHandler:
         total_tasks = total_records * len(prompts)
         runs_progress.add_run(self.run_id, total_tasks)
 
+        # Duplicate-check start
+        seen_rows = set()
+        for row in self.data:
+            row_tuple = tuple(sorted(row.items()))
+            if row_tuple in seen_rows:
+                raise ValueError("Duplicate row found in CSV data.")
+            seen_rows.add(row_tuple)
+        # Duplicate-check end
+
         # Basic concurrency approach
         max_workers = 4 if self.batched_processing else DEFAULT_MAX_THREADS
 

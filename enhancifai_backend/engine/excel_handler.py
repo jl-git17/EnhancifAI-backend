@@ -105,11 +105,13 @@ class ExcelHandler:
                 # NEW approach: chunk multiple rows => single AI call
                 chunk_size = 2
                 for prompt_config in prompts:
+                    print(prompt_config)
                     for start_idx in range(0, total_records, chunk_size):
                         if self._is_run_cancelled():
                             return self._handle_cancel(start_time)
 
                         chunk_data = self.data[start_idx : start_idx + chunk_size]
+                        print(chunk_data)
                         future = executor.submit(
                             self.process_chunk,
                             start_idx,
