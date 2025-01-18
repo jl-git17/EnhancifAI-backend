@@ -103,7 +103,7 @@ class ExcelHandler:
 
             else:
                 # NEW approach: chunk multiple rows => single AI call
-                chunk_size = 2
+                chunk_size = 5
                 for prompt_config in prompts:
                     print(prompt_config)
                     for start_idx in range(0, total_records, chunk_size):
