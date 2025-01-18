@@ -317,10 +317,9 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            "You are an assistant with expertise in data analysis. "
-                            "Below is the data in a custom format, each line is a row with 'column_name=column_value' entries. "
-                            "Output one line of text for each line of input. "
-                            "No JSON, no extra formatting."
+                            "You are an assistant with expertise in data analysis. You will be given data in a custom format where each line represents a row, "
+                            "and each row contains 'column_name=column_value' pairs. Your task is to process the input and output one line of text for each line "
+                            "of input, corresponding to the requested calculation. Do not use JSON, lists, or any additional formatting—output the result as plain text."
                         )
                     },
                     {
