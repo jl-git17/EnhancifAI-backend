@@ -38,7 +38,24 @@ DEFAULT_PROMPT = (
     "about the symptoms for which the drug Lyrica Caps 50mg 90s is prescribed.'"
 )
 
-DEFAULT_PROMPT_BATCHED = json.dumps({"input_format":{"query":"string","payload":{"columns":"object","rows":"array"}},"instructions":{"task":"Generate concise text per row from relevant columns with query formatting. Return a JSON array with one entry per row.","output_format":{"type":"json_array","description":"Array of text strings, one per row.","enforcement":"Valid JSON only."},"handling_incomplete_data":{"rule":"If data missing, return 'Incomplete data'."},"rules":["Include all rows.","Be concise.","Apply formatting.","No intros, self-references, or repeats.","Only output JSON array."]},"example":{"input":{"query":"Format churn risk as 'Risk: <value>'.","payload":{"columns":{"A":"ID","B":"Sub Start","C":"Avg Spend","D":"Margin","E":"Churn","F":"Tx Count","G":"Avg Tx Val","H":"Days Since 1st","I":"Fav Category"},"rows":[{"A":"1","E":"5"},{"A":"2","E":"4"},{"A":"3","E":"5"},{"A":"4","E":"3"},{"A":"5","E":""}]}},"output":["Risk: High","Risk: Medium","Risk: High","Risk: Low","Risk: Incomplete data"]}})
+DEFAULT_PROMPT_BATCHED = json.dumps({
+  "input_format":{"query":"string","payload":{"columns":"object","rows":"array"}},
+  "instructions":{
+    "task":"Generate concise text per row using the query. Return a valid JSON array with one item per row.",
+    "handling_incomplete_data":{"rule":"If data missing, return 'Incomplete data'."},
+    "rules":["Include all rows.","Be concise.","No intros or repeats.","Output only JSON array."]
+  },
+  "example":{
+    "input":{
+      "query":"Format churn risk as 'Risk: <value>'.",
+      "payload":{
+        "columns":{"A":"ID","E":"Churn"},
+        "rows":[{"A":"1","E":"5"},{"A":"2","E":"4"},{"A":"3","E":"5"},{"A":"4","E":"3"},{"A":"5","E":""}]
+      }
+    },
+    "output":["Risk: High","Risk: Medium","Risk: High","Risk: Low","Risk: Incomplete data"]
+  }
+})
 
 
 def extract_and_parse_json(raw_data):
@@ -431,10 +448,10 @@ class OpenAIConnector:
                 raise HTTPException(status_code=500, detail="Failed to parse JSON from assistant response.")
             except Exception as e:
                 print(e)
-                if e.status_code == 429: # pylint: disable=no-member
+                if e.status_code == 429: # pylint: disable:no-member
                     try:
                         # Use the compiled pattern to search the string
-                        match = RATE_LIMIT_PATTERN.search(e.body['message']) # pylint: disable=no-member
+                        match = RATE_LIMIT_PATTERN.search(e.body['message']) # pylint: disable:no-member
                         # Extract the number of seconds
                         if match:
                             delay = float(match.group(1))
