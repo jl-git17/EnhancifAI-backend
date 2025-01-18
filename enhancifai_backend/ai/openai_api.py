@@ -320,6 +320,8 @@ class OpenAIConnector:
                     }
                 ]
 
+                print(messages)
+
                 completion = self.client.chat.completions.create(
                     model=self.engine,
                     messages=messages,
