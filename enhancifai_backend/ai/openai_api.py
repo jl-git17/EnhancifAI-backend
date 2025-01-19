@@ -290,6 +290,7 @@ class OpenAIConnector:
                     # Handle unexpected column names
                     raise ValueError(f"Column name '{name}' does not exist in columns mapping.")
             transformed_rows.append(transformed_row)
+        delimited_transformed_rows = "###END###".join([json.dumps(row) for row in transformed_rows])
 
         max_attempts = 3
         _err = None
@@ -313,7 +314,7 @@ class OpenAIConnector:
                     },
                     {
                         "role": "user",
-                        "content": f"Query: {query}\n\nCOLUMNS:\n{columns}\n\nDATA:\n{transformed_rows}"
+                        "content": f"Query: {query}\n\nCOLUMNS:\n{columns}\n\nDATA:\n{delimited_transformed_rows}"
                     }
                 ]
 
