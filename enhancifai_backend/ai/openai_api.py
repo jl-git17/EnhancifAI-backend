@@ -305,15 +305,9 @@ class OpenAIConnector:
                         "content": (
                             "You are an assistant with expertise in data analysis. "
                             "For each input query, process the provided data entries and return all relevant answers for each entry. "
-                            "Concatenate multiple answers into a single string, separated by the delimiter '###END###'. "
-                            "Ensure that each entry has only one concatenated string of answers without using additional wrapping characters or brackets."
-                            "\n\nExamples:"
-                            "\n- Input Row: {\"A\": \"1\", \"E\": \"5\"}"
-                            "\n  Query: 1) Classify donor based on donation amount. 2) Identify if top/supportive donor."
-                            "\n  Output: \"Major Donor: Donor 1 has a high donation amount. Top Donor: Donor 1 contributes significantly.###END###\""
-                            "\n- Input Row: {\"A\": \"2\", \"E\": \"3\"}"
-                            "\n  Query: 1) Classify donor based on donation amount. 2) Identify if top/supportive donor."
-                            "\n  Output: \"Regular Donor: Donor 2 has a moderate donation amount. Supportive Donor: Donor 2 engages frequently.###END###\""
+                            "Concatenate multiple answers belonging to the same entry into a single string, separated by the delimiter '###END###'. "
+                            "Ensure that each entry has only one concatenated string of answers without using additional wrapping characters or brackets. "
+                            "Number of entries must match number of answer strings."
                         )
                     },
                     {
