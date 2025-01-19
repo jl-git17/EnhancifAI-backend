@@ -305,6 +305,7 @@ class OpenAIConnector:
                         "role": "system",
                         "content": (
                             "You are an assistant with expertise in data analysis. For each input query, process the provided data entries and return one complete answer for each entry. "
+                            "DATA entries are delimited by '###END###'. You receive Query, COLUMNS (for mapping), and DATA (the data entries). "
                             "Each complete answer for an entry must combine all sub-answers into a single string. "
                             "Separate multiple entries in the output with '###END###' as a delimiter. Do not use '###END###' within the answers for a single entry. "
                             "Do not wrap or format the concatenated strings with additional characters, brackets, or quotation marks. "
