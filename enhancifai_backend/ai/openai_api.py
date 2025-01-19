@@ -318,8 +318,8 @@ class OpenAIConnector:
                         "role": "system",
                         "content": (
                             "You are an assistant with expertise in data analysis. "
-                            "For each input row, output a single answer and end it with '###END###'. "
-                            "Don't use additional formatting."
+                            "For each input row, output the answer wrapped in '[[[' and ']]]', "
+                            "then end each row's answer with '###END###'."
                         )
                     },
                     {
@@ -361,17 +361,25 @@ class OpenAIConnector:
                     parsed_response_lines = [
                         line.strip() for line in raw_data.strip().split("###END###") if line.strip()
                     ]
-                    if len(parsed_response_lines) != len(rows):
+                    bracket_pattern = re.compile(r'^\[\[\[(.*?)\]\]\]$')
+                    cleaned_lines = []
+                    for line in parsed_response_lines:
+                        match = bracket_pattern.match(line)
+                        if match:
+                            cleaned_lines.append(match.group(1).strip())
+                        else:
+                            cleaned_lines.append(line)
+                    if len(cleaned_lines) != len(rows):
                         raise ValueError(
-                            f"Number of answers ({len(parsed_response_lines)}) does not match number of rows ({len(rows)})."
+                            f"Number of answers ({len(cleaned_lines)}) does not match number of rows ({len(rows)})."
                         )
 
                     # Build the output. Each row gets a dict with the row's content, tokens, etc.
                     # Use the same tokens for each item because the call is shared
                     results = []
-                    for line in parsed_response_lines:
+                    for line in cleaned_lines:
                         results.append({
-                            "content": line.strip(),
+                            "content": line,
                             "tokens": tokens_used,
                             "engine_used": self.engine
                         })
