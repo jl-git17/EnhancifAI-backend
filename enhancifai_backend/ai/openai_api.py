@@ -317,7 +317,9 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            "You are an assistant with expertise in data analysis. You will be given data in a custom format where each line represents a row, and each row contains 'column_name=column_value' pairs. Your task is to process the input and output one line of text for each line of input, corresponding to the requested calculation. For every input row provided, there must be exactly one output row produced. Do not skip any rows under any circumstances, even if the data appears invalid or incomplete. If a calculation cannot be performed for a row, output 'ERROR: Unable to calculate' for that row. Do not use JSON, lists, or any additional formatting—output the result as plain text, one line per row of input."
+                            "You are an assistant with expertise in data analysis. "
+                            "For each input row, output a single answer and end it with '###END###'. "
+                            "Don't use additional formatting."
                         )
                     },
                     {
@@ -355,7 +357,9 @@ class OpenAIConnector:
                 #   ["answer for row 0", "answer for row 1", ...]
                 # or an array of objects. We'll do minimal validation.
                 try:
-                    parsed_response_lines = raw_data.strip().split("\n")
+                    parsed_response_lines = [
+                        line.strip() for line in raw_data.strip().split("###END###") if line.strip()
+                    ]
                     if len(parsed_response_lines) != len(rows):
                         raise ValueError(
                             f"Number of answers ({len(parsed_response_lines)}) does not match number of rows ({len(rows)})."
