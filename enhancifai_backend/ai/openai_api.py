@@ -304,8 +304,16 @@ class OpenAIConnector:
                         "role": "system",
                         "content": (
                             "You are an assistant with expertise in data analysis. "
-                            "For each input query, process the provided data entries and return one clear and concise answer per entry. "
-                            "Separate each data entry's answer with the delimiter '###END###' without using any additional wrapping characters or brackets."
+                            "For each input query, process the provided data entries and return all relevant answers for each entry. "
+                            "Concatenate multiple answers into a single string, separated by the delimiter '###END###'. "
+                            "Ensure that each entry has only one concatenated string of answers without using additional wrapping characters or brackets."
+                            "\n\nExamples:"
+                            "\n- Input Row: {\"A\": \"1\", \"E\": \"5\"}"
+                            "\n  Query: 1) Classify donor based on donation amount. 2) Identify if top/supportive donor."
+                            "\n  Output: \"Major Donor: Donor 1 has a high donation amount. Top Donor: Donor 1 contributes significantly.###END###\""
+                            "\n- Input Row: {\"A\": \"2\", \"E\": \"3\"}"
+                            "\n  Query: 1) Classify donor based on donation amount. 2) Identify if top/supportive donor."
+                            "\n  Output: \"Regular Donor: Donor 2 has a moderate donation amount. Supportive Donor: Donor 2 engages frequently.###END###\""
                         )
                     },
                     {
@@ -337,22 +345,17 @@ class OpenAIConnector:
                     ]
                     print(f"Parsed response lines: {parsed_response_lines}")
 
-                    # Removed triple-bracket pattern
-                    cleaned_lines = []
-                    for line in parsed_response_lines:
-                        # Directly append the line without looking for brackets
-                        cleaned_lines.append(line)
-
-                    if len(cleaned_lines) != len(rows):
-                        print(f"Cleaned lines: {cleaned_lines}")
+                    # Combine all answers for each entry into a single string
+                    # Since each entry should have only one concatenated string
+                    if len(parsed_response_lines) != len(rows):
+                        print(f"Parsed lines count ({len(parsed_response_lines)}) does not match rows count ({len(rows)}).")
                         raise ValueError(
-                            f"Number of answers ({len(cleaned_lines)}) does not match number of rows ({len(rows)})."
+                            f"Number of answers ({len(parsed_response_lines)}) does not match number of rows ({len(rows)})."
                         )
 
-                    # Build the output. Each row gets a dict with the row's content, tokens, etc.
-                    # Use the same tokens for each item because the call is shared
+                    # Build the output. Each row gets a dict with the concatenated answers
                     results = []
-                    for line in cleaned_lines:
+                    for line in parsed_response_lines:
                         results.append({
                             "content": line,
                             "tokens": tokens_used,
