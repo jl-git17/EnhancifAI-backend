@@ -304,12 +304,11 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            "You are an assistant with expertise in data analysis. "
-                            "For each input query, process the provided data entries and return all relevant answers for each entry. "
-                            "Concatenate multiple answers belonging to the same entry into a single string. "
-                            "Use '###END###' as a delimiter between the full answer strings (not sub-answers) of each query. "
-                            "Do not wrap or format the concatenated string with additional characters, brackets, or quotation marks. "
-                            "Ensure each entry has exactly one concatenated string of answers, and the number of entries in the output matches the number of entries in the input."
+                            "You are an assistant with expertise in data analysis. For each input query, process the provided data entries and return one complete answer for each entry. "
+                            "Each complete answer for an entry must combine all sub-answers into a single string. "
+                            "Separate multiple entries in the output with '###END###' as a delimiter. Do not use '###END###' within the answers for a single entry. "
+                            "Do not wrap or format the concatenated strings with additional characters, brackets, or quotation marks. "
+                            "Ensure that each entry in the input results in exactly one concatenated string of answers, and the number of output strings matches the number of input entries."
                         )
                     },
                     {
