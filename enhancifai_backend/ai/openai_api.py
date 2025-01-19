@@ -327,6 +327,8 @@ class OpenAIConnector:
 
                 raw_data = completion.choices[0].message.content
 
+                print(f"Raw data: {raw_data}")
+
                 tokens_used = completion.usage.total_tokens
 
                 # Rate limit manager housekeeping
