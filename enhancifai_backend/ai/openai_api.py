@@ -222,7 +222,7 @@ class OpenAIConnector:
 
             except Exception as e:
                 print(e)
-                if e.status_code == 429: # pylint: disable:no-member
+                if e.status_code == 429: # pylint: disable:E1101
                     try:
                         # Use the compiled pattern to search the string
                         match = RATE_LIMIT_PATTERN.search(e.body['message']) # pylint: disable:no-member
@@ -291,20 +291,11 @@ class OpenAIConnector:
                     raise ValueError(f"Column name '{name}' does not exist in columns mapping.")
             transformed_rows.append(transformed_row)
 
-        # Construct the payload with transformed rows
-        payload = {
-            'columns': columns,          # Keep columns as is (letter to name)
-            'rows': transformed_rows      # Use transformed rows with letter keys
-        }
-
         max_attempts = 3
         _err = None
 
         # Use the same logic your single-row method uses:
         self.engine = rate_limit_manager.can_make_api_call(model=self.engine, run_id=run_id)
-
-        print(f"Rows: {rows}")
-        print(f"Transformed rows: {transformed_rows}")
 
         for attempt in range(max_attempts):
             try:
@@ -323,8 +314,6 @@ class OpenAIConnector:
                     }
                 ]
 
-                print(messages)
-
                 completion = self.client.chat.completions.create(
                     model=self.engine,
                     messages=messages,
@@ -332,10 +321,6 @@ class OpenAIConnector:
                 )
 
                 raw_data = completion.choices[0].message.content
-                
-                print("AI API call successful.")
-                print(f"Raw data: {raw_data}")
-                os._exit(0)
 
                 tokens_used = completion.usage.total_tokens
 
@@ -345,17 +330,11 @@ class OpenAIConnector:
                 user_id = RunsDbCore.get_user_id(run_id)
                 UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
 
-                time.sleep(1)
-
-                # Attempt to parse the AI's response as JSON array
-                #
-                # The AI hopefully returns something like:
-                #   ["answer for row 0", "answer for row 1", ...]
-                # or an array of objects. We'll do minimal validation.
                 try:
                     parsed_response_lines = [
                         line.strip() for line in raw_data.strip().split("###END###") if line.strip()
                     ]
+                    print(f"Parsed response lines: {parsed_response_lines}")
                     bracket_pattern = re.compile(r'^\[\[\[(.*?)\]\]\]$')
                     cleaned_lines = []
                     for line in parsed_response_lines:
