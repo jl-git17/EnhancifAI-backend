@@ -304,9 +304,8 @@ class OpenAIConnector:
                         "role": "system",
                         "content": (
                             "You are an assistant with expertise in data analysis. "
-                            "For each input query, process the provided rows and return one answer per row, "
-                            "each wrapped in '[[[' and ']]]', "
-                            "then end the answer with '###END###'."
+                            "For each input query, process the provided rows and return one answer per row. "
+                            "Then end the answer with '###END###'."
                         )
                     },
                     {
@@ -332,21 +331,18 @@ class OpenAIConnector:
                 UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
 
                 try:
+                    # Split the response using '###END###' delimiter
                     parsed_response_lines = [
                         line.strip() for line in raw_data.strip().split("###END###") if line.strip()
                     ]
                     print(f"Parsed response lines: {parsed_response_lines}")
-                    bracket_pattern = re.compile(r'^\[\[\[(.*?)\]\]\]$')
+
+                    # Removed triple-bracket pattern
                     cleaned_lines = []
                     for line in parsed_response_lines:
-                        # Split lines that contain multiple items separated by newline
-                        sub_lines = line.split('\n')
-                        for sub_line in sub_lines:
-                            match = bracket_pattern.match(sub_line)
-                            if match:
-                                cleaned_lines.append(match.group(1).strip())
-                            else:
-                                cleaned_lines.append(sub_line.strip())
+                        # Directly append the line without looking for brackets
+                        cleaned_lines.append(line)
+
                     if len(cleaned_lines) != len(rows):
                         print(f"Cleaned lines: {cleaned_lines}")
                         raise ValueError(
