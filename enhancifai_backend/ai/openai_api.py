@@ -337,6 +337,7 @@ class OpenAIConnector:
                 raw_data = completion.choices[0].message.content
                 
                 print("AI API call successful.")
+                print(f"Raw data: {raw_data}")
 
                 tokens_used = completion.usage.total_tokens
 
