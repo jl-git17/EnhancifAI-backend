@@ -339,11 +339,14 @@ class OpenAIConnector:
                     bracket_pattern = re.compile(r'^\[\[\[(.*?)\]\]\]$')
                     cleaned_lines = []
                     for line in parsed_response_lines:
-                        match = bracket_pattern.match(line)
-                        if match:
-                            cleaned_lines.append(match.group(1).strip())
-                        else:
-                            cleaned_lines.append(line)
+                        # Split lines that contain multiple items separated by newline
+                        sub_lines = line.split('\n')
+                        for sub_line in sub_lines:
+                            match = bracket_pattern.match(sub_line)
+                            if match:
+                                cleaned_lines.append(match.group(1).strip())
+                            else:
+                                cleaned_lines.append(sub_line.strip())
                     if len(cleaned_lines) != len(rows):
                         raise ValueError(
                             f"Number of answers ({len(cleaned_lines)}) does not match number of rows ({len(rows)})."
