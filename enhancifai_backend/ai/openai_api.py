@@ -318,8 +318,8 @@ class OpenAIConnector:
                         "role": "system",
                         "content": (
                             "You are an assistant with expertise in data analysis. "
-                            "For each input row, output the answer wrapped in '[[[' and ']]]', "
-                            "then end each row's answer with '###END###'."
+                            "For each input row, wrap the entire answer in '[[[' and ']]]', "
+                            "then end each answer with '###END###'."
                         )
                     },
                     {
