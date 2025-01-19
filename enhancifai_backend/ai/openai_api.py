@@ -311,6 +311,8 @@ class OpenAIConnector:
             lines.append(", ".join(row_parts))
         custom_data = "\n".join(lines)
 
+        print(custom_data)
+
         for attempt in range(max_attempts):
             try:
                 messages = [
