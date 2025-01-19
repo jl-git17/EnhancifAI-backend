@@ -340,6 +340,7 @@ class OpenAIConnector:
                 
                 print("AI API call successful.")
                 print(f"Raw data: {raw_data}")
+                os._exit(0)
 
                 tokens_used = completion.usage.total_tokens
 
