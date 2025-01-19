@@ -303,17 +303,8 @@ class OpenAIConnector:
         # Use the same logic your single-row method uses:
         self.engine = rate_limit_manager.can_make_api_call(model=self.engine, run_id=run_id)
 
-        # Instead of CSV lines:
-        sorted_letters = sorted(columns.keys())
-        lines = []
-        for row in transformed_rows:
-            row_parts = [f"{columns[l]}={row.get(l, '')}" for l in sorted_letters]
-            lines.append(", ".join(row_parts))
-        custom_data = "\n".join(lines)
-
         print(f"Rows: {rows}")
         print(f"Transformed rows: {transformed_rows}")
-        print(f"Custom Data: {custom_data}")
 
         for attempt in range(max_attempts):
             try:
@@ -328,7 +319,7 @@ class OpenAIConnector:
                     },
                     {
                         "role": "user",
-                        "content": f"Query: {query}\n\nDATA:\n{custom_data}"
+                        "content": f"Query: {query}\n\nCOLUMNS:\n{columns}\n\nDATA:\n{transformed_rows}"
                     }
                 ]
 
