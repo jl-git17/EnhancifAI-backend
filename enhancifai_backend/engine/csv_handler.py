@@ -125,7 +125,7 @@ class CSVHandler:
                             futures[future] = idx
             else:
                 # NEW approach: send multiple rows in one AI call if performance_optimization
-                chunk_size = 2
+                chunk_size = 10
                 for prompt_config in prompts:
                     for start_idx in range(0, total_records, chunk_size):
                         if self._is_run_cancelled():
