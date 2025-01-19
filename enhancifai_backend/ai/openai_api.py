@@ -304,8 +304,8 @@ class OpenAIConnector:
                         "role": "system",
                         "content": (
                             "You are an assistant with expertise in data analysis. "
-                            "For each input query, process the provided rows and return one answer per row. "
-                            "Then end the answer with '###END###'."
+                            "For each input query, process the provided data entries and return one clear and concise answer per entry. "
+                            "Separate each data entry's answer with the delimiter '###END###' without using any additional wrapping characters or brackets."
                         )
                     },
                     {
