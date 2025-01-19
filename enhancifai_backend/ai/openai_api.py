@@ -348,6 +348,7 @@ class OpenAIConnector:
                             else:
                                 cleaned_lines.append(sub_line.strip())
                     if len(cleaned_lines) != len(rows):
+                        print(f"Cleaned lines: {cleaned_lines}")
                         raise ValueError(
                             f"Number of answers ({len(cleaned_lines)}) does not match number of rows ({len(rows)})."
                         )
