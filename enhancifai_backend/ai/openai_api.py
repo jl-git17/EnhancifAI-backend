@@ -305,10 +305,10 @@ class OpenAIConnector:
                 try:
                     # strip the code block markers if they exist
                     raw_data = raw_data.strip()
-                    if raw_data.startswith("```") and raw_data.endswith("```"):
-                        raw_data = raw_data[3:-3].strip('```').strip('\n')
-                    elif raw_data.startswith("```json") and raw_data.endswith("```"):
+                    if raw_data.startswith("```json") and raw_data.endswith("```"):
                         raw_data = raw_data[7:-3].strip('```json').strip('```').strip('\n')
+                    elif raw_data.startswith("```") and raw_data.endswith("```"):
+                        raw_data = raw_data[3:-3].strip('```').strip('\n')
 
                     _results = json.loads(raw_data)
                     if not isinstance(_results, list):
