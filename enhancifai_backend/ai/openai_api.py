@@ -300,7 +300,7 @@ class OpenAIConnector:
                     },
                     {
                         "role": "user",
-                        "content": "Process my data rows and return the results delimited by '###END###' as it is."
+                        "content": "Process my data rows and return the results delimited by '###END###' as it is. Each data entry's answer must be in one string, delimited only once, for the whole answer."
                     }
                 ]
 
