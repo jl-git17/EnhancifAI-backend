@@ -258,10 +258,6 @@ class OpenAIConnector:
         query: str,
         run_id: int
     ) -> List[Dict[str, object]]:
-        
-        print(f"Columns: {columns}")
-        print(f"Rows: {rows}")
-        print(f"Query: {query}")
 
         if RunsDbCore.is_run_cancelled(run_id):
             raise RuntimeError("Job cancelled.")
@@ -287,7 +283,6 @@ class OpenAIConnector:
                     }
                 ]
 
-                print(messages)
 
                 completion = self.client.chat.completions.create(
                     model=self.engine,
@@ -314,10 +309,11 @@ class OpenAIConnector:
                         raw_data = raw_data[3:-3].strip('```').strip('\n')
                     elif raw_data.startswith("```json") and raw_data.endswith("```"):
                         raw_data = raw_data[7:-3].strip('```json').strip('```').strip('\n')
-                    print(raw_data)
-                    print(type(raw_data))
-                    _results = json.loads(raw_data)
 
+                    _results = json.loads(raw_data)
+                    if not isinstance(_results, list):
+                        print("Unexpected JSON structure:", type(_results))
+                        os._exit(1)
                     # Build the output. Each row gets a dict with the concatenated answers
                     results = []
                     for line in _results:
@@ -326,7 +322,6 @@ class OpenAIConnector:
                             "tokens": tokens_used,
                             "engine_used": self.engine
                         })
-
                     return results
 
                 except json.JSONDecodeError:
