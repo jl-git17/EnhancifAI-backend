@@ -266,23 +266,6 @@ class OpenAIConnector:
         if RunsDbCore.is_run_cancelled(run_id):
             raise RuntimeError("Job cancelled.")
 
-        # Create a reverse mapping from column names to letters
-        name_to_letter = {v: k for k, v in columns.items()}
-
-        # Transform each row's keys from names to letters
-        transformed_rows = []
-        for row in rows:
-            transformed_row = {}
-            for name, value in row.items():
-                letter = name_to_letter.get(name)
-                if letter:
-                    transformed_row[letter] = value
-                else:
-                    # Handle unexpected column names
-                    raise ValueError(f"Column name '{name}' does not exist in columns mapping.")
-            transformed_rows.append(transformed_row)
-        delimited_transformed_rows = "###END###".join([json.dumps(row) for row in transformed_rows])
-
         max_attempts = 3
         _err = None
 
@@ -295,12 +278,12 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            f"{query}\n---\nCOLUMNS:\n{columns}\n\nDATA:\n{delimited_transformed_rows}"
+                            f"{query}\n---\nDATA:\n{json.dumps(rows)}"
                         )
                     },
                     {
                         "role": "user",
-                        "content": "Process my data rows and return the results delimited by '###END###' as it is. Each data entry's answer must be in one string, delimited only once, for the whole answer."
+                        "content": "For each data entry, process the query. Return the results in a JSON array. One string for each entry containing the full answer."
                     }
                 ]
 
@@ -325,23 +308,17 @@ class OpenAIConnector:
                 UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
 
                 try:
-                    # Split the response using '###END###' delimiter
-                    parsed_response_lines = [
-                        line.strip() for line in raw_data.strip().split("###END###") if line.strip()
-                    ]
-                    print(f"Parsed response lines: {parsed_response_lines}")
-
-                    # Combine all answers for each entry into a single string
-                    # Since each entry should have only one concatenated string
-                    if len(parsed_response_lines) != len(rows):
-                        print(f"Parsed lines count ({len(parsed_response_lines)}) does not match rows count ({len(rows)}).")
-                        raise ValueError(
-                            f"Number of answers ({len(parsed_response_lines)}) does not match number of rows ({len(rows)})."
-                        )
+                    # strip the code block markers if they exist
+                    raw_data = raw_data.strip()
+                    if raw_data.startswith("```") and raw_data.endswith("```"):
+                        raw_data = raw_data[3:-3].strip()
+                    elif raw_data.startswith("```json") and raw_data.endswith("```"):
+                        raw_data = raw_data[7:-3].strip()
+                    _results = json.loads(raw_data)
 
                     # Build the output. Each row gets a dict with the concatenated answers
                     results = []
-                    for line in parsed_response_lines:
+                    for line in _results:
                         results.append({
                             "content": line,
                             "tokens": tokens_used,
