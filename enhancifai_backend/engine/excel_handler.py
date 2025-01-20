@@ -231,7 +231,6 @@ class ExcelHandler:
                 if item.get("engine_used") != self.engine:
                     self.overflow = True
 
-                self.total_tokens += item.get('tokens', 0)
 
                 # Bump row completion count
                 if actual_idx in self.row_completion:
@@ -244,6 +243,8 @@ class ExcelHandler:
                 runs_progress.update_progress(self.run_id, self.prompt_progress)
 
                 results_for_chunk.append(result)
+
+            self.total_tokens += batch_data[0].get('tokens', 0)
 
         return results_for_chunk
 

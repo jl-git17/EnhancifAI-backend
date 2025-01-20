@@ -295,14 +295,12 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            "You are an assistant with expertise in data analysis. Using the input query, process the provided data entries and return one complete answer for each entry. "
-                            "DATA entries are delimited by '###END###'. You receive Query, COLUMNS (for mapping), and DATA (the data entries). "
-                            "Ensure that each entry in the input results in exactly one concatenated string of answers, and the number of output strings matches the number of input entries."
+                            f"{query}\n---\nCOLUMNS:\n{columns}\n\nDATA:\n{delimited_transformed_rows}"
                         )
                     },
                     {
                         "role": "user",
-                        "content": f"Query: {query}\n\nCOLUMNS:\n{columns}\n\nDATA:\n{delimited_transformed_rows}"
+                        "content": "Process my data rows and return the results delimited by '###END###' as it is."
                     }
                 ]
 
