@@ -315,6 +315,7 @@ class OpenAIConnector:
                     elif raw_data.startswith("```json") and raw_data.endswith("```"):
                         raw_data = raw_data[7:-3].strip('```json').strip('```').strip('\n')
                     print(raw_data)
+                    print(type(raw_data))
                     _results = json.loads(raw_data)
 
                     # Build the output. Each row gets a dict with the concatenated answers
