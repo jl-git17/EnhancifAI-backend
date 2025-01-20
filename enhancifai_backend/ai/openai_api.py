@@ -326,7 +326,7 @@ class OpenAIConnector:
 
                 except json.JSONDecodeError:
                     # The AI returned something that's not valid JSON. We'll treat that as an error
-                    print(f"Failed to parse JSON array from AI: {raw_data}")
+                    print(f"Failed to parse JSON array from AI: {raw_data}. Type: {type(raw_data)}")
                     raise RuntimeError("AI did not return valid JSON array")
 
             except Exception as e:
