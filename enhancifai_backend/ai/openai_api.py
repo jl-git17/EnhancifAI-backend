@@ -258,19 +258,10 @@ class OpenAIConnector:
         query: str,
         run_id: int
     ) -> List[Dict[str, object]]:
-        """
-        Process multiple CSV rows in a single OpenAI call for performance optimization.
-
-        Converts row keys from descriptive names to their corresponding letter representations.
-
-        Returns a list of dictionaries, each containing:
-            {
-                "content": <the AI-generated answer for that row>,
-                "tokens": <the token usage for this batch (shared)>,
-                "engine_used": <which engine was used>
-            }
-        The returned list is aligned with the order of `rows` input.
-        """
+        
+        print(f"Columns: {columns}")
+        print(f"Rows: {rows}")
+        print(f"Query: {query}")
 
         if RunsDbCore.is_run_cancelled(run_id):
             raise RuntimeError("Job cancelled.")
