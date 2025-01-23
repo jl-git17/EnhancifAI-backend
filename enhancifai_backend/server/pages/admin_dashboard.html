@@ -822,13 +822,13 @@
         priceGroup.classList.add('form-group');
 
         const priceLabel = document.createElement('label');
-        priceLabel.textContent = 'Price per 1,000 Tokens:';
+        priceLabel.textContent = 'Price per 1,000 Tokens (converted to per token on server):';
 
         // Tooltip
         const tooltipIcon = document.createElement('i');
         tooltipIcon.classList.add('bi', 'bi-question-circle');
         tooltipIcon.setAttribute('data-bs-toggle', 'tooltip');
-        tooltipIcon.setAttribute('title', 'Enter the price per 1,000 tokens for this model');
+        tooltipIcon.setAttribute('title', 'Enter the price per 1,000 tokens. It will automatically be converted to per token for the backend.');
         priceLabel.appendChild(tooltipIcon);
 
         const priceInput = document.createElement('input');
@@ -974,14 +974,14 @@
             priceGroup.classList.add('form-group');
 
             const priceLabel = document.createElement('label');
-            priceLabel.textContent = 'Price per 1,000 Tokens:';
+            priceLabel.textContent = 'Price per 1,000 Tokens (converted to per token on server):';
             priceLabel.setAttribute('for', `price_${Date.now()}`);
 
             // Add tooltip icon
             const tooltipIcon = document.createElement('i');
             tooltipIcon.classList.add('bi', 'bi-question-circle');
             tooltipIcon.setAttribute('data-bs-toggle', 'tooltip');
-            tooltipIcon.setAttribute('title', 'Enter the price per 1,000 tokens for this model');
+            tooltipIcon.setAttribute('title', 'Enter the price per 1,000 tokens. It will automatically be converted to per token for the backend.');
             priceLabel.appendChild(tooltipIcon);
 
             const priceInput = document.createElement('input');
