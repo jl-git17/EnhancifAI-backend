@@ -348,6 +348,12 @@
                                 <label for="price_gpt4o">gpt4-o:</label>
                                 <input type="number" id="price_gpt4o" name="price_gpt4o" class="form-control" placeholder="Enter price per 1,000 tokens" step="0.01" required>
                             </div>
+                            <div class="form-group">
+                                <!-- Provide an actual input to avoid null refs in billingForm submit -->
+                                <label>Price/1,000 Tokens:</label>
+                                <input name="price_per_token" type="number" class="form-control" step="any" />
+                                <!-- ...existing code... -->
+                            </div>
                         </div>
 
                         <div class="billing-entry">
@@ -355,12 +361,22 @@
                                 <label for="price_gpt4omini">gpt4-o-mini:</label>
                                 <input type="number" id="price_gpt4omini" name="price_gpt4omini" class="form-control" placeholder="Enter price per 1,000 tokens" step="0.01" required>
                             </div>
+                            <div class="form-group">
+                                <label>Price/1,000 Tokens:</label>
+                                <input name="price_per_token" type="number" class="form-control" step="any" />
+                                <!-- ...existing code... -->
+                            </div>
                         </div>
 
                         <div class="billing-entry">
                             <div class="form-group">
                                 <label for="price_gpt35turbo">gpt-3.5-turbo:</label>
                                 <input type="number" id="price_gpt35turbo" name="price_gpt35turbo" class="form-control" placeholder="Enter price per 1,000 tokens" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Price/1,000 Tokens:</label>
+                                <input name="price_per_token" type="number" class="form-control" step="any" />
+                                <!-- ...existing code... -->
                             </div>
                         </div>
                         <div class="billing-buttons">
@@ -666,6 +682,10 @@
             return response.json();
             })
             .then(data => {
+            // Add null-check to avoid 'data.model_prices is null' error:
+            if (!data || !Array.isArray(data.model_prices)) {
+                data.model_prices = [];
+            }
             console.log('Model Prices for month:', data);
             modelPricesContainer.innerHTML = '';
 
