@@ -833,7 +833,8 @@
 
         const priceInput = document.createElement('input');
         priceInput.type = 'number';
-        priceInput.setAttribute('step', '0.0001');
+        priceInput.setAttribute('step', 'any');
+        priceInput.setAttribute('inputmode', 'decimal');
         priceInput.classList.add('form-control');
         priceInput.name = 'price_per_token';
         priceInput.value = model.price_per_token ? (model.price_per_token * 1000).toFixed(4) : '';
@@ -988,7 +989,8 @@
 
             const priceInput = document.createElement('input');
             priceInput.type = 'number';
-            priceInput.setAttribute('step', '0.0001');
+            priceInput.setAttribute('step', 'any');
+            priceInput.setAttribute('inputmode', 'decimal');
             priceInput.classList.add('form-control');
             priceInput.id = `price_${Date.now()}`;
             priceInput.name = 'price_per_token';
