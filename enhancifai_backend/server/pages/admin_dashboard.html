@@ -832,7 +832,8 @@
         priceLabel.appendChild(tooltipIcon);
 
         const priceInput = document.createElement('input');
-        priceInput.type = 'text'; // Changed from 'number' to 'text' to accept values like 0.1
+        priceInput.type = 'number';
+        priceInput.setAttribute('step', '0.0001');
         priceInput.classList.add('form-control');
         priceInput.name = 'price_per_token';
         priceInput.value = model.price_per_token ? (model.price_per_token * 1000).toFixed(4) : '';
@@ -880,7 +881,10 @@
 
             const model_name = modelNameSelect.value.trim();
             let price_per_token_display = parseFloat(priceInput.value);
-
+            if (isNaN(price_per_token_display)) {
+                alert('Please enter a valid numeric value for price.');
+                return;
+            }
             if (model_name && !isNaN(price_per_token_display)) {
             // convert from per 1000 tokens to per token
             const price_per_token = price_per_token_display / 1000;
@@ -983,7 +987,8 @@
             priceLabel.appendChild(tooltipIcon);
 
             const priceInput = document.createElement('input');
-            priceInput.type = 'text'; // Changed from 'number' to 'text' to accept values like 0.1
+            priceInput.type = 'number';
+            priceInput.setAttribute('step', '0.0001');
             priceInput.classList.add('form-control');
             priceInput.id = `price_${Date.now()}`;
             priceInput.name = 'price_per_token';
