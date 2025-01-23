@@ -832,8 +832,7 @@
         priceLabel.appendChild(tooltipIcon);
 
         const priceInput = document.createElement('input');
-        priceInput.type = 'number';
-        priceInput.step = 'any';
+        priceInput.type = 'text'; // Changed from 'number' to 'text' to accept values like 0.1
         priceInput.min = '0';
         priceInput.classList.add('form-control');
         priceInput.name = 'price_per_token';
@@ -985,8 +984,7 @@
             priceLabel.appendChild(tooltipIcon);
 
             const priceInput = document.createElement('input');
-            priceInput.type = 'number';
-            priceInput.step = 'any';
+            priceInput.type = 'text'; // Changed from 'number' to 'text' to accept values like 0.1
             priceInput.min = '0';
             priceInput.classList.add('form-control');
             priceInput.id = `price_${Date.now()}`;
