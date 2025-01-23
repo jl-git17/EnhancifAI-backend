@@ -875,7 +875,7 @@
         billingSuccessMessage.style.display = 'none';
 
         const data = [];
-        const billingEntries = modelPricesContainer.querySelectorAll('.billing-entry');
+        const billingEntries = document.querySelectorAll('.billing-entry');
         billingEntries.forEach(entry => {
             const modelNameSelect = entry.querySelector('select[name="model_name"]');
             const priceInput = entry.querySelector('input[name="price_per_token"]');
@@ -898,33 +898,31 @@
             }
         });
 
-        fetch('/admin/billing/model-prices', {
-            method: 'POST',
-            headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache'
-            },
-            body: JSON.stringify({ prices: data })
-        })
-            .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-            })
-            .then(result => {
-            console.log('Billing settings updated:', result);
-            billingSuccessMessage.style.display = 'block';
-            setTimeout(() => {
-                billingSuccessMessage.style.display = 'none';
-            }, 3000);
+        const savePromises = data.map(item => {
+            return fetch('/admin/billing/model-prices', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache'
+                },
+                body: JSON.stringify({ prices: [item] })
+            });
+        });
 
-            // Reload for the current month, so we see updated data
-            loadModelPrices();
+        Promise.all(savePromises)
+            .then(responses => {
+                if (responses.some(r => !r.ok)) {
+                    throw new Error('One or more requests failed.');
+                }
+            })
+            .then(() => {
+                billingSuccessMessage.style.display = 'block';
+                setTimeout(() => { billingSuccessMessage.style.display = 'none'; }, 3000);
+                loadModelPrices();
             })
             .catch(error => {
-            console.error('Error updating billing settings:', error);
-            alert('Error updating billing settings. Please try again.');
+                console.error('Error updating billing settings:', error);
+                alert('Error updating billing settings. Please try again.');
             });
         });
 
@@ -1048,33 +1046,32 @@
                 }
             });
 
-            fetch('/admin/billing/model-prices', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Cache-Control': 'no-cache'
-                },
-                body: JSON.stringify({ prices: data })
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(result => {
-                console.log('Billing settings updated:', result);
-                billingSuccessMessage.style.display = 'block';
-                // Hide after 3 seconds (3000 ms)
-                setTimeout(() => {
-                    billingSuccessMessage.style.display = 'none';
-                }, 3000);
-                loadModelPrices(); // Reload model prices to reflect changes
-            })
-            .catch(error => {
-                console.error('Error updating billing settings:', error);
-                alert('Error updating billing settings. Please try again.');
+            const savePromises = data.map(item => {
+                return fetch('/admin/billing/model-prices', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Cache-Control': 'no-cache'
+                    },
+                    body: JSON.stringify({ prices: [item] })
+                });
             });
+
+            Promise.all(savePromises)
+                .then(responses => {
+                    if (responses.some(r => !r.ok)) {
+                        throw new Error('One or more requests failed.');
+                    }
+                })
+                .then(() => {
+                    billingSuccessMessage.style.display = 'block';
+                    setTimeout(() => { billingSuccessMessage.style.display = 'none'; }, 3000);
+                    loadModelPrices();
+                })
+                .catch(error => {
+                    console.error('Error updating billing settings:', error);
+                    alert('Error updating billing settings. Please try again.');
+                });
         });
 
         loadModelPrices();
