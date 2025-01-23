@@ -669,14 +669,12 @@
             console.log('Model Prices for month:', data);
             modelPricesContainer.innerHTML = '';
 
-            if (data.model_prices && Array.isArray(data.model_prices) && data.model_prices.length > 0) {
-                data.model_prices.forEach(price => {
-                addModelPrice(price, modelPricesContainer, /*readonly=*/false);
-                });
-            } else {
-                // If no model prices, provide an empty form group to add new model price
-                addModelPrice({}, modelPricesContainer, /*readonly=*/false);
-            }
+            // Ensure the 3 known models are loaded or defaulted
+            const knownModels = ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"];
+            knownModels.forEach(modelName => {
+                const existingPrice = data.model_prices.find(p => p.model_name === modelName);
+                addModelPrice(existingPrice || { model_name: modelName, price_per_token: 0 }, modelPricesContainer, false);
+            });
             initializeTooltips();
             })
             .catch(error => {
