@@ -369,10 +369,6 @@
                         <div id="model-prices-container">
                             <!-- Model prices for the current month go here -->
                         </div>
-                        <!-- Add Model Price Button -->
-                        <button type="button" id="add-model-price-btn" class="btn btn-primary mt-3">
-                            <i class="bi bi-plus-circle"></i> Add Model Price
-                        </button>
                     </form>
                     </div>
             
@@ -640,7 +636,6 @@
         const currentMonthLabel = document.getElementById('current-month-label'); 
         const historyMonthPicker = document.getElementById('history-month-picker');
         const historyModelPricesContainer = document.getElementById('history-model-prices-container');
-        const addModelPriceBtn = document.getElementById('add-model-price-btn'); // Added reference
 
         // Calculate the current Year-Month
         const currentDate = new Date();
