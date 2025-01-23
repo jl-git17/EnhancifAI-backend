@@ -96,6 +96,11 @@ BEGIN
 END 
 $$;
 
+-- Ensure one price per model per month/year in model_price_history
+ALTER TABLE enhancifai.model_price_history
+    ADD CONSTRAINT unique_model_month
+    UNIQUE (model_name, effective_date);
+
 -- Step 2: Create or replace the function to prevent updates to past rates
 CREATE OR REPLACE FUNCTION enhancifai.prevent_past_rate_updates()
 RETURNS TRIGGER AS $$

@@ -149,22 +149,22 @@
             box-shadow: 0 2px 4px var(--shadow-color);
             display: flex;
             flex-direction: column;
-            max-width: 500px; /* Set maximum width */
-            margin: 0 auto 15px auto; /* Center horizontally and maintain bottom margin */
+            max-width: 600px; /* Increased width for better layout */
+            margin: 0 auto 20px auto; /* Center horizontally with more bottom margin */
         }
 
         .billing-entry .form-group {
             display: flex;
-            flex-direction: column; /* Stack label and input vertically */
-            align-items: flex-start;
+            flex-direction: row; /* Align label and input horizontally */
+            align-items: center;
             gap: 5px; /* Add some spacing between label and input */
             margin-bottom: 15px;
             width: 100%;
         }
 
         .billing-entry .form-group label {
-            flex: 2;
-            margin-bottom: 5px;
+            flex: 0 0 200px; /* Fixed width for labels */
+            margin-bottom: 0;
         }
 
         .billing-entry .form-group input,
@@ -196,6 +196,11 @@
             z-index: 9999;              /* Ensure it stays above other elements */
             /* Remove mt-3 below if you want it flush with the top */
             /* margin-top: 0 !important; */
+        }
+
+        /* Hide Add Model Price Button */
+        #add-model-price {
+            display: none;
         }
     </style>    
 </head>
@@ -337,8 +342,28 @@
                     <h3 id="current-month-label" class="mt-3"></h3>
             
                     <form id="billing-form">
+                        <!-- Fixed Billing Entries for Predefined Models -->
+                        <div class="billing-entry">
+                            <div class="form-group">
+                                <label for="price_gpt4o">gpt4-o:</label>
+                                <input type="number" id="price_gpt4o" name="price_gpt4o" class="form-control" placeholder="Enter price per 1,000 tokens" required>
+                            </div>
+                        </div>
+        
+                        <div class="billing-entry">
+                            <div class="form-group">
+                                <label for="price_gpt4omini">gpt4-o-mini:</label>
+                                <input type="number" id="price_gpt4omini" name="price_gpt4omini" class="form-control" placeholder="Enter price per 1,000 tokens" required>
+                            </div>
+                        </div>
+        
+                        <div class="billing-entry">
+                            <div class="form-group">
+                                <label for="price_gpt35turbo">gpt-3.5-turbo:</label>
+                                <input type="number" id="price_gpt35turbo" name="price_gpt35turbo" class="form-control" placeholder="Enter price per 1,000 tokens" required>
+                            </div>
+                        </div>
                         <div class="billing-buttons">
-                        <button type="button" id="add-model-price" class="btn btn-secondary btn-sm">Add Model Price</button>
                         <button type="submit" class="btn btn-primary btn-sm">Save Billing Settings</button>
                         </div>
                         <div id="model-prices-container">
@@ -608,8 +633,6 @@
         const billingForm = document.getElementById('billing-form');
         const billingSuccessMessage = document.getElementById('billing-success-message');
         const modelPricesContainer = document.getElementById('model-prices-container');
-        const addModelPriceBtn = document.getElementById('add-model-price');
-
         const currentMonthLabel = document.getElementById('current-month-label'); 
         const historyMonthPicker = document.getElementById('history-month-picker');
         const historyModelPricesContainer = document.getElementById('history-model-prices-container');
