@@ -89,10 +89,13 @@ class ModelPricesDbCore:
     @classmethod
     def get_all_model_prices(cls):
         sql = schemafy("""
-            SELECT DISTINCT ON (model_name)
-                model_name, price_per_token, effective_date
+            SELECT model_name, price_per_token, effective_date
             FROM enhancifai.model_price_history
-            ORDER BY model_name, effective_date DESC;
+            WHERE effective_date = (
+                SELECT MAX(effective_date)
+                FROM enhancifai.model_price_history AS sub
+                WHERE sub.model_name = enhancifai.model_price_history.model_name
+            );
         """)
         return read_db.do('select', sql=sql)
 

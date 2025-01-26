@@ -1021,6 +1021,66 @@
             loadCurrentMonthPrices();
             // Assume there's a mechanism to select year and month for historical prices
         });
+
+        // Update the fetchModelPrices function to match the new endpoint
+        function fetchModelPrices(year = currentYear, month = currentMonth) {
+            fetch(`/admin/billing/model-prices/${year}/${month}`, {
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Populate the billing form with retrieved prices
+                if (data.model_prices) {
+                    data.model_prices.forEach(price => {
+                        const input = document.querySelector(`input[name="price_per_token"][data-model="${price.model_name}"]`);
+                        if (input) {
+                            input.value = (price.price_per_token * 1000).toFixed(4);
+                        }
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching model prices:', error);
+                alert('Failed to load model prices.');
+            });
+        }
+
+        // Update the updateModelPrices function to send data to the new endpoint
+        function updateModelPrices() {
+            const prices = [];
+            document.querySelectorAll('.billing-entry').forEach(entry => {
+                const model = entry.querySelector('select[name="model_name"]').value;
+                const price = parseFloat(entry.querySelector('input[name="price_per_token"]').value) / 1000;
+                if (model && !isNaN(price)) {
+                    prices.push({ model_name: model, price_per_token: price, effective_date: new Date().toISOString() });
+                }
+            });
+
+            fetch('/admin/billing/model-prices', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Cache-Control': 'no-cache'
+                },
+                body: JSON.stringify({ prices })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.message) {
+                    alert(data.message);
+                    fetchModelPrices(); // Refresh the prices
+                }
+            })
+            .catch(error => {
+                console.error('Error updating model prices:', error);
+                alert('Failed to update model prices.');
+            });
+        }
+
+        // Attach the updateModelPrices function to the save button
+        document.getElementById('save-model-prices').addEventListener('click', updateModelPrices);
     </script>
 </body>
 </html>
