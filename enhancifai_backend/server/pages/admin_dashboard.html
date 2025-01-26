@@ -897,33 +897,58 @@
             }
         });
 
-        const savePromises = data.map(item => {
-            return fetch('/admin/billing/model-prices', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Cache-Control': 'no-cache'
-                },
-                body: JSON.stringify({ prices: [item] })
-            });
-        });
-
-        Promise.all(savePromises)
-            .then(responses => {
-                if (responses.some(r => !r.ok)) {
-                    throw new Error('One or more requests failed.');
-                }
-            })
-            .then(() => {
+        // Send all prices in a single POST request
+        fetch('/admin/billing/model-prices', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache'
+            },
+            body: JSON.stringify({ prices }) // send all prices at once
+        })
+        .then(response => {
+            if (response.ok) {
                 billingSuccessMessage.style.display = 'block';
                 setTimeout(() => { billingSuccessMessage.style.display = 'none'; }, 3000);
                 loadModelPrices();
-            })
-            .catch(error => {
-                console.error('Error updating billing settings:', error);
-                alert('Error updating billing settings. Please try again.');
-            });
+            } else {
+                throw new Error('Failed to save prices.');
+            }
+        })
+        .catch(error => {
+            console.error('Error updating billing settings:', error);
+            alert('Error updating billing settings. Please try again.');
         });
+        });
+
+        // Update the loadModelPrices function to align with the new GET endpoint
+        function loadModelPrices() {
+            console.log('Loading model prices');
+            fetch('/admin/billing/model-prices', { // updated endpoint
+                headers: {
+                    'Cache-Control': 'no-cache'
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Model Prices:', data);
+                    modelPricesContainer.innerHTML = '';
+
+                    data.model_prices.forEach(price => {
+                        addModelPrice(price, modelPricesContainer, false);
+                    });
+                    initializeTooltips();
+                })
+                .catch(error => {
+                    console.error('Error loading model prices:', error);
+                    modelPricesContainer.innerHTML = '<div class="alert alert-danger">Error loading model prices.</div>';
+                });
+        }
 
         // Initialize on page load
         loadEarliestMonth();   // load earliest usage month for the History dropdown
