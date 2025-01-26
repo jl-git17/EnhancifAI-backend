@@ -45,6 +45,17 @@ async def admin_dashboard(credentials: HTTPBasicCredentials = Depends(security))
             headers={"WWW-Authenticate": "Basic"},
         )
 
+@router.get("/admin/dashboard/billing", tags=["Admin"])
+async def admin_billing(credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        return FileResponse(os.path.join(STATIC_PAGES_DIRECTORY, "admin_billing.html"))
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
 @router.post("/admin/ai-settings", tags=["Admin"])
 async def set_admin_settings_ai(settings:AdminAISettings, _: str = Depends(verify_secret_key),
                                 __: int = Depends(get_current_user_id)):
@@ -296,20 +307,22 @@ async def get_model_prices(credentials: HTTPBasicCredentials = Depends(security)
         )
 
 @router.post("/admin/billing/model-prices", tags=["Admin"])
-async def update_model_prices(
-    data: dict = Body(...),
-    credentials: HTTPBasicCredentials = Depends(security)
-):
-    if credentials.username == USERNAME and credentials.password == PASSWORD:
-        for price in data.get("prices", []):
-            ModelPricesDbCore.update_model_price(price["model_name"], price["price_per_token"], price["effective_date"])
-        return JSONResponse(status_code=200, content={"message": "Model prices updated successfully."})
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Basic"},
+async def upsert_model_prices(payload: dict = Body(...), credentials: HTTPBasicCredentials = Depends(security)):
+    year = payload.get("year")
+    month = payload.get("month")
+    prices = payload.get("prices", [])
+    if not (year and month and prices):
+        raise HTTPException(status_code=400, detail="Invalid request data.")
+    effective_date = datetime(year, month, 1)
+    for item in prices:
+        # Convert from per 1,000 tokens if needed
+        final_price = float(item["price_per_token"]) / 1000.0
+        ModelPricesDbCore.update_model_price(
+            model_name=item["model_name"],
+            price_per_token=final_price,
+            effective_date=effective_date
         )
+    return {"message": "Prices updated successfully"}
 
 @router.get("/admin/billing/model-prices/earliest", tags=["Admin"])
 async def get_earliest_effective_month(credentials: HTTPBasicCredentials = Depends(security)):
