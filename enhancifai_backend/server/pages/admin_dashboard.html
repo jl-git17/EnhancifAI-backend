@@ -929,5 +929,73 @@
         loadEarliestMonth();   // load earliest usage month for the History dropdown
         loadModelPrices();     // load current month model prices
     </script>
+
+    <script>
+        // filepath: /Users/imwatsi/Documents/GitHub/EnhancifAI-backend/enhancifai_backend/server/pages/admin_dashboard.html
+
+        // Function to load current month prices into the form
+        function loadCurrentMonthPrices() {
+            fetch('/admin/billing/model-prices/current')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('model-gpt-4o').value = data.gpt_4o;
+                    document.getElementById('model-gpt-4o-mini').value = data.gpt_4o_mini;
+                    document.getElementById('model-gpt-3.5-turbo').value = data.gpt_3_5_turbo;
+                })
+                .catch(error => console.error('Error loading current month prices:', error));
+        }
+
+        // Hook up the form submission to save selected month's model prices
+        document.getElementById('set-prices-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+            const prices = {
+                gpt_4o: parseFloat(document.getElementById('model-gpt-4o').value),
+                gpt_4o_mini: parseFloat(document.getElementById('model-gpt-4o-mini').value),
+                gpt_3_5_turbo: parseFloat(document.getElementById('model-gpt-3.5-turbo').value)
+            };
+            fetch('/admin/billing/model-prices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(prices)
+            })
+            .then(response => {
+                if (response.ok) {
+                    document.getElementById('set-prices-success').style.display = 'block';
+                    loadCurrentMonthPrices();
+                } else {
+                    throw new Error('Failed to save prices.');
+                }
+            })
+            .catch(error => {
+                console.error('Error saving prices:', error);
+                document.getElementById('set-prices-error').style.display = 'block';
+            });
+        });
+
+        // Load historical model prices in the “View Historical Prices” tab
+        function loadHistoricalPrices(year, month) {
+            fetch(`/admin/billing/model-prices/${year}/${month}`)
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.getElementById('historical-prices-table-body');
+                    tbody.innerHTML = '';
+                    data.model_prices.forEach(price => {
+                        const row = `<tr>
+                            <td>${price.model_name}</td>
+                            <td>${price.price_per_token}</td>
+                            <td>${price.effective_date}</td>
+                        </tr>`;
+                        tbody.innerHTML += row;
+                    });
+                })
+                .catch(error => console.error('Error loading historical prices:', error));
+        }
+
+        // Initialize functions on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadCurrentMonthPrices();
+            // Assume there's a mechanism to select year and month for historical prices
+        });
+    </script>
 </body>
 </html>
