@@ -362,7 +362,7 @@
         })
         .then(response => response.json())
         .then(data => {
-            const fetchedPrices = data.model_prices;
+            const fetchedPrices = data.model_prices || [];
             const fetchedModelNames = fetchedPrices.map(price => price.model_name);
             
             // Merge fetched prices with default models
@@ -388,6 +388,12 @@
         })
         .catch(error => {
             console.error('Error loading model prices:', error);
+            // Ensure default models are displayed even if there's an error
+            modelPricesContainer.innerHTML = '';
+            defaultModels.forEach(defaultModel => {
+                addModelPrice(defaultModel, modelPricesContainer, false);
+            });
+            initializeTooltips();
         });
       }
 
