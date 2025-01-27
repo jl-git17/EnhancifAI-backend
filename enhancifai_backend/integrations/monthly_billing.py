@@ -93,7 +93,7 @@ def generate_monthly_invoices():
                             usage_date = usage['usage_date']
                             model = usage['model']
                             tokens = usage['total_tokens']
-                            rate = BillingDbCore.get_price_per_token(model_name=model, effective_date=usage_date)
+                            rate = BillingDbCore.get_price_per_token(model_name=model, year=usage_date.year, month=usage_date.month)
                             if rate is None:
                                 logger.error(
                                     "Missing pricing info for model %s on %s (user %s).",
@@ -114,7 +114,7 @@ def generate_monthly_invoices():
                             usage_date = usage['usage_date']
                             model = usage['model']
                             tokens = usage['total_tokens']
-                            rate = BillingDbCore.get_price_per_token(model_name=model, effective_date=usage_date)
+                            rate = BillingDbCore.get_price_per_token(model_name=model, year=usage_date.year, month=usage_date.month)
                             if rate is None:
                                 logger.error(
                                     "Missing pricing info for PI model %s on %s (user %s).",

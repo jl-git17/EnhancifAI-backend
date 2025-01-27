@@ -20,27 +20,20 @@ class BillingDbCore:
         Returns amounts in dollars as floats rounded to two decimal places.
         """
         sql = schemafy("""
-            WITH price_history AS (
-                SELECT 
-                    model_name,
-                    price_per_token,
-                    effective_date,
-                    LEAD(effective_date, 1, '9999-12-31') OVER (PARTITION BY model_name ORDER BY effective_date) AS next_effective_date
-                FROM enhancifai.model_price_history
-            )
             SELECT 
                 TO_CHAR(rl.log_timestamp, 'YYYY-MM-DD"T"HH24:MI:SS"Z"') AS execution_time,
                 rl.filename AS uploaded_file_name,
                 r.source_type AS type,
                 rl.num_rows_processed AS number_of_rows,
                 rl.num_tokens AS total_tokens,
-                ph.price_per_token AS cost_per_token,
-                (rl.num_tokens * ph.price_per_token) AS total_cost
+                mp.price AS cost_per_token,
+                (rl.num_tokens * mp.price) AS total_cost
             FROM enhancifai.run_logs rl
             JOIN enhancifai.runs r ON rl.run_id = r.id
-            JOIN price_history ph ON rl.engine_model = ph.model_name
-                AND rl.log_timestamp::date >= ph.effective_date
-                AND rl.log_timestamp::date < ph.next_effective_date
+            JOIN enhancifai.model_pricing mp
+                ON mp.model_name = rl.engine_model
+                AND mp.year = EXTRACT(YEAR FROM rl.log_timestamp)
+                AND mp.month = EXTRACT(MONTH FROM rl.log_timestamp)
             WHERE r.user_id = %s
             ORDER BY rl.log_timestamp DESC;
         """)
@@ -63,22 +56,15 @@ class BillingDbCore:
         Returns amounts in dollars as floats rounded to two decimal places.
         """
         sql = schemafy("""
-            WITH price_history AS (
-                SELECT 
-                    model_name,
-                    price_per_token,
-                    effective_date,
-                    LEAD(effective_date, 1, '9999-12-31') OVER (PARTITION BY model_name ORDER BY effective_date) AS next_effective_date
-                FROM enhancifai.model_price_history
-            )
             SELECT 
                 TO_CHAR(DATE_TRUNC('month', NOW()), 'YYYY-MM') AS billing_month,
-                SUM(rl.num_tokens * ph.price_per_token) AS total_monthly_cost
+                SUM(rl.num_tokens * mp.price) AS total_monthly_cost
             FROM enhancifai.run_logs rl
             JOIN enhancifai.runs r ON rl.run_id = r.id
-            JOIN price_history ph ON rl.engine_model = ph.model_name
-                AND rl.log_timestamp::date >= ph.effective_date
-                AND rl.log_timestamp::date < ph.next_effective_date
+            JOIN enhancifai.model_pricing mp
+                ON mp.model_name = rl.engine_model
+                AND mp.year = EXTRACT(YEAR FROM rl.log_timestamp)
+                AND mp.month = EXTRACT(MONTH FROM rl.log_timestamp)
             WHERE r.user_id = %s AND DATE_TRUNC('month', rl.log_timestamp) = DATE_TRUNC('month', NOW())
             GROUP BY billing_month;
         """)
@@ -116,15 +102,7 @@ class BillingDbCore:
             date_filter_pil = ""
 
         sql = schemafy(f"""
-            WITH price_history AS (
-                SELECT 
-                    model_name,
-                    price_per_token,
-                    effective_date,
-                    LEAD(effective_date, 1, '9999-12-31') OVER (PARTITION BY model_name ORDER BY effective_date) AS next_effective_date
-                FROM enhancifai.model_price_history
-            ),
-            combined_logs AS (
+            WITH combined_logs AS (
                 SELECT rl.engine_model, rl.num_tokens, rl.log_timestamp
                 FROM enhancifai.run_logs rl
                 JOIN enhancifai.runs r ON rl.run_id = r.id
@@ -139,13 +117,14 @@ class BillingDbCore:
             SELECT 
                 cl.engine_model AS ai_model_name,
                 SUM(cl.num_tokens) AS tokens_used,
-                ph.price_per_token AS price_per_token, 
-                SUM(cl.num_tokens * ph.price_per_token / 1000.0) AS total_cost
+                mp.price AS price_per_token, 
+                SUM(cl.num_tokens * mp.price / 1000.0) AS total_cost
             FROM combined_logs cl
-            JOIN price_history ph ON cl.engine_model = ph.model_name
-                AND cl.log_timestamp::date >= ph.effective_date
-                AND cl.log_timestamp::date < ph.next_effective_date
-            GROUP BY ai_model_name, ph.price_per_token;
+            JOIN enhancifai.model_pricing mp
+                ON cl.engine_model = mp.model_name
+                AND mp.year = EXTRACT(YEAR FROM cl.log_timestamp)
+                AND mp.month = EXTRACT(MONTH FROM cl.log_timestamp)
+            GROUP BY ai_model_name, mp.price;
         """)
 
         # Adjust data tuple based on whether month and year are provided
@@ -370,11 +349,10 @@ class BillingDbCore:
             sql = schemafy("""
                 SELECT
                     model_name,
-                    price_per_token,
-                    TO_CHAR(effective_date, 'YYYY-MM-DD') AS effective_date
-                FROM enhancifai.model_price_history
-                WHERE EXTRACT(MONTH FROM effective_date) = %s
-                AND EXTRACT(YEAR FROM effective_date) = %s
+                    price
+                FROM enhancifai.model_pricing
+                WHERE month = %s
+                AND year = %s
                 ORDER BY model_name;
             """)
             data = (month, year)
@@ -383,10 +361,11 @@ class BillingDbCore:
             sql = schemafy("""
                 SELECT DISTINCT ON (model_name)
                     model_name,
-                    price_per_token,
-                    TO_CHAR(effective_date, 'YYYY-MM-DD') AS effective_date
-                FROM enhancifai.model_price_history
-                ORDER BY model_name, effective_date DESC;
+                    price,
+                    year,
+                    month
+                FROM enhancifai.model_pricing
+                ORDER BY model_name, (year * 100 + month) DESC;
             """)
             data = ()
 
@@ -401,11 +380,11 @@ class BillingDbCore:
         try:
             sql = schemafy("""
                 SELECT
-                    TO_CHAR(effective_date, 'YYYY-MM') AS year_month,
+                    (year || '-' || LPAD(month::text, 2, '0')) AS year_month,
                     model_name,
-                    price_per_token
-                FROM enhancifai.model_price_history
-                ORDER BY effective_date ASC, model_name DESC;
+                    price AS price_per_token
+                FROM enhancifai.model_pricing
+                ORDER BY year ASC, month ASC, model_name DESC;
             """)
             rate_history = read_db.do('select', sql=sql, data=[])
             
@@ -457,31 +436,29 @@ class BillingDbCore:
         return record
 
     @classmethod
-    def get_price_per_token(cls, model_name: str, effective_date: datetime) -> Optional[Decimal]:
+    def get_price_per_token(cls, model_name: str, year: int, month: int) -> Optional[Decimal]:
         """
-        Retrieve the price per token for a specific model effective on a given date.
+        Retrieve the price per token for a specific model for a given month and year.
 
         Args:
             model_name (str): The name of the AI model (e.g., 'standard', 'pi').
-            effective_date (datetime): The date for which to fetch the rate.
+            year (int): The year for which to fetch the rate.
+            month (int): The month for which to fetch the rate.
 
         Returns:
             Optional[Decimal]: The price per token if found, else None.
         """
         sql = schemafy("""
-            SELECT price_per_token
-            FROM enhancifai.model_price_history
+            SELECT price
+            FROM enhancifai.model_pricing
             WHERE model_name = %s
-            AND effective_date <= %s
-            ORDER BY effective_date DESC
+              AND year = %s
+              AND month = %s
             LIMIT 1;
         """)
-        data = (model_name, effective_date)
+        data = (model_name, year, month)
         result = read_db.do('select_one', sql=sql, data=data)
-
-        # Return None if no price is found for the given date and model
-        return Decimal(result['price_per_token']) if result and result['price_per_token'] else None
-
+        return Decimal(result['price']) if result and result['price'] else None
 
     @classmethod
     def has_any_invoice(cls, user_id):
