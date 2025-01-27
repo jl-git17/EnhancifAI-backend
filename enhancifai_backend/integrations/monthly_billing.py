@@ -154,6 +154,11 @@ def generate_monthly_invoices():
                             if invoice:
                                 logger.info("Stored invoice %s for user %s: $%.2f",
                                             invoice['invoice_id'], user_id, invoice['amount'] / 100)
+                        else:
+                            logger.info("No tokens used by user %s for period %s to %s.",
+                                        user_id, current_start.strftime('%Y-%m-%d'), current_end.strftime('%Y-%m-%d'))
+                            skipThisUser = True
+                            break
 
 
                     current_start = add_one_month(current_start)
