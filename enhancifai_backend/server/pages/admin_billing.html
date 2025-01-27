@@ -243,6 +243,12 @@
       const currentYear = currentDate.getFullYear();
       const currentMonth = currentDate.getMonth() + 1; // 1-based
 
+      const defaultModels = [
+        { model_name: 'Model A', price: 0, isDefault: true },
+        { model_name: 'Model B', price: 0, isDefault: true },
+        { model_name: 'Model C', price: 0, isDefault: true }
+      ];
+
       function initializeTooltips() {
         // If using Bootstrap 5 tooltips, enable them here:
         let tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -334,12 +340,6 @@
       // =======================
       // 2. LOAD MODEL PRICES (current month)
       // =======================
-      const defaultModels = [
-        { model_name: 'Model A', price: 0 },
-        { model_name: 'Model B', price: 0 },
-        { model_name: 'Model C', price: 0 }
-      ];
-
       function loadModelPrices(year = currentYear, month = currentMonth) {
         console.log(`Loading model prices for ${year}-${month}...`);
         fetch(`/admin/billing/model-prices/${year}/${month}`, {
@@ -355,7 +355,8 @@
                 });
             } else {
                 prices.forEach(price => {
-                    addModelPrice(price, modelPricesContainer, false);
+                    const isDefault = defaultModels.some(defaultModel => defaultModel.model_name === price.model_name);
+                    addModelPrice(price, modelPricesContainer, !isDefault);
                 });
                 // Ensure at least 3 models
                 while (modelPricesContainer.children.length < 3) {
@@ -384,6 +385,9 @@
         inputModel.className = 'form-control model-name';
         inputModel.value = model.model_name;
         if (readonlyCurrentMonth) inputModel.readOnly = true;
+        if (!removable && model.isDefault) {
+            inputModel.readOnly = true;
+        }
         formGroupModel.appendChild(labelModel);
         formGroupModel.appendChild(inputModel);
 
@@ -408,19 +412,40 @@
             removeBtn.type = 'button';
             removeBtn.className = 'btn btn-danger btn-remove';
             removeBtn.innerHTML = '<i class="bi bi-trash"></i> Remove';
+            removeBtn.setAttribute('data-bs-toggle', 'tooltip');
+            removeBtn.setAttribute('title', 'Remove this model price');
             removeBtn.addEventListener('click', () => {
                 container.removeChild(entryDiv);
+                enforceMinimumModels();
             });
             entryDiv.appendChild(removeBtn);
         } else {
             const removeBtn = document.createElement('button');
             removeBtn.type = 'button';
             removeBtn.className = 'btn btn-danger btn-remove disabled';
+            removeBtn.setAttribute('data-bs-toggle', 'tooltip');
+            removeBtn.setAttribute('title', 'Default models cannot be removed');
             removeBtn.innerHTML = '<i class="bi bi-trash"></i> Remove';
             entryDiv.appendChild(removeBtn);
         }
 
+        // Highlight default models
+        if (model.isDefault) {
+            entryDiv.style.borderColor = 'var(--primary-blue)';
+            entryDiv.style.backgroundColor = 'var(--primary-light-blue)';
+        }
+
         container.appendChild(entryDiv);
+      }
+
+      function enforceMinimumModels() {
+        const currentEntries = modelPricesContainer.children.length;
+        if (currentEntries < 3) {
+            const modelsToAdd = 3 - currentEntries;
+            for (let i = 0; i < modelsToAdd; i++) {
+                addModelPrice({ model_name: '', price: 0 }, modelPricesContainer, true);
+            }
+        }
       }
 
       // =======================
@@ -486,7 +511,7 @@
       const addModelPriceBtn = document.getElementById('add-model-price');
       if (addModelPriceBtn) {
         addModelPriceBtn.addEventListener('click', () => {
-            addModelPrice({}, modelPricesContainer, false);
+            addModelPrice({}, modelPricesContainer, true);
         });
       }
 
