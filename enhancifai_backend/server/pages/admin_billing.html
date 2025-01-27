@@ -183,15 +183,17 @@
           <h3 id="current-month-label">Prices for ...</h3>
 
           <form id="billing-form">
-            <div id="model-prices-container"></div>
-            <button type="button" class="btn btn-secondary" id="add-model-price">
-              <i class="bi bi-plus"></i> Add New Model Price
+            <div id="model-prices-container">
+                <!-- Existing model price entries will be populated here -->
+            </div>
+            <button type="button" id="add-model-price" class="btn btn-secondary mb-3">
+                <i class="bi bi-plus-circle"></i> Add Model Price
             </button>
-            <button type="submit" class="btn btn-primary">Save Current Month Prices</button>
+            <button type="submit" class="btn btn-primary">Save Prices</button>
           </form>
 
           <div id="billing-success-message" class="alert alert-success mt-2">
-            Billing settings saved successfully!
+              Prices updated successfully.
           </div>
         </div>
 
@@ -201,7 +203,7 @@
         <div>
           <h4>View Historical Prices</h4>
           <select id="history-month-picker" class="form-select" style="max-width: 300px;">
-            <!-- Populated dynamically -->
+
           </select>
           <div id="history-model-prices-container" class="mt-3"></div>
         </div>
@@ -253,25 +255,14 @@
         fetch('/admin/billing/model-prices/earliest', {
           headers: { 'Cache-Control': 'no-cache' }
         })
-          .then(response => {
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-          })
-          .then(data => {
-            const earliestStr = data.earliest_month; // e.g. "2022-06-01"
-            if (!earliestStr) {
-              // No historical data
-              historyMonthPicker.innerHTML = `<option disabled>No historical data available</option>`;
-              return;
-            }
-            const earliest = new Date(earliestStr);
-            populateMonthPicker(earliest, new Date());
-          })
-          .catch(error => {
+        .then(response => response.json())
+        .then(data => {
+            const earliestDate = new Date(data.earliest_month);
+            populateMonthPicker(earliestDate, currentDate);
+        })
+        .catch(error => {
             console.error('Error fetching earliest month:', error);
-          });
+        });
       }
 
       function populateMonthPicker(earliestDate, latestDate) {
@@ -280,21 +271,15 @@
         iterator.setDate(1); // ensure day is 1
 
         while (iterator <= latestDate) {
-          const y = iterator.getFullYear();
-          const m = iterator.getMonth() + 1;
-          const displayStr = `${iterator.toLocaleString('default', { month: 'long' })} ${y}`;
-          const valueStr = `${y}-${String(m).padStart(2, '0')}`;
-
-          const opt = document.createElement('option');
-          opt.value = valueStr;
-          opt.textContent = displayStr;
-          historyMonthPicker.appendChild(opt);
-
-          // Move to next month
-          iterator.setMonth(iterator.getMonth() + 1);
+            const option = document.createElement('option');
+            option.value = `${iterator.getFullYear()}-${iterator.getMonth() + 1}`;
+            option.textContent = iterator.toLocaleString('default', { month: 'long', year: 'numeric' });
+            historyMonthPicker.appendChild(option);
+            iterator.setMonth(iterator.getMonth() + 1);
         }
         // By default, select the last option (this month)
         historyMonthPicker.selectedIndex = historyMonthPicker.options.length - 1;
+        fetchHistoryModelPrices(currentYear, currentMonth);
       }
 
       // On selecting a month in History, fetch that month’s model prices
@@ -309,28 +294,35 @@
         fetch(`/admin/billing/model-prices/${year}/${month}`, {
           headers: { 'Cache-Control': 'no-cache' }
         })
-          .then(response => {
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
+        .then(response => response.json())
+        .then(data => {
+            const prices = data.model_prices;
+            if (prices.length === 0) {
+                historyModelPricesContainer.innerHTML = '<div class="alert alert-warning">No prices found for this month.</div>';
+                return;
             }
-            return response.json();
-          })
-          .then(data => {
-            historyModelPricesContainer.innerHTML = '';
-            const prices = data.model_prices || [];
-            if (prices.length > 0) {
-              prices.forEach(price => {
-                addModelPrice(price, historyModelPricesContainer, true);
-              });
-            } else {
-              historyModelPricesContainer.innerHTML = '<div class="alert alert-warning">No prices found for this month.</div>';
-            }
-            initializeTooltips();
-          })
-          .catch(error => {
-            console.error('Error loading history model prices:', error);
-            historyModelPricesContainer.innerHTML = '<div class="alert alert-danger">Error loading history model prices.</div>';
-          });
+
+            let table = `<table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Model Name</th>
+                                    <th>Price per Token</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+            prices.forEach(price => {
+                table += `<tr>
+                            <td>${price.model_name}</td>
+                            <td>$${price.price.toFixed(4)}</td>
+                          </tr>`;
+            });
+            table += `</tbody></table>`;
+            historyModelPricesContainer.innerHTML = table;
+        })
+        .catch(error => {
+            console.error('Error fetching historical model prices:', error);
+            historyModelPricesContainer.innerHTML = '<div class="alert alert-danger">Failed to load historical prices.</div>';
+        });
       }
 
       // =======================
@@ -338,134 +330,73 @@
       // =======================
       function loadModelPrices(year = currentYear, month = currentMonth) {
         console.log(`Loading model prices for ${year}-${month}...`);
-        modelPricesContainer.innerHTML = '<div class="alert alert-info">Loading...</div>';
-
         fetch(`/admin/billing/model-prices/${year}/${month}`, {
           headers: { 'Cache-Control': 'no-cache' }
         })
-          .then(response => {
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-          })
-          .then(data => {
-            console.log('Model Prices for month:', data);
+        .then(response => response.json())
+        .then(data => {
+            const prices = data.model_prices;
             modelPricesContainer.innerHTML = '';
-
-            // We want to ensure that if DB does not have a specific model, 
-            // we still show it at 0. Common known models:
-            const knownModels = ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"];
-            const existingPrices = data.model_prices || [];
-
-            // For each known model, either find or default
-            knownModels.forEach(modelName => {
-              const match = existingPrices.find(p => p.model_name === modelName);
-              if (match) {
-                addModelPrice(match, modelPricesContainer, false);
-              } else {
-                addModelPrice({ model_name: modelName, price_per_token: 0 }, modelPricesContainer, false);
-              }
-            });
-
-            // Also display any additional unknown models
-            existingPrices.forEach(dbPrice => {
-              if (!knownModels.includes(dbPrice.model_name)) {
-                addModelPrice(dbPrice, modelPricesContainer, false);
-              }
-            });
-
-            initializeTooltips();
-          })
-          .catch(error => {
+            if (prices.length === 0) {
+                addModelPrice({}, modelPricesContainer, false);
+            } else {
+                prices.forEach(price => {
+                    addModelPrice(price, modelPricesContainer, false);
+                });
+            }
+        })
+        .catch(error => {
             console.error('Error loading model prices:', error);
-            modelPricesContainer.innerHTML = '<div class="alert alert-danger">Error loading model prices.</div>';
-          });
+        });
       }
 
       // =======================
       // 3. ADD/REMOVE PRICE ENTRY
       // =======================
-      function addModelPrice(model = { model_name: '', price_per_token: '' }, container, readonly = false) {
-        if (!container) container = modelPricesContainer;
+      function addModelPrice(model = { model_name: '', price: '' }, container, readonly = false) {
+        const entryDiv = document.createElement('div');
+        entryDiv.className = 'billing-entry';
 
-        const billingEntry = document.createElement('div');
-        billingEntry.classList.add('billing-entry', 'mb-3', 'p-2', 'border', 'rounded');
+        const formGroupModel = document.createElement('div');
+        formGroupModel.className = 'form-group';
+        const labelModel = document.createElement('label');
+        labelModel.textContent = 'Model Name:';
+        const inputModel = document.createElement('input');
+        inputModel.type = 'text';
+        inputModel.className = 'form-control model-name';
+        inputModel.value = model.model_name;
+        if (readonly) inputModel.readOnly = true;
+        formGroupModel.appendChild(labelModel);
+        formGroupModel.appendChild(inputModel);
 
-        // Model Name
-        const modelNameGroup = document.createElement('div');
-        modelNameGroup.classList.add('form-group', 'mb-2');
-        
-        const modelNameLabel = document.createElement('label');
-        modelNameLabel.textContent = 'Model Name:';
+        const formGroupPrice = document.createElement('div');
+        formGroupPrice.className = 'form-group';
+        const labelPrice = document.createElement('label');
+        labelPrice.textContent = 'Price per Token ($):';
+        const inputPrice = document.createElement('input');
+        inputPrice.type = 'number';
+        inputPrice.step = '0.0001';
+        inputPrice.className = 'form-control price-per-token';
+        inputPrice.value = model.price;
+        if (readonly) inputPrice.readOnly = true;
+        formGroupPrice.appendChild(labelPrice);
+        formGroupPrice.appendChild(inputPrice);
 
-        const modelNameSelect = document.createElement('select');
-        modelNameSelect.classList.add('form-control');
-        modelNameSelect.name = 'model_name';
+        entryDiv.appendChild(formGroupModel);
+        entryDiv.appendChild(formGroupPrice);
 
-        const options = ["gpt-4o", "gpt-4o-mini", "gpt-3.5-turbo"];
-        options.forEach(opt => {
-          const optionEl = document.createElement('option');
-          optionEl.value = opt;
-          optionEl.textContent = opt;
-          if (model.model_name === opt) {
-            optionEl.selected = true;
-          }
-          modelNameSelect.appendChild(optionEl);
-        });
-
-        if (readonly) {
-          modelNameSelect.disabled = true;
-        }
-
-        modelNameGroup.appendChild(modelNameLabel);
-        modelNameGroup.appendChild(modelNameSelect);
-
-        // Price
-        const priceGroup = document.createElement('div');
-        priceGroup.classList.add('form-group', 'mb-2');
-
-        const priceLabel = document.createElement('label');
-        priceLabel.textContent = 'Price per 1,000 tokens: ';
-
-        const tooltipIcon = document.createElement('i');
-        tooltipIcon.classList.add('bi', 'bi-question-circle');
-        tooltipIcon.setAttribute('data-bs-toggle', 'tooltip');
-        tooltipIcon.setAttribute('title', 'Enter the price per 1,000 tokens (the server will store price_per_token = this / 1000).');
-        priceLabel.appendChild(tooltipIcon);
-
-        const priceInput = document.createElement('input');
-        priceInput.type = 'number';
-        priceInput.step = 'any';
-        priceInput.classList.add('form-control');
-        priceInput.name = 'price_per_token';
-
-        // DB stores e.g. 0.001 if it's $1 per 1,000 tokens
-        const dbValue = parseFloat(model.price_per_token) || 0; 
-        const displayValue = dbValue * 1000; 
-        priceInput.value = displayValue.toFixed(4);
-
-        if (readonly) {
-          priceInput.disabled = true;
-        }
-
-        priceGroup.appendChild(priceLabel);
-        priceGroup.appendChild(priceInput);
-
-        billingEntry.appendChild(modelNameGroup);
-        billingEntry.appendChild(priceGroup);
-
-        // Remove button if not readonly
         if (!readonly) {
-          const removeBtn = document.createElement('button');
-          removeBtn.type = 'button';
-          removeBtn.classList.add('btn', 'btn-danger', 'btn-sm', 'mt-2');
-          removeBtn.innerHTML = '<i class="bi bi-trash"></i> Remove';
-          removeBtn.onclick = () => billingEntry.remove();
-          billingEntry.appendChild(removeBtn);
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-danger btn-remove';
+            removeBtn.innerHTML = '<i class="bi bi-trash"></i> Remove';
+            removeBtn.addEventListener('click', () => {
+                container.removeChild(entryDiv);
+            });
+            entryDiv.appendChild(removeBtn);
         }
 
-        container.appendChild(billingEntry);
+        container.appendChild(entryDiv);
       }
 
       // =======================
@@ -473,55 +404,55 @@
       // =======================
       billingForm.addEventListener('submit', function(event) {
         event.preventDefault();
-        billingSuccessMessage.style.display = 'none';
-
-        const data = [];
-        const billingEntries = document.querySelectorAll('.billing-entry');
-        billingEntries.forEach(entry => {
-          const modelNameSelect = entry.querySelector('select[name="model_name"]');
-          const priceInput = entry.querySelector('input[name="price_per_token"]');
-
-          const model_name = modelNameSelect.value.trim();
-          const price_per_1000 = parseFloat(priceInput.value);
-          if (isNaN(price_per_1000)) {
-            alert('Please enter a valid numeric value for price.');
-            return;
-          }
-          data.push({
-            model_name,
-            price_per_token: price_per_1000  // server will handle dividing by 1000
-          });
-        });
-
-        fetch('/admin/billing/model-prices', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cache-Control': 'no-cache'
-          },
-          body: JSON.stringify({
+        const entries = Array.from(modelPricesContainer.getElementsByClassName('billing-entry'));
+        const payload = {
             year: currentYear,
             month: currentMonth,
-            prices: data
-          })
+            prices: []
+        };
+
+        let valid = true;
+        entries.forEach(entry => {
+            const modelName = entry.querySelector('.model-name').value.trim();
+            const price = parseFloat(entry.querySelector('.price-per-token').value);
+            if (!modelName || isNaN(price) || price < 0) {
+                valid = false;
+            }
+            payload.prices.push({
+                model_name: modelName,
+                price_per_token: price
+            });
+        });
+
+        if (!valid) {
+            alert('Please ensure all model names are filled and prices are valid.');
+            return;
+        }
+
+        fetch('/admin/billing/model-prices', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Cache-Control': 'no-cache'
+            },
+            body: JSON.stringify(payload)
         })
-        .then(response => {
-          if (response.ok) {
-            return response.json();
-          }
-          throw new Error('Failed to save prices.');
-        })
-        .then(resp => {
-          console.log('Save response:', resp);
-          billingSuccessMessage.style.display = 'block';
-          loadModelPrices(currentYear, currentMonth);
-          setTimeout(() => {
-            billingSuccessMessage.style.display = 'none';
-          }, 3000);
+        .then(response => response.json())
+        .then(data => {
+            if (data.message === "Prices updated successfully") {
+                billingSuccessMessage.style.display = 'block';
+                setTimeout(() => {
+                    billingSuccessMessage.style.display = 'none';
+                }, 3000);
+                loadModelPrices();
+                loadEarliestMonth();
+            } else {
+                alert('Failed to update prices.');
+            }
         })
         .catch(error => {
-          console.error('Error updating billing settings:', error);
-          alert('Error updating billing settings. Please try again.');
+            console.error('Error updating model prices:', error);
+            alert('An error occurred while updating prices.');
         });
       });
 
@@ -531,7 +462,7 @@
       const addModelPriceBtn = document.getElementById('add-model-price');
       if (addModelPriceBtn) {
         addModelPriceBtn.addEventListener('click', () => {
-          addModelPrice({ model_name: "", price_per_token: 0 }, modelPricesContainer, false);
+            addModelPrice({}, modelPricesContainer, false);
         });
       }
 
@@ -539,9 +470,9 @@
       // INITIALIZE ON PAGE LOAD
       // =======================
       document.addEventListener('DOMContentLoaded', () => {
-        loadEarliestMonth();
-        loadModelPrices(currentYear, currentMonth);
         initializeTooltips();
+        loadModelPrices();
+        loadEarliestMonth();
       });
     </script>
 
