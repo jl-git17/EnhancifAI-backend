@@ -164,6 +164,12 @@
             transform: translateX(-50%);
             z-index: 9999;
         }
+
+        /* Disable remove button for default models */
+        .btn-remove.disabled {
+            pointer-events: none;
+            opacity: 0.5;
+        }
     </style>
 </head>
 
@@ -328,6 +334,12 @@
       // =======================
       // 2. LOAD MODEL PRICES (current month)
       // =======================
+      const defaultModels = [
+        { model_name: 'Model A', price: 0 },
+        { model_name: 'Model B', price: 0 },
+        { model_name: 'Model C', price: 0 }
+      ];
+
       function loadModelPrices(year = currentYear, month = currentMonth) {
         console.log(`Loading model prices for ${year}-${month}...`);
         fetch(`/admin/billing/model-prices/${year}/${month}`, {
@@ -338,11 +350,17 @@
             const prices = data.model_prices;
             modelPricesContainer.innerHTML = '';
             if (prices.length === 0) {
-                addModelPrice({}, modelPricesContainer, false);
+                defaultModels.forEach(model => {
+                    addModelPrice(model, modelPricesContainer, false);
+                });
             } else {
                 prices.forEach(price => {
                     addModelPrice(price, modelPricesContainer, false);
                 });
+                // Ensure at least 3 models
+                while (modelPricesContainer.children.length < 3) {
+                    addModelPrice({ model_name: '', price: 0 }, modelPricesContainer, false);
+                }
             }
         })
         .catch(error => {
@@ -353,7 +371,7 @@
       // =======================
       // 3. ADD/REMOVE PRICE ENTRY
       // =======================
-      function addModelPrice(model = { model_name: '', price: '' }, container, readonly = false) {
+      function addModelPrice(model = { model_name: '', price: 0 }, container, removable = true) {
         const entryDiv = document.createElement('div');
         entryDiv.className = 'billing-entry';
 
@@ -365,7 +383,7 @@
         inputModel.type = 'text';
         inputModel.className = 'form-control model-name';
         inputModel.value = model.model_name;
-        if (readonly) inputModel.readOnly = true;
+        if (readonlyCurrentMonth) inputModel.readOnly = true;
         formGroupModel.appendChild(labelModel);
         formGroupModel.appendChild(inputModel);
 
@@ -378,14 +396,14 @@
         inputPrice.step = '0.0001';
         inputPrice.className = 'form-control price-per-token';
         inputPrice.value = model.price;
-        if (readonly) inputPrice.readOnly = true;
+        if (readonlyCurrentMonth) inputPrice.readOnly = true;
         formGroupPrice.appendChild(labelPrice);
         formGroupPrice.appendChild(inputPrice);
 
         entryDiv.appendChild(formGroupModel);
         entryDiv.appendChild(formGroupPrice);
 
-        if (!readonly) {
+        if (removable) {
             const removeBtn = document.createElement('button');
             removeBtn.type = 'button';
             removeBtn.className = 'btn btn-danger btn-remove';
@@ -393,6 +411,12 @@
             removeBtn.addEventListener('click', () => {
                 container.removeChild(entryDiv);
             });
+            entryDiv.appendChild(removeBtn);
+        } else {
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.className = 'btn btn-danger btn-remove disabled';
+            removeBtn.innerHTML = '<i class="bi bi-trash"></i> Remove';
             entryDiv.appendChild(removeBtn);
         }
 
