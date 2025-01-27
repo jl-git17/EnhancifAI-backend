@@ -313,14 +313,13 @@ async def upsert_model_prices(payload: dict = Body(...), credentials: HTTPBasicC
     prices = payload.get("prices", [])
     if not (year and month and prices):
         raise HTTPException(status_code=400, detail="Invalid request data.")
-    effective_date = datetime(year, month, 1)
     for item in prices:
-        # Convert from per 1,000 tokens if needed
         final_price = float(item["price_per_token"]) / 1000.0
         ModelPricesDbCore.update_model_price(
             model_name=item["model_name"],
-            price_per_token=final_price,
-            effective_date=effective_date
+            year=year,
+            month=month,
+            price=final_price
         )
     return {"message": "Prices updated successfully"}
 

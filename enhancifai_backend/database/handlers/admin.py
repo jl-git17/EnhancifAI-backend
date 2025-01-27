@@ -89,43 +89,39 @@ class ModelPricesDbCore:
     @classmethod
     def get_all_model_prices(cls):
         sql = schemafy("""
-            SELECT model_name, price_per_token, effective_date
-            FROM enhancifai.model_price_history
-            WHERE effective_date = (
-                SELECT MAX(effective_date)
-                FROM enhancifai.model_price_history AS sub
-                WHERE sub.model_name = enhancifai.model_price_history.model_name
-            );
+            SELECT model_name, month, year, price
+            FROM enhancifai.model_pricing
+            ORDER BY model_name, year, month;
         """)
         return read_db.do('select', sql=sql)
 
     @classmethod
-    def update_model_price(cls, model_name, price_per_token, effective_date):
+    def update_model_price(cls, model_name, year, month, price):
         """
         Update model price and insert into history.
         """
-        # Insert new price into model_price_history with effective_date set to first of the month
         sql = schemafy("""
-            INSERT INTO enhancifai.model_price_history (model_name, price_per_token, effective_date)
-            VALUES (%s, %s, DATE_TRUNC('month', %s)::date)
-            ON CONFLICT (model_name, effective_date) DO UPDATE
-            SET price_per_token = EXCLUDED.price_per_token;
+            INSERT INTO enhancifai.model_pricing (model_name, year, month, price)
+            VALUES (%s, %s, %s, %s)
+            ON CONFLICT (model_name, year, month)
+            DO UPDATE SET price = EXCLUDED.price;
         """)
-        data = (model_name, price_per_token, effective_date)
-        write_db.do('execute', sql=sql, data=data)
+        write_db.do('execute', sql=sql, data=(model_name, year, month, price))
 
     @classmethod
     def get_earliest_effective_month(cls):
         """
-        Return the earliest month (YYYY-MM-01) in the model_price_history.
+        Return the earliest month (YYYY-MM-01) in the model_pricing.
         If none, return None.
         """
         sql = schemafy("""
-            SELECT MIN(effective_date) as earliest_date
-            FROM enhancifai.model_price_history;
+            SELECT MIN(year) AS min_year, MIN(month) AS min_month
+            FROM enhancifai.model_pricing;
         """)
         result = read_db.do('select_one', sql=sql)
-        return result['earliest_date'] if result and result['earliest_date'] else None
+        if result and result['min_year'] and result['min_month']:
+            return f"{result['min_year']}-{result['min_month']:02d}-01"
+        return None
 
     @classmethod
     def get_model_prices_for_month(cls, year, month):
@@ -140,13 +136,10 @@ class ModelPricesDbCore:
         latest price <= year-month.
         For simplicity, let's just fetch the rows with matching year-month.
         """
-        start_of_month = f"{year}-{month:02d}-01"
-        # Postgres trick to add 1 month and subtract 1 day:
-        # or use date_trunc + interval
-        sql = schemafy(f"""
-            SELECT model_name, price_per_token, effective_date
-            FROM enhancifai.model_price_history
-            WHERE effective_date = DATE_TRUNC('month', DATE '{start_of_month}')
+        sql = schemafy("""
+            SELECT model_name, price
+            FROM enhancifai.model_pricing
+            WHERE year = %s AND month = %s
             ORDER BY model_name;
         """)
-        return read_db.do('select', sql=sql)
+        return read_db.do('select', sql=sql, data=(year, month,))
