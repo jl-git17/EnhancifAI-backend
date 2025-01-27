@@ -179,6 +179,13 @@
         #history-model-prices-container table tr:hover {
             background-color: var(--primary-light-blue);
         }
+
+        .form-group .price-per-token::after {
+            content: ' per 1,000 tokens';
+            margin-left: 5px;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 
@@ -340,7 +347,7 @@
             prices.forEach(price => {
                 table += `<tr>
                             <td>${price.model_name}</td>
-                            <td>$${price.price.toFixed(4)}</td>
+                            <td>$${(price.price * 1000).toFixed(4)}</td> <!-- Convert price per token to price per 1,000 tokens -->
                           </tr>`;
             });
             table += `</tbody></table>`;
@@ -424,7 +431,7 @@
         inputPrice.type = 'number';
         inputPrice.step = '0.0001';
         inputPrice.className = 'form-control price-per-token';
-        inputPrice.value = model.price;
+        inputPrice.value = (model.price * 1000).toFixed(4); // Convert price per token to price per 1,000 tokens
         formGroupPrice.appendChild(labelPrice);
         formGroupPrice.appendChild(inputPrice);
 
@@ -470,7 +477,7 @@
         let valid = true;
         entries.forEach(entry => {
             const modelName = entry.querySelector('.model-name').value.trim();
-            const price = parseFloat(entry.querySelector('.price-per-token').value);
+            const price = parseFloat(entry.querySelector('.price-per-token').value) / 1000; // Convert price per 1,000 tokens to price per token
             if (!modelName || isNaN(price) || price < 0) {
                 valid = false;
             }
