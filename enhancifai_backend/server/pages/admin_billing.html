@@ -170,6 +170,15 @@
             pointer-events: none;
             opacity: 0.5;
         }
+
+        /* Highlight that historical data is view-only */
+        #history-model-prices-container table {
+            cursor: default;
+        }
+        /* Remove any hover effects that imply editability */
+        #history-model-prices-container table tr:hover {
+            background-color: var(--primary-light-blue);
+        }
     </style>
 </head>
 
@@ -211,7 +220,9 @@
           <select id="history-month-picker" class="form-select" style="max-width: 300px;">
 
           </select>
-          <div id="history-model-prices-container" class="mt-3"></div>
+          <div id="history-model-prices-container" class="mt-3">
+            <!-- Ensuring the table is read-only by removing any edit options -->
+          </div>
         </div>
     </div> <!-- end container -->
 
@@ -353,16 +364,15 @@
                 defaultModels.forEach(model => {
                     addModelPrice(model, modelPricesContainer, false);
                 });
+                // Inform the user that default prices are being used
+                modelPricesContainer.insertAdjacentHTML('beforebegin', '<div class="alert alert-info">No existing prices found for this month. Default prices have been set to $0.</div>');
             } else {
                 prices.forEach(price => {
                     const isDefault = defaultModels.some(defaultModel => defaultModel.model_name === price.model_name);
-                    addModelPrice(price, modelPricesContainer, !isDefault);
+                    addModelPrice(price, modelPricesContainer, !isDefault); // Allow removal only if not default
                 });
-                // Ensure at least 3 models
-                while (modelPricesContainer.children.length < 3) {
-                    addModelPrice({ model_name: '', price: 0 }, modelPricesContainer, false);
-                }
             }
+            initializeTooltips(); // Initialize tooltips after adding entries
         })
         .catch(error => {
             console.error('Error loading model prices:', error);
@@ -384,10 +394,7 @@
         inputModel.type = 'text';
         inputModel.className = 'form-control model-name';
         inputModel.value = model.model_name;
-        if (readonlyCurrentMonth) inputModel.readOnly = true;
-        if (!removable && model.isDefault) {
-            inputModel.readOnly = true;
-        }
+        if (model.isDefault) inputModel.readOnly = true;
         formGroupModel.appendChild(labelModel);
         formGroupModel.appendChild(inputModel);
 
@@ -400,52 +407,34 @@
         inputPrice.step = '0.0001';
         inputPrice.className = 'form-control price-per-token';
         inputPrice.value = model.price;
-        if (readonlyCurrentMonth) inputPrice.readOnly = true;
         formGroupPrice.appendChild(labelPrice);
         formGroupPrice.appendChild(inputPrice);
 
         entryDiv.appendChild(formGroupModel);
         entryDiv.appendChild(formGroupPrice);
 
-        if (removable) {
-            const removeBtn = document.createElement('button');
-            removeBtn.type = 'button';
-            removeBtn.className = 'btn btn-danger btn-remove';
-            removeBtn.innerHTML = '<i class="bi bi-trash"></i> Remove';
-            removeBtn.setAttribute('data-bs-toggle', 'tooltip');
-            removeBtn.setAttribute('title', 'Remove this model price');
-            removeBtn.addEventListener('click', () => {
-                container.removeChild(entryDiv);
-                enforceMinimumModels();
-            });
-            entryDiv.appendChild(removeBtn);
-        } else {
-            const removeBtn = document.createElement('button');
-            removeBtn.type = 'button';
-            removeBtn.className = 'btn btn-danger btn-remove disabled';
-            removeBtn.setAttribute('data-bs-toggle', 'tooltip');
-            removeBtn.setAttribute('title', 'Default models cannot be removed');
-            removeBtn.innerHTML = '<i class="bi bi-trash"></i> Remove';
-            entryDiv.appendChild(removeBtn);
-        }
-
         // Highlight default models
         if (model.isDefault) {
             entryDiv.style.borderColor = 'var(--primary-blue)';
             entryDiv.style.backgroundColor = 'var(--primary-light-blue)';
+            // Add tooltip for default models
+            entryDiv.setAttribute('data-bs-toggle', 'tooltip');
+            entryDiv.setAttribute('title', 'Default model. Prices are set to $0.');
+        }
+
+        // Add remove button if removable
+        if (removable) {
+            const btnRemove = document.createElement('button');
+            btnRemove.type = 'button';
+            btnRemove.className = 'btn btn-danger btn-remove';
+            btnRemove.innerHTML = '<i class="bi bi-trash"></i> Remove';
+            btnRemove.addEventListener('click', () => {
+                container.removeChild(entryDiv);
+            });
+            entryDiv.appendChild(btnRemove);
         }
 
         container.appendChild(entryDiv);
-      }
-
-      function enforceMinimumModels() {
-        const currentEntries = modelPricesContainer.children.length;
-        if (currentEntries < 3) {
-            const modelsToAdd = 3 - currentEntries;
-            for (let i = 0; i < modelsToAdd; i++) {
-                addModelPrice({ model_name: '', price: 0 }, modelPricesContainer, true);
-            }
-        }
       }
 
       // =======================
@@ -511,7 +500,7 @@
       const addModelPriceBtn = document.getElementById('add-model-price');
       if (addModelPriceBtn) {
         addModelPriceBtn.addEventListener('click', () => {
-            addModelPrice({}, modelPricesContainer, true);
+            addModelPrice({}, modelPricesContainer, false); // Set removable to false
         });
       }
 
