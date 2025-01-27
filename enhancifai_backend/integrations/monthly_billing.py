@@ -24,6 +24,7 @@ def generate_monthly_invoices():
     """
     Generate monthly invoices for all users with detailed line items.
     """
+    failed = False
     try:
         today = datetime.now(timezone.utc)
         first_day_of_current_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -42,6 +43,7 @@ def generate_monthly_invoices():
 
         for user in users:
             user_id = user['user_id']
+            skipThisUser = False
             try:
                 last_invoice_end_date = BillingDbCore.get_last_invoice_end_date(user_id)
 
@@ -99,7 +101,8 @@ def generate_monthly_invoices():
                                     "Missing pricing info for model %s on %s (user %s).",
                                     model, usage_date.strftime('%Y-%m-%d'), user_id
                                 )
-                                continue
+                                skipThisUser = True
+                                break
                             amount_cents = (Decimal(tokens) * Decimal(rate) * 100).quantize(Decimal('1'))
                             total_amount_cents += int(amount_cents)
                             normal_line_items.append({
@@ -109,6 +112,9 @@ def generate_monthly_invoices():
                                 'rate': float(rate),
                                 'amount': float(amount_cents) / 100.0
                             })
+
+                        if skipThisUser:
+                            break
 
                         for usage in pi_tokens_per_model_per_day:
                             usage_date = usage['usage_date']
@@ -120,7 +126,8 @@ def generate_monthly_invoices():
                                     "Missing pricing info for PI model %s on %s (user %s).",
                                     model, usage_date.strftime('%Y-%m-%d'), user_id
                                 )
-                                continue
+                                skipThisUser = True
+                                break
                             amount_cents = (Decimal(tokens) * Decimal(rate) * 100).quantize(Decimal('1'))
                             total_amount_cents += int(amount_cents)
                             pi_line_items.append({
@@ -130,6 +137,9 @@ def generate_monthly_invoices():
                                 'rate': float(rate),
                                 'amount': float(amount_cents) / 100.0
                             })
+
+                        if skipThisUser:
+                            break
 
                         if total_amount_cents > 0:
                             description = f"Monthly token usage for {current_start.strftime('%B %Y')}"
@@ -147,6 +157,9 @@ def generate_monthly_invoices():
 
 
                     current_start = add_one_month(current_start)
+
+                if skipThisUser:
+                    continue
 
                 current_timestamp = datetime.now(timezone.utc)
                 BillingDbCore.update_last_invoice_run(user_id, current_timestamp)
