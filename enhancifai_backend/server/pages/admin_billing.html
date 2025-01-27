@@ -201,9 +201,12 @@
             <div id="model-prices-container">
                 <!-- Existing model price entries will be populated here -->
             </div>
+            <!-- Remove the Add Model Price button -->
+            <!--
             <button type="button" id="add-model-price" class="btn btn-secondary mb-3">
                 <i class="bi bi-plus-circle"></i> Add Model Price
             </button>
+            -->
             <button type="submit" class="btn btn-primary">Save Prices</button>
           </form>
 
@@ -254,10 +257,11 @@
       const currentYear = currentDate.getFullYear();
       const currentMonth = currentDate.getMonth() + 1; // 1-based
 
+      // Update defaultModels with specified models
       const defaultModels = [
-        { model_name: 'Model A', price: 0, isDefault: true },
-        { model_name: 'Model B', price: 0, isDefault: true },
-        { model_name: 'Model C', price: 0, isDefault: true }
+        { model_name: 'gpt-4o', price: 0, isDefault: true },
+        { model_name: 'gpt-4o-mini', price: 0, isDefault: true },
+        { model_name: 'gpt-3.5-turbo', price: 0, isDefault: true }
       ];
 
       function initializeTooltips() {
@@ -358,20 +362,28 @@
         })
         .then(response => response.json())
         .then(data => {
-            const prices = data.model_prices;
+            const fetchedPrices = data.model_prices;
+            const fetchedModelNames = fetchedPrices.map(price => price.model_name);
+            
+            // Merge fetched prices with default models
+            const combinedPrices = [...fetchedPrices];
+            defaultModels.forEach(defaultModel => {
+                if (!fetchedModelNames.includes(defaultModel.model_name)) {
+                    combinedPrices.push(defaultModel);
+                }
+            });
+
             modelPricesContainer.innerHTML = '';
-            if (prices.length === 0) {
-                defaultModels.forEach(model => {
-                    addModelPrice(model, modelPricesContainer, false);
-                });
-                // Inform the user that default prices are being used
-                modelPricesContainer.insertAdjacentHTML('beforebegin', '<div class="alert alert-info">No existing prices found for this month. Default prices have been set to $0.</div>');
-            } else {
-                prices.forEach(price => {
-                    const isDefault = defaultModels.some(defaultModel => defaultModel.model_name === price.model_name);
-                    addModelPrice(price, modelPricesContainer, !isDefault); // Allow removal only if not default
-                });
+            combinedPrices.forEach(price => {
+                const isDefault = defaultModels.some(defaultModel => defaultModel.model_name === price.model_name);
+                addModelPrice(price, modelPricesContainer, !isDefault); // Allow removal only if not default
+            });
+
+            // Inform the user if default models were added
+            if (fetchedPrices.length < defaultModels.length) {
+                modelPricesContainer.insertAdjacentHTML('beforebegin', '<div class="alert alert-info">Default models have been added.</div>');
             }
+
             initializeTooltips(); // Initialize tooltips after adding entries
         })
         .catch(error => {
@@ -419,7 +431,7 @@
             entryDiv.style.backgroundColor = 'var(--primary-light-blue)';
             // Add tooltip for default models
             entryDiv.setAttribute('data-bs-toggle', 'tooltip');
-            entryDiv.setAttribute('title', 'Default model. Prices are set to $0.');
+            entryDiv.setAttribute('title', 'Default model. Prices are set to $0 and cannot be removed.');
         }
 
         // Add remove button if removable
@@ -495,14 +507,17 @@
       });
 
       // =======================
-      // 5. ADD MODEL PRICE BUTTON
+      // 5. REMOVE ADD MODEL PRICE BUTTON EVENT LISTENER
       // =======================
-      const addModelPriceBtn = document.getElementById('add-model-price');
-      if (addModelPriceBtn) {
-        addModelPriceBtn.addEventListener('click', () => {
-            addModelPrice({}, modelPricesContainer, false); // Set removable to false
-        });
-      }
+      // Removed the event listener for the "Add Model Price" button since it's no longer present
+      // <!-- Removed
+      // const addModelPriceBtn = document.getElementById('add-model-price');
+      // if (addModelPriceBtn) {
+      //   addModelPriceBtn.addEventListener('click', () => {
+      //       addModelPrice({}, modelPricesContainer, false); // Set removable to false
+      //   });
+      // }
+      // -->
 
       // =======================
       // INITIALIZE ON PAGE LOAD
