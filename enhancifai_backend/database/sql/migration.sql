@@ -59,11 +59,15 @@ END $$;
 ALTER TABLE enhancifai.users
 ADD COLUMN IF NOT EXISTS stripe_customer_id VARCHAR(255);
 
-CREATE TABLE IF NOT EXISTS enhancifai.model_price_history (
-    model_name VARCHAR(100),
-    price_per_token FLOAT NOT NULL,
-    effective_date DATE NOT NULL,
-    PRIMARY KEY (model_name, effective_date)
+DROP TABLE IF EXISTS enhancifai.model_prices CASCADE;
+DROP TABLE IF EXISTS enhancifai.model_price_history CASCADE;
+
+CREATE TABLE IF NOT EXISTS enhancifai.model_pricing (
+    model_name VARCHAR(100) NOT NULL,
+    month INT NOT NULL,
+    year INT NOT NULL,
+    price FLOAT NOT NULL,
+    PRIMARY KEY (model_name, month, year)
 );
 
 ALTER TABLE enhancifai.stripe_invoices

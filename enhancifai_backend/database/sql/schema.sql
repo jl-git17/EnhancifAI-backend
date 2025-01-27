@@ -1,4 +1,3 @@
-
 CREATE TABLE IF NOT EXISTS enhancifai.users (
     user_id SERIAL PRIMARY KEY,
     email VARCHAR(100) NOT NULL UNIQUE,
@@ -229,9 +228,13 @@ CREATE TABLE IF NOT EXISTS enhancifai.users_additional_credits (
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS enhancifai.model_prices (
-    model_name VARCHAR(100) PRIMARY KEY,
-    price_per_token FLOAT NOT NULL,
-    created_at TIMESTAMP DEFAULT now(),
-    updated_at TIMESTAMP DEFAULT now()
+DROP TABLE IF EXISTS enhancifai.model_prices CASCADE;
+DROP TABLE IF EXISTS enhancifai.model_price_history CASCADE;
+
+CREATE TABLE IF NOT EXISTS enhancifai.model_pricing (
+    model_name VARCHAR(100) NOT NULL,
+    month INT NOT NULL,
+    year INT NOT NULL,
+    price FLOAT NOT NULL,
+    PRIMARY KEY (model_name, month, year)
 );
