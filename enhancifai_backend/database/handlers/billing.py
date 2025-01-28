@@ -118,7 +118,7 @@ class BillingDbCore:
                 cl.engine_model AS ai_model_name,
                 SUM(cl.num_tokens) AS tokens_used,
                 mp.price AS price_per_token, 
-                SUM(cl.num_tokens * mp.price / 1000.0) AS total_cost
+                SUM(cl.num_tokens * mp.price) AS total_cost
             FROM combined_logs cl
             JOIN enhancifai.model_pricing mp
                 ON cl.engine_model = mp.model_name
@@ -146,7 +146,7 @@ class BillingDbCore:
         usage_by_model = []
         for record in raw_records:
             # price_per_token is the price per 1000 tokens. Keep precision for clarity.
-            record['price_per_token'] = float(Decimal(record['price_per_token']).quantize(Decimal('0.000001')))
+            record['price_per_token'] = float((Decimal(record['price_per_token']) * 1000).quantize(Decimal('0.000001')))
             # total_cost is now correctly computed; rounding to two decimals for display
             record['total_cost'] = float(Decimal(record['total_cost']).quantize(Decimal('0.01')))
             usage_by_model.append(record)
