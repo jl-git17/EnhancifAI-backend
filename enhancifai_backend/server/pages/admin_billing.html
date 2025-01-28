@@ -426,12 +426,12 @@
         const formGroupPrice = document.createElement('div');
         formGroupPrice.className = 'form-group';
         const labelPrice = document.createElement('label');
-        labelPrice.textContent = 'Price per Token ($):';
+        labelPrice.textContent = 'Price per 1,000 tokens ($):';
         const inputPrice = document.createElement('input');
         inputPrice.type = 'number';
         inputPrice.step = '0.0001';
         inputPrice.className = 'form-control price-per-token';
-        inputPrice.value = (model.price * 1000).toFixed(5); // Convert price per token to per 1,000 tokens
+        inputPrice.value = (model.price * 1000).toFixed(2); // Convert price per token to per 1,000 tokens
         formGroupPrice.appendChild(labelPrice);
         formGroupPrice.appendChild(inputPrice);
 
