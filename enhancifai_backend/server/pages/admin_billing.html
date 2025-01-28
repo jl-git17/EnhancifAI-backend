@@ -347,7 +347,7 @@
             prices.forEach(price => {
                 table += `<tr>
                             <td>${price.model_name}</td>
-                            <td>$${(price.price * 1000).toFixed(4)}</td> <!-- Convert price per token to price per 1,000 tokens -->
+                            <td>$${(price.price * 1000).toFixed(5)}</td> <!-- Convert price per token to per 1,000 tokens -->
                           </tr>`;
             });
             table += `</tbody></table>`;
@@ -431,7 +431,7 @@
         inputPrice.type = 'number';
         inputPrice.step = '0.0001';
         inputPrice.className = 'form-control price-per-token';
-        inputPrice.value = (model.price * 1000).toFixed(4); // Convert price per token to price per 1,000 tokens
+        inputPrice.value = (model.price * 1000).toFixed(5); // Convert price per token to per 1,000 tokens
         formGroupPrice.appendChild(labelPrice);
         formGroupPrice.appendChild(inputPrice);
 
@@ -477,7 +477,7 @@
         let valid = true;
         entries.forEach(entry => {
             const modelName = entry.querySelector('.model-name').value.trim();
-            const price = parseFloat(entry.querySelector('.price-per-token').value) / 1000; // Convert price per 1,000 tokens to price per token
+            const price = parseFloat(entry.querySelector('.price-per-token').value) / 1000; // Convert per 1,000 tokens to per token
             if (!modelName || isNaN(price) || price < 0) {
                 valid = false;
             }
@@ -529,7 +529,6 @@
       //   addModelPriceBtn.addEventListener('click', () => {
       //       addModelPrice({}, modelPricesContainer, false); // Set removable to false
       //   });
-      // }
       // -->
 
       // =======================
