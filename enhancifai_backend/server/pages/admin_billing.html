@@ -467,6 +467,12 @@
       // =======================
       billingForm.addEventListener('submit', function(event) {
         event.preventDefault();
+        
+        // Disable the Save Prices button and show a loading indicator
+        const saveButton = billingForm.querySelector('button[type="submit"]');
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Saving...';
+
         const entries = Array.from(modelPricesContainer.getElementsByClassName('billing-entry'));
         const payload = {
             year: currentYear,
@@ -489,6 +495,9 @@
 
         if (!valid) {
             alert('Please ensure all model names are filled and prices are valid.');
+            // Re-enable the Save Prices button and reset its text
+            saveButton.disabled = false;
+            saveButton.innerHTML = 'Save Prices';
             return;
         }
 
@@ -497,10 +506,19 @@
             headers: {
                 'Content-Type': 'application/json',
                 'Cache-Control': 'no-cache'
+                // Include authentication headers if necessary
             },
             body: JSON.stringify(payload)
         })
-        .then(response => response.json())
+        .then(response => {
+            // Re-enable the Save Prices button and reset its text
+            saveButton.disabled = false;
+            saveButton.innerHTML = 'Save Prices';
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.message === "Prices updated successfully") {
                 billingSuccessMessage.style.display = 'block';
@@ -516,6 +534,9 @@
         .catch(error => {
             console.error('Error updating model prices:', error);
             alert('An error occurred while updating prices.');
+            // Re-enable the Save Prices button and reset its text in case of error
+            saveButton.disabled = false;
+            saveButton.innerHTML = 'Save Prices';
         });
       });
 
