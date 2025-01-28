@@ -145,9 +145,7 @@ class BillingDbCore:
         # Convert values to floats and round appropriately
         usage_by_model = []
         for record in raw_records:
-            # price_per_token is the price per 1000 tokens. Keep precision for clarity.
             record['price_per_token'] = float((Decimal(record['price_per_token']) * 1000).quantize(Decimal('0.000001')))
-            # total_cost is now correctly computed; rounding to two decimals for display
             record['total_cost'] = float(Decimal(record['total_cost']).quantize(Decimal('0.01')))
             usage_by_model.append(record)
 
