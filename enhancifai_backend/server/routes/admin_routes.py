@@ -314,7 +314,7 @@ async def upsert_model_prices(payload: dict = Body(...), credentials: HTTPBasicC
     if not (year and month and prices):
         raise HTTPException(status_code=400, detail="Invalid request data.")
     for item in prices:
-        final_price = float(item["price_per_token"]) / 1000.0
+        final_price = float(item["price_per_token"])
         ModelPricesDbCore.update_model_price(
             model_name=item["model_name"],
             year=year,
