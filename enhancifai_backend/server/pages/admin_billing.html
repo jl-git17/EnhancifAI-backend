@@ -466,6 +466,7 @@
       // 4. SAVE LOGIC
       // =======================
       billingForm.addEventListener('submit', function(event) {
+        console.log('Billing form submit event triggered'); // Added for debugging
         event.preventDefault();
         
         // Disable the Save Prices button and show a loading indicator
@@ -493,6 +494,8 @@
             });
         });
 
+        console.log('Payload to be sent:', payload); // Added for debugging
+
         if (!valid) {
             alert('Please ensure all model names are filled and prices are valid.');
             // Re-enable the Save Prices button and reset its text
@@ -511,6 +514,7 @@
             body: JSON.stringify(payload)
         })
         .then(response => {
+            console.log('Fetch response received:', response); // Added for debugging
             // Re-enable the Save Prices button and reset its text
             saveButton.disabled = false;
             saveButton.innerHTML = 'Save Prices';
@@ -520,6 +524,7 @@
             return response.json();
         })
         .then(data => {
+            console.log('Fetch response data:', data); // Added for debugging
             if (data.message === "Prices updated successfully") {
                 billingSuccessMessage.style.display = 'block';
                 setTimeout(() => {
