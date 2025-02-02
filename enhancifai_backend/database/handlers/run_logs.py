@@ -155,3 +155,38 @@ class PromptImproverRunLogsDbCore:
         """)
         return read_db.do('select', sql=sql, data=(user_id, start, end)) or []
 
+    @classmethod
+    def retrieve_logs_by_date_range(cls, start, end=None):
+        """
+        Retrieve logs within a specified date range from the prompt_improver_run_logs table,
+        without filtering by user.
+
+        Parameters:
+        start (datetime or str): The start date of the range.
+        end (datetime or str, optional): The end date of the range. Defaults to None.
+
+        Returns:
+        list: A list of logs within the specified date range.
+        """
+        # Convert start to a datetime object if not already
+        if not isinstance(start, datetime):
+            start = datetime.fromisoformat(str(start))
+
+        # If end is None, set it to 'start' + 1 day; otherwise, convert to datetime
+        if end is None:
+            end = start + timedelta(days=1)
+        elif not isinstance(end, datetime):
+            end = datetime.fromisoformat(str(end))
+
+        # Adjust 'end' time to the end of the day if originally at midnight
+        if end.time() == datetime.min.time():
+            end = datetime.combine(end, datetime.max.time())
+
+        sql = schemafy("""
+            SELECT * 
+            FROM enhancifai.prompt_improver_run_logs
+            WHERE log_timestamp BETWEEN %s AND %s
+            ORDER BY log_id;
+        """)
+        return read_db.do('select', sql=sql, data=(start, end)) or []
+
