@@ -2,7 +2,9 @@ import json
 import os
 import re
 import time
+import logging
 from typing import Dict, List
+
 from fastapi import HTTPException
 from openai import OpenAI
 
@@ -73,10 +75,10 @@ def extract_and_parse_json(raw_data):
     """
     # Regular expression pattern to match JSON within ```json code blocks
     code_block_pattern = r'```json\s*\n(.*?)\n```'
-    
+
     # Attempt to find JSON within code blocks
     match = re.search(code_block_pattern, raw_data, re.DOTALL | re.IGNORECASE)
-    
+
     if match:
         json_str = match.group(1).strip()
         print("Extracted JSON from code block.")
@@ -84,17 +86,17 @@ def extract_and_parse_json(raw_data):
         # If no code block is found, assume the entire raw_data is JSON
         json_str = raw_data.strip()
         print("No code block detected. Using entire raw_data as JSON.")
-    
+
     try:
         # Parse the JSON string
         parsed = json.loads(json_str)
-        
+
         # Validate that the parsed data is a list
         if not isinstance(parsed, list):
             raise ValueError(f"Expected a JSON array, got {type(parsed).__name__}.\nContent: {json_str}")
-        
+
         return parsed
-    
+
     except json.JSONDecodeError as jde:
         raise ValueError(f"JSON decoding failed: {jde.msg}\nContent: {json_str}") from jde
 
@@ -222,10 +224,10 @@ class OpenAIConnector:
 
             except Exception as e:
                 print(e)
-                if e.status_code == 429: # pylint: disable:E1101
+                if getattr(e, 'status_code', None) == 429:
                     try:
                         # Use the compiled pattern to search the string
-                        match = RATE_LIMIT_PATTERN.search(e.body['message']) # pylint: disable:no-member
+                        match = RATE_LIMIT_PATTERN.search(e.body['message'])
                         # Extract the number of seconds
                         if match:
                             delay = float(match.group(1))
@@ -250,7 +252,7 @@ class OpenAIConnector:
         else:
             print("Failed to get answer from OpenAI API after 3 attempts.")
             return {'content': _err, 'tokens': 0}
-    
+
     def process_csv_rows(
         self,
         columns: Dict[str, str],
@@ -265,6 +267,8 @@ class OpenAIConnector:
         max_attempts = 3
         _err = None
 
+        logging.info("Query: %s  \nRows: %s  \nColumns: %s", query, rows, columns)
+
         # Use the same logic your single-row method uses:
         self.engine = rate_limit_manager.can_make_api_call(model=self.engine, run_id=run_id)
 
@@ -274,12 +278,18 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            f"{query}\n---\nDATA:\n{json.dumps(rows)}"
+                            f"{query}\n"
+                            "---\n"
+                            "DATA:\n"
+                            f"{json.dumps(rows)}"
                         )
                     },
                     {
                         "role": "user",
-                        "content": "For each data entry, process the query. Return the results in a JSON array. One string for each entry containing the full answer."
+                        "content": (
+                            "For each data entry, process the query. Return the results "
+                            "in a JSON array. One string for each entry containing the full answer."
+                        )
                     }
                 ]
 
@@ -365,9 +375,9 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            "- You are an expert OpenAI prompt engineer You take a string input of the prompt, "
+                            "- You are an expert OpenAI prompt engineer. You take a string input of the prompt, "
                             "improve it and respond with the new and improved prompt. Do not add anything else.\n"
-                            f"- Rules: {pi_settings.prompt} Respond with the new prompt in a codeblock."
+                            "- Rules: " + pi_settings.prompt + " Respond with the new prompt in a codeblock."
                         )
                     },
                     {
@@ -404,10 +414,11 @@ class OpenAIConnector:
                 raise HTTPException(status_code=500, detail="Failed to parse JSON from assistant response.")
             except Exception as e:
                 print(e)
-                if e.status_code == 429: # pylint: disable:no-member
+                if getattr(e, 'status_code', None) == 429: # pylint: disable:no-member
                     try:
                         # Use the compiled pattern to search the string
-                        match = RATE_LIMIT_PATTERN.search(e.body['message']) # pylint: disable:no-member
+                        message = getattr(e, 'body', {}).get('message', '')
+                        match = RATE_LIMIT_PATTERN.search(message) # pylint: disable:no-member
                         # Extract the number of seconds
                         if match:
                             delay = float(match.group(1))
