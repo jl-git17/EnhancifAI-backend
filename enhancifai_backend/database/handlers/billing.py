@@ -87,38 +87,41 @@ class BillingDbCore:
         price per token, and total cost for each model.
         """
         if month is not None and year is not None:
-            # Validate month and year
             if not (1 <= month <= 12):
                 raise ValueError("Invalid month. Must be between 1 and 12.")
             current_year = datetime.now().year
             if not (2000 <= year <= current_year):
                 raise ValueError("Invalid year.")
-
-            # Define separate date_filters for each subquery with correct aliases
-            date_filter_rl = "AND (EXTRACT(MONTH FROM rl.log_timestamp) = %s AND EXTRACT(YEAR FROM rl.log_timestamp) = %s)"
-            date_filter_pil = "AND (EXTRACT(MONTH FROM pil.log_timestamp) = %s AND EXTRACT(YEAR FROM pil.log_timestamp) = %s)"
+            date_filter = "AND (EXTRACT(MONTH FROM created_at) = %s AND EXTRACT(YEAR FROM created_at) = %s)"
+            date_filter_rl = date_filter
+            date_filter_pil = date_filter
         else:
             date_filter_rl = ""
             date_filter_pil = ""
 
         sql = schemafy(f"""
             WITH combined_logs AS (
-                SELECT rl.engine_model, rl.num_tokens, rl.log_timestamp
-                FROM enhancifai.run_logs rl
-                JOIN enhancifai.runs r ON rl.run_id = r.id
-                WHERE r.user_id = %s {date_filter_rl}
+                SELECT 
+                    model AS engine_model, 
+                    tokens, 
+                    created_at AS log_timestamp
+                FROM enhancifai.users_token_usage
+                WHERE user_id = %s {date_filter_rl}
 
                 UNION ALL
 
-                SELECT pil.engine_model, pil.num_tokens, pil.log_timestamp
-                FROM enhancifai.prompt_improver_run_logs pil
-                WHERE pil.user_id = %s {date_filter_pil}
+                SELECT 
+                    model AS engine_model, 
+                    tokens, 
+                    created_at AS log_timestamp
+                FROM enhancifai.users_token_usage_pi
+                WHERE user_id = %s {date_filter_pil}
             )
             SELECT 
                 cl.engine_model AS ai_model_name,
-                SUM(cl.num_tokens) AS tokens_used,
+                SUM(cl.tokens) AS tokens_used,
                 mp.price AS price_per_token, 
-                SUM(cl.num_tokens * mp.price) AS total_cost
+                SUM(cl.tokens * mp.price) AS total_cost
             FROM combined_logs cl
             JOIN enhancifai.model_pricing mp
                 ON cl.engine_model = mp.model_name
@@ -127,22 +130,17 @@ class BillingDbCore:
             GROUP BY ai_model_name, mp.price;
         """)
 
-        # Adjust data tuple based on whether month and year are provided
         if month is not None and year is not None:
-            # Correct the order: user_id, month, year, user_id, month, year
             data = (user_id, month, year, user_id, month, year)
         else:
-            # Pass user_id twice for run_logs and pil
             data = (user_id, user_id)
 
-        # Verify that the number of placeholders matches the data tuple length
         num_placeholders = len(re.findall(r'%s', sql))
         if num_placeholders != len(data):
             raise ValueError(f"Number of placeholders ({num_placeholders}) does not match number of data elements ({len(data)}).")
 
         raw_records = read_db.do('select', sql=sql, data=data) or []
 
-        # Convert values to floats and round appropriately
         usage_by_model = []
         for record in raw_records:
             record['price_per_token'] = float((Decimal(record['price_per_token']) * 1000).quantize(Decimal('0.000001')))
