@@ -84,7 +84,8 @@ class BillingDbCore:
     def get_usage_by_model(cls, user_id, month=None, year=None):
         """
         Aggregate data by AI model, including tokens used from both Normal and Prompt Improver usages,
-        price per token, and total cost for each model.
+        price per token (price in the DB is per token), and total cost for each model.
+        If month and year are provided, only usage from that month/year is considered.
         """
         if month is not None and year is not None:
             if not (1 <= month <= 12):
@@ -120,17 +121,19 @@ class BillingDbCore:
             SELECT 
                 cl.engine_model AS ai_model_name,
                 SUM(cl.tokens) AS tokens_used,
-                mp.price AS price_per_token, 
-                SUM(cl.tokens * mp.price) AS total_cost
+                COALESCE(mp.price, 0) AS price_per_token, 
+                SUM(cl.tokens * COALESCE(mp.price, 0)) AS total_cost
             FROM combined_logs cl
-            JOIN enhancifai.model_pricing mp
+            LEFT JOIN enhancifai.model_pricing mp
                 ON cl.engine_model = mp.model_name
-                AND mp.year = EXTRACT(YEAR FROM cl.log_timestamp)
-                AND mp.month = EXTRACT(MONTH FROM cl.log_timestamp)
-            GROUP BY ai_model_name, mp.price;
+                AND mp.year = EXTRACT(YEAR FROM cl.log_timestamp)::INT
+                AND mp.month = EXTRACT(MONTH FROM cl.log_timestamp)::INT
+            GROUP BY cl.engine_model, mp.price;
         """)
 
+        # Set parameters in the proper order.
         if month is not None and year is not None:
+            # First usage query: user_id, month, year; second query: user_id, month, year.
             data = (user_id, month, year, user_id, month, year)
         else:
             data = (user_id, user_id)
@@ -143,6 +146,7 @@ class BillingDbCore:
 
         usage_by_model = []
         for record in raw_records:
+            # Multiply the per-token price by 1000 if you want to show price per 1K tokens.
             record['price_per_token'] = float((Decimal(record['price_per_token']) * 1000).quantize(Decimal('0.000001')))
             record['total_cost'] = float(Decimal(record['total_cost']).quantize(Decimal('0.01')))
             usage_by_model.append(record)
