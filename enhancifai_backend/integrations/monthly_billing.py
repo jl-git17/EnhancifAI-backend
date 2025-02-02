@@ -42,10 +42,10 @@ def generate_monthly_invoices():
 
         for user in users:
             user_id = user['user_id']
+            invoices_generated = False
             logger.info("Processing user %s", user_id)
             if user_id == 5:
                 logger.debug("Test user detected (user_id=5). Starting detailed debugging.")
-            skipThisUser = False
             try:
                 last_invoice_end_date = BillingDbCore.get_last_invoice_end_date(user_id)
                 if user_id == 5:
@@ -143,8 +143,7 @@ def generate_monthly_invoices():
                                     usage_date.strftime('%Y-%m-%d'),
                                     user_id
                                 )
-                                skipThisUser = True
-                                continue
+                                continue  # Skip this usage record only.
                             amount_cents = (Decimal(tokens) * Decimal(rate) * 100).quantize(Decimal('1'))
                             total_amount_cents += int(amount_cents)
                             normal_line_items.append({
@@ -154,9 +153,6 @@ def generate_monthly_invoices():
                                 'rate': float(rate),
                                 'amount': float(amount_cents) / 100.0
                             })
-
-                        if skipThisUser:
-                            break
 
                         for usage in pi_tokens_per_model_per_day:
                             usage_date = usage['usage_date']
@@ -180,8 +176,7 @@ def generate_monthly_invoices():
                                     usage_date.strftime('%Y-%m-%d'),
                                     user_id
                                 )
-                                skipThisUser = True
-                                continue
+                                continue  # Skip this record only.
                             amount_cents = (Decimal(tokens) * Decimal(rate) * 100).quantize(Decimal('1'))
                             total_amount_cents += int(amount_cents)
                             pi_line_items.append({
@@ -191,9 +186,6 @@ def generate_monthly_invoices():
                                 'rate': float(rate),
                                 'amount': float(amount_cents) / 100.0
                             })
-
-                        if skipThisUser:
-                            break
 
                         if total_amount_cents > 0:
                             description = f"Monthly token usage for {current_start.strftime('%B %Y')}"
@@ -213,6 +205,7 @@ def generate_monthly_invoices():
                                     user_id,
                                     invoice['amount'] / 100
                                 )
+                                invoices_generated = True
                                 if user_id == 5:
                                     logger.debug("User 5: Invoice details: %s", invoice)
                         else:
@@ -222,11 +215,9 @@ def generate_monthly_invoices():
 
                     current_start = add_one_month(current_start)
 
-                if skipThisUser:
-                    continue
-
-                current_timestamp = datetime.now(timezone.utc)
-                BillingDbCore.update_last_invoice_run(user_id, current_timestamp)
+                if invoices_generated:
+                    current_timestamp = datetime.now(timezone.utc)
+                    BillingDbCore.update_last_invoice_run(user_id, current_timestamp)
 
             except Exception as e:
                 logger.error("Failed to create invoice for user %s: %s", user_id, str(e), exc_info=True)
