@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime, timedelta, date, time, timezone
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import Decimal
 import calendar
 from enhancifai_backend.database.access import read_db
 from enhancifai_backend.database.handlers.billing import BillingDbCore
@@ -113,7 +113,7 @@ def generate_monthly_invoices():
                                     model, usage_date.strftime('%Y-%m-%d'), user_id
                                 )
                                 skipThisUser = True
-                                break
+                                continue
                             amount_cents = (Decimal(tokens) * Decimal(rate) * 100).quantize(Decimal('1'))
                             total_amount_cents += int(amount_cents)
                             normal_line_items.append({
@@ -125,7 +125,7 @@ def generate_monthly_invoices():
                             })
 
                         if skipThisUser:
-                            break
+                            continue
 
                         for usage in pi_tokens_per_model_per_day:
                             usage_date = usage['usage_date']
@@ -141,7 +141,7 @@ def generate_monthly_invoices():
                                     model, usage_date.strftime('%Y-%m-%d'), user_id
                                 )
                                 skipThisUser = True
-                                break
+                                continue
                             amount_cents = (Decimal(tokens) * Decimal(rate) * 100).quantize(Decimal('1'))
                             total_amount_cents += int(amount_cents)
                             pi_line_items.append({
@@ -153,7 +153,7 @@ def generate_monthly_invoices():
                             })
 
                         if skipThisUser:
-                            break
+                            continue
 
                         if total_amount_cents > 0:
                             description = f"Monthly token usage for {current_start.strftime('%B %Y')}"
@@ -174,7 +174,7 @@ def generate_monthly_invoices():
                             logger.info("No tokens used by user %s for period %s to %s.",
                                         user_id, current_start.strftime('%Y-%m-%d'), current_end.strftime('%Y-%m-%d'))
                             skipThisUser = True
-                            break
+                            continue
 
 
                     current_start = add_one_month(current_start)
