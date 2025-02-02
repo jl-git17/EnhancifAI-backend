@@ -36,8 +36,11 @@ def prepare_database(db: DbSession) -> None:
         sys.exit(1)
 
     db.do('execute', f"CREATE SCHEMA IF NOT EXISTS {schema_name};")
-    for sql_file in ['schema.sql', 'migration.sql', 'reset_billing.sql']:
-        process_sql_file(db, sql_file)
+    for sql_file in ['reset_billing.sql', 'schema.sql', 'migration.sql']:
+        try:
+            process_sql_file(db, sql_file)
+        except Exception as e:
+            logging.error(f"Error processing {sql_file}: {e}")
     
     db.do('commit')
 
