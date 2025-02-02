@@ -189,4 +189,3 @@ class PromptImproverRunLogsDbCore:
             ORDER BY log_id;
         """)
         return read_db.do('select', sql=sql, data=(start, end)) or []
-

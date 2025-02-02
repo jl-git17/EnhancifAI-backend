@@ -253,10 +253,6 @@ async def get_prompt_improver_logs_runs_csv(
     - StreamingResponse: A CSV file containing the prompt improver run logs.
     """
 
-    # Uncomment and implement authorization as needed
-    # if not user_id or not await is_user_admin(user_id):
-    #     raise HTTPException(status_code=403, detail="Unauthorized Access")
-
     # Retrieve logs from the database
     logs = PromptImproverRunLogsDbCore.retrieve_logs_by_date_range(
         start_date, end_date
@@ -307,7 +303,7 @@ async def get_model_prices(credentials: HTTPBasicCredentials = Depends(security)
         )
 
 @router.post("/admin/billing/model-prices", tags=["Admin"])
-async def upsert_model_prices(payload: dict = Body(...), credentials: HTTPBasicCredentials = Depends(security)):
+async def upsert_model_prices(payload: dict = Body(...), _: HTTPBasicCredentials = Depends(security)):
     year = payload.get("year")
     month = payload.get("month")
     prices = payload.get("prices", [])
