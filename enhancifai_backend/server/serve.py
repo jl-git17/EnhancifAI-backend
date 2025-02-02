@@ -14,7 +14,7 @@ from enhancifai_backend.database.handlers.sys import SysDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.rate_limit_manager import rate_limit_manager
 from enhancifai_backend.integrations.monthly_billing import generate_monthly_invoices
-from enhancifai_backend.server.jobs import delete_old_files, refresh_google_sheets_creds
+from enhancifai_backend.server.jobs import delete_old_files
 from enhancifai_backend.server.routes.users_routes import router as router_users
 from enhancifai_backend.server.routes.execution_routes import router as router_execution
 from enhancifai_backend.server.routes.downloads_routes import router as router_downloads
