@@ -156,7 +156,7 @@ def generate_monthly_invoices():
                             })
 
                         if skipThisUser:
-                            continue
+                            break
 
                         for usage in pi_tokens_per_model_per_day:
                             usage_date = usage['usage_date']
@@ -193,7 +193,7 @@ def generate_monthly_invoices():
                             })
 
                         if skipThisUser:
-                            continue
+                            break
 
                         if total_amount_cents > 0:
                             description = f"Monthly token usage for {current_start.strftime('%B %Y')}"
