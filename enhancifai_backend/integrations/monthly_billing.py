@@ -74,7 +74,10 @@ def generate_monthly_invoices():
                         )
 
                 if current_start > last_day_of_previous_month:
-                    logger.info("User %s has no new periods to invoice up to %s.", user_id, last_day_of_previous_month.strftime('%Y-%m-%d'))
+                    logger.info(
+                        "User %s has no new periods to invoice up to %s.", 
+                        user_id, last_day_of_previous_month.strftime('%Y-%m-%d')
+                    )
                     continue
 
                 while current_start <= last_day_of_previous_month:
@@ -99,11 +102,19 @@ def generate_monthly_invoices():
 
                     invoice_exists = BillingDbCore.invoice_exists(user_id, current_start, current_end)
                     if invoice_exists:
-                        logger.info("User %s already has an invoice for %s to %s. Skipping.",
-                                    user_id, current_start.strftime('%Y-%m-%d'), current_end.strftime('%Y-%m-%d'))
+                        logger.info(
+                            "User %s already has an invoice for %s to %s. Skipping.",
+                                    user_id, current_start.strftime('%Y-%m-%d'),
+                                    current_end.strftime('%Y-%m-%d')
+                        )
                     else:
-                        normal_tokens_per_model_per_day = UsersDbCore.get_user_normal_token_usage_per_model_per_day(user_id, current_start, current_end)
-                        pi_tokens_per_model_per_day = UsersDbCore.get_user_pi_token_usage_per_model_per_day(user_id, current_start, current_end)
+                        normal_tokens_per_model_per_day = UsersDbCore.get_user_normal_token_usage_per_model_per_day(
+                            user_id, current_start, current_end
+                        )
+
+                        pi_tokens_per_model_per_day = UsersDbCore.get_user_pi_token_usage_per_model_per_day(
+                            user_id, current_start, current_end
+                        )
 
                         # Now process normal tokens and PI tokens separately
                         normal_line_items = []
@@ -114,7 +125,9 @@ def generate_monthly_invoices():
                             usage_date = usage['usage_date']
                             model = usage['model']
                             tokens = usage['total_tokens']
-                            rate = BillingDbCore.get_price_per_token(model_name=model, year=usage_date.year, month=usage_date.month)
+                            rate = BillingDbCore.get_price_per_token(
+                                model_name=model, year=usage_date.year, month=usage_date.month
+                            )
                             if user_id == 5:
                                 logger.debug(
                                     "User 5: Normal token usage on %s for model %s: tokens=%s, rate=%s",
@@ -149,7 +162,9 @@ def generate_monthly_invoices():
                             usage_date = usage['usage_date']
                             model = usage['model']
                             tokens = usage['total_tokens']
-                            rate = BillingDbCore.get_price_per_token(model_name=model, year=usage_date.year, month=usage_date.month)
+                            rate = BillingDbCore.get_price_per_token(
+                                model_name=model, year=usage_date.year, month=usage_date.month
+                            )
                             if user_id == 5:
                                 logger.debug(
                                     "User 5: PI token usage on %s for model %s: tokens=%s, rate=%s",
