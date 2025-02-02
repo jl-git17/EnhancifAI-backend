@@ -24,7 +24,6 @@ def generate_monthly_invoices():
     """
     Generate monthly invoices for all users with detailed line items.
     """
-    failed = False
     try:
         today = datetime.now(timezone.utc)
         first_day_of_current_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -68,7 +67,11 @@ def generate_monthly_invoices():
                     if current_start.tzinfo is None:
                         current_start = current_start.replace(tzinfo=timezone.utc)
                     if user_id == 5:
-                        logger.debug("User 5: date_joined = %s, computed current_start = %s", date_joined, current_start)
+                        logger.debug(
+                            "User 5: date_joined = %s, computed current_start = %s",
+                            date_joined,
+                            current_start
+                        )
 
                 if current_start > last_day_of_previous_month:
                     logger.info("User %s has no new periods to invoice up to %s.", user_id, last_day_of_previous_month.strftime('%Y-%m-%d'))
@@ -81,10 +84,18 @@ def generate_monthly_invoices():
                     if current_end > last_day_of_previous_month:
                         current_end = last_day_of_previous_month
                     if user_id == 5:
-                        logger.debug("User 5: Processing period from %s to %s", current_start, current_end)
+                        logger.debug(
+                            "User 5: Processing period from %s to %s",
+                            current_start,
+                            current_end
+                        )
 
-                    logger.info("Generating invoice for user %s for period: %s to %s",
-                                user_id, current_start.strftime('%Y-%m-%d'), current_end.strftime('%Y-%m-%d'))
+                    logger.info(
+                        "Generating invoice for user %s for period: %s to %s",
+                        user_id,
+                        current_start.strftime('%Y-%m-%d'),
+                        current_end.strftime('%Y-%m-%d')
+                    )
 
                     invoice_exists = BillingDbCore.invoice_exists(user_id, current_start, current_end)
                     if invoice_exists:
@@ -105,12 +116,19 @@ def generate_monthly_invoices():
                             tokens = usage['total_tokens']
                             rate = BillingDbCore.get_price_per_token(model_name=model, year=usage_date.year, month=usage_date.month)
                             if user_id == 5:
-                                logger.debug("User 5: Normal token usage on %s for model %s: tokens=%s, rate=%s", 
-                                             usage_date, model, tokens, rate)
+                                logger.debug(
+                                    "User 5: Normal token usage on %s for model %s: tokens=%s, rate=%s",
+                                    usage_date,
+                                    model,
+                                    tokens,
+                                    rate
+                                )
                             if rate is None:
                                 logger.error(
                                     "Missing pricing info for model %s on %s (user %s).",
-                                    model, usage_date.strftime('%Y-%m-%d'), user_id
+                                    model,
+                                    usage_date.strftime('%Y-%m-%d'),
+                                    user_id
                                 )
                                 skipThisUser = True
                                 continue
@@ -133,12 +151,19 @@ def generate_monthly_invoices():
                             tokens = usage['total_tokens']
                             rate = BillingDbCore.get_price_per_token(model_name=model, year=usage_date.year, month=usage_date.month)
                             if user_id == 5:
-                                logger.debug("User 5: PI token usage on %s for model %s: tokens=%s, rate=%s", 
-                                             usage_date, model, tokens, rate)
+                                logger.debug(
+                                    "User 5: PI token usage on %s for model %s: tokens=%s, rate=%s",
+                                    usage_date,
+                                    model,
+                                    tokens,
+                                    rate
+                                )
                             if rate is None:
                                 logger.error(
                                     "Missing pricing info for PI model %s on %s (user %s).",
-                                    model, usage_date.strftime('%Y-%m-%d'), user_id
+                                    model,
+                                    usage_date.strftime('%Y-%m-%d'),
+                                    user_id
                                 )
                                 skipThisUser = True
                                 continue
@@ -163,18 +188,21 @@ def generate_monthly_invoices():
                                 'pi_line_items': pi_line_items
                             }
                             invoice = BillingDbCore.create_invoice(
-                                user_id, total_amount_cents, description, current_start.date(), current_end.date(), metadata=metadata_dict
+                                user_id, total_amount_cents, description,
+                                current_start.date(), current_end.date(), metadata=metadata_dict
                             )
                             if invoice:
-                                logger.info("Stored invoice %s for user %s: $%.2f",
-                                            invoice['invoice_id'], user_id, invoice['amount'] / 100)
+                                logger.info(
+                                    "Stored invoice %s for user %s: $%.2f",
+                                    invoice['invoice_id'],
+                                    user_id,
+                                    invoice['amount'] / 100
+                                )
                                 if user_id == 5:
                                     logger.debug("User 5: Invoice details: %s", invoice)
                         else:
                             logger.info("No tokens used by user %s for period %s to %s.",
                                         user_id, current_start.strftime('%Y-%m-%d'), current_end.strftime('%Y-%m-%d'))
-                            skipThisUser = True
-                            continue
 
 
                     current_start = add_one_month(current_start)
