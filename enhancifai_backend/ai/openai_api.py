@@ -209,6 +209,10 @@ class OpenAIConnector:
 
                 data = completion.choices[0].message.content
                 tokens_used = completion.usage.total_tokens
+                print(f"prompt_tokens: {completion.usage.prompt_tokens}")
+                print(f"calculated input tokens: {tokens_used - completion.usage.prompt_tokens}")
+                #input_tokens = completion.usage.prompt_tokens
+                #output_tokens = tokens_used - input_tokens
 
                 # Update rate limit manager
                 rate_limit_manager.update_make_api_call(self.engine, tokens_used=tokens_used)
