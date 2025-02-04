@@ -170,11 +170,12 @@ CREATE TABLE IF NOT EXISTS enhancifai.run_logs (
     num_rows_processed INT,
     num_rows_in_file INT,
     num_prompts INT,
-    num_tokens INT,
     errors TEXT,
     filename VARCHAR,
     overflow BOOLEAN,
-    batched BOOLEAN
+    batched BOOLEAN,
+    input_tokens INT,
+    output_tokens INT
 );
 
 -- Index on run_id for faster JOINs and queries filtering by run_id
@@ -238,3 +239,8 @@ CREATE TABLE IF NOT EXISTS enhancifai.model_pricing (
     price FLOAT NOT NULL,
     PRIMARY KEY (model_name, month, year)
 );
+
+ALTER TABLE enhancifai.run_logs
+    ADD COLUMN IF NOT EXISTS input_tokens INT,
+    ADD COLUMN IF NOT EXISTS output_tokens INT,
+    DROP COLUMN IF EXISTS num_tokens;
