@@ -200,6 +200,10 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
                     _status["remark"] = "1% completed."
                 elif _status.get("status") == "completed":
                     logging.info(f"Status: {_status}")
+                    attempts = 0
+                    while 'results' not in _status and attempts < 3:
+                        time.sleep(1)
+                        attempts += 1
                     input_tokens = _status.get("results", {}).get("input_tokens_sum", 0)
                     output_tokens = _status.get("results", {}).get("output_tokens_sum", 0)
                     total_tokens_sum = input_tokens + output_tokens
