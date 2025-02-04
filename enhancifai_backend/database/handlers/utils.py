@@ -2,6 +2,18 @@ import os
 import re
 
 def schemafy(data: str) -> str:
+    """
+    Replace schema placeholders in a SQL query with the actual schema name.
+
+    Args:
+        data (str): A SQL query string containing the placeholder schema 'enhancifai'.
+
+    Returns:
+        str: A new SQL query with the environment variable DB_SCHEMA replacing 'enhancifai'.
+
+    Raises:
+        ValueError: If the environment variable 'DB_SCHEMA' is not set.
+    """
     schema = os.getenv('DB_SCHEMA')
     if not schema:
         raise ValueError("Environment variable 'DB_SCHEMA' is not set.")
