@@ -2,22 +2,36 @@ from datetime import datetime
 import json
 import logging
 import re
-from titlecase import titlecase
 from typing import Optional
 from decimal import Decimal
+
+from titlecase import titlecase
 from enhancifai_backend.database.access import read_db, write_db
 from enhancifai_backend.database.handlers.utils import schemafy
 
 class BillingDbCore:
     """
-    Database handler for billing-related operations.
+    Updated Database handler for billing-related operations.
+    Handles invoicing, usage tracking, and rate card operations for Enhancifai.
     """
 
     @classmethod
     def get_usage_history(cls, user_id):
         """
-        Retrieve the history of Enhancifai executions and token consumption for a user.
-        Returns amounts in dollars as floats rounded to two decimal places.
+        Retrieve the execution and token usage history for a given user.
+        
+        Args:
+            user_id (int): Unique identifier for the user.
+            
+        Returns:
+            list: A list of dictionaries with keys:
+                - execution_time (str)
+                - uploaded_file_name (str)
+                - type (str)
+                - number_of_rows (int)
+                - total_tokens (int)
+                - cost_per_token (float)
+                - total_cost (float)
         """
         sql = schemafy("""
             SELECT 
@@ -52,8 +66,15 @@ class BillingDbCore:
     @classmethod
     def get_monthly_balance(cls, user_id):
         """
-        Provide the current monthly balance for the user, including the total cost for the current month.
-        Returns amounts in dollars as floats rounded to two decimal places.
+        Retrieve the current monthly billing balance for a user.
+        
+        Args:
+            user_id (int): Unique identifier for the user.
+            
+        Returns:
+            dict: Dictionary with:
+                - billing_month (str)
+                - total_monthly_cost (float)
         """
         sql = schemafy("""
             SELECT 
@@ -83,15 +104,25 @@ class BillingDbCore:
     @classmethod
     def get_usage_by_model(cls, user_id, month=None, year=None):
         """
-        Aggregate data by AI model, including tokens used from both Normal and Prompt Improver usages,
-        price per token (price in the DB is per token), and total cost for each model.
-        If month and year are provided, only usage from that month/year is considered.
+        Aggregate token usage and cost by AI model.
+        
+        Args:
+            user_id (int): Unique identifier for the user.
+            month (Optional[int]): Month filter (1-12) if provided.
+            year (Optional[int]): Year filter if provided.
+            
+        Returns:
+            list: A list of dictionaries containing:
+                - ai_model_name (str)
+                - tokens_used (int)
+                - price_per_token (float, per 1K tokens)
+                - total_cost (float)
         """
         if month is not None and year is not None:
-            if not (1 <= month <= 12):
+            if not 1 <= month <= 12:
                 raise ValueError("Invalid month. Must be between 1 and 12.")
             current_year = datetime.now().year
-            if not (2000 <= year <= current_year):
+            if not 2000 <= year <= current_year:
                 raise ValueError("Invalid year.")
             date_filter = "AND (EXTRACT(MONTH FROM created_at) = %s AND EXTRACT(YEAR FROM created_at) = %s)"
             date_filter_rl = date_filter
@@ -140,7 +171,10 @@ class BillingDbCore:
 
         num_placeholders = len(re.findall(r'%s', sql))
         if num_placeholders != len(data):
-            raise ValueError(f"Number of placeholders ({num_placeholders}) does not match number of data elements ({len(data)}).")
+            raise ValueError(
+                f"Number of placeholders ({num_placeholders}) does not match "
+                "number of data elements ({len(data)})."
+            )
 
         raw_records = read_db.do('select', sql=sql, data=data) or []
 
@@ -153,37 +187,32 @@ class BillingDbCore:
 
         return usage_by_model
 
-    @classmethod
-    def _get_placeholder(cls, user_id):
-        # Helper method to return the correct placeholder for user_id
-        return '%s'
-
 
     @classmethod
     def create_invoice(cls, user_id, amount_cents, description, billing_period_start, billing_period_end, metadata=None):
         """
-        Create an invoice and save it in the database.
-
+        Create an invoice record for a user with a specified billing period and amount.
+        
         Args:
-            user_id (int): The user's ID.
-            amount_cents (int): The total amount in cents.
-            description (str): Description of the invoice.
-            billing_period_start (date): Start of the billing period.
-            billing_period_end (date): End of the billing period.
-            metadata (dict): Additional metadata including line items.
-
+            user_id (int): Unique identifier for the user.
+            amount_cents (int): Total amount in cents.
+            description (str): Invoice description.
+            billing_period_start (date): Billing period start date.
+            billing_period_end (date): Billing period end date.
+            metadata (dict, optional): Additional metadata including line items.
+            
         Returns:
-            dict: A dictionary containing the created invoice details or None if skipped.
+            dict or None: Invoice details if created; otherwise, None (e.g., if skipped).
         """
         try:
             # Validate amount
             if amount_cents <= 0:
-                logging.info(f"Skipping invoice for user {user_id}: amount is zero or negative.")
+                logging.info("Skipping invoice for user %s: amount is zero or negative.", user_id)
                 return None
 
             # Check if an invoice already exists for the period
             if cls.invoice_exists(user_id, billing_period_start, billing_period_end):
-                logging.info(f"Skipping invoice for user {user_id}: invoice already exists for this period.")
+                logging.info("Skipping invoice for user %s: invoice already exists for this period.", user_id)
                 return None
 
             if metadata is None:
@@ -218,15 +247,15 @@ class BillingDbCore:
     @classmethod
     def invoice_exists(cls, user_id, billing_period_start, billing_period_end):
         """
-        Check if an invoice exists for a user and billing period.
-
+        Check if an invoice already exists for a user in a given billing period.
+        
         Args:
-            user_id (int): The user's ID.
-            billing_period_start (date): Start of the billing period.
-            billing_period_end (date): End of the billing period.
-
+            user_id (int): Unique identifier for the user.
+            billing_period_start (date): Start date of the billing period.
+            billing_period_end (date): End date of the billing period.
+            
         Returns:
-            bool: True if an invoice exists, False otherwise.
+            bool: True if an invoice exists; otherwise, False.
         """
         try:
             sql = schemafy("""
@@ -247,9 +276,21 @@ class BillingDbCore:
     @classmethod
     def get_invoice_history(cls, user_id):
         """
-        Retrieve invoice data, including date, invoice number, invoice amount, payment date, status,
-        billing period start and end, and metadata.
-        Returns amounts in dollars as floats rounded to two decimal places.
+        Retrieve the invoice history for a user.
+        
+        Args:
+            user_id (int): Unique identifier for the user.
+            
+        Returns:
+            list: A list of dictionaries containing:
+                - date (str)
+                - invoice_id (int)
+                - invoice_amount (float)
+                - payment_date (str or None)
+                - payment_status (str)
+                - billing_period_start (str)
+                - billing_period_end (str)
+                - metadata (dict)
         """
         sql = schemafy("""
             SELECT 
@@ -273,10 +314,10 @@ class BillingDbCore:
             amount_in_cents = Decimal(record['invoice_amount'])
             amount_in_dollars = (amount_in_cents / Decimal('100')).quantize(Decimal('0.01'))
             record['invoice_amount'] = float(amount_in_dollars)
-            
+
             # Handle possible None for payment_date
             record['payment_date'] = record['payment_date'] if record['payment_date'] else None
-            
+
             # Process metadata (convert from JSON string to dict if necessary)
             if record['metadata'] and isinstance(record['metadata'], str):
                 record['metadata'] = json.loads(record['metadata'])
@@ -285,7 +326,6 @@ class BillingDbCore:
 
             record['payment_status'] = titlecase(record['payment_status'])
 
-            
             invoice_history.append(record)
 
         return invoice_history
@@ -293,7 +333,13 @@ class BillingDbCore:
     @classmethod
     def get_stripe_customer_id(cls, user_id):
         """
-        Get the Stripe customer ID for the user.
+        Retrieve the Stripe customer ID for a user.
+        
+        Args:
+            user_id (int): Unique identifier for the user.
+        
+        Returns:
+            str or None: Stripe customer ID if available; otherwise, None.
         """
         sql = schemafy("SELECT stripe_customer_id FROM enhancifai.users WHERE user_id = %s;")
         data = (user_id,)
@@ -303,7 +349,11 @@ class BillingDbCore:
     @classmethod
     def update_stripe_customer_id(cls, user_id, customer_id):
         """
-        Update the Stripe customer ID for the user.
+        Update the Stripe customer ID for a given user.
+        
+        Args:
+            user_id (int): Unique identifier for the user.
+            customer_id (str): New Stripe customer ID.
         """
         sql = schemafy("UPDATE enhancifai.users SET stripe_customer_id = %s WHERE user_id = %s;")
         data = (customer_id, user_id)
@@ -312,7 +362,13 @@ class BillingDbCore:
     @classmethod
     def get_user_details(cls, user_id):
         """
-        Get user details for Stripe customer creation.
+        Retrieve user details required for Stripe customer creation.
+        
+        Args:
+            user_id (int): Unique identifier for the user.
+            
+        Returns:
+            dict: Contains keys such as email and name.
         """
         sql = schemafy("SELECT email, name FROM enhancifai.users WHERE user_id = %s;")
         data = (user_id,)
@@ -321,7 +377,11 @@ class BillingDbCore:
     @classmethod
     def update_invoice_status(cls, invoice_id, status):
         """
-        Update the status of an invoice.
+        Update the payment status of an invoice.
+        
+        Args:
+            invoice_id (int): Unique identifier for the invoice.
+            status (str): New status ('paid' or 'failed').
         """
         if status == 'paid':
             sql = schemafy("UPDATE enhancifai.stripe_invoices SET status = %s, paid_at = NOW() WHERE invoice_id = %s;")
@@ -335,14 +395,14 @@ class BillingDbCore:
     @classmethod
     def get_rate_card(cls, month: Optional[int], year: Optional[int]):
         """
-        Retrieve the cost per token for each AI model, supporting historical rates.
-
+        Retrieve the cost per token for each AI model, optionally filtering by month and year.
+        
         Args:
-            month (Optional[int]): The month for which rates are required (historical).
-            year (Optional[int]): The year for which rates are required (historical).
-
+            month (Optional[int]): Month for historical rates.
+            year (Optional[int]): Year for historical rates.
+            
         Returns:
-            list: A list of model names and their prices per token.
+            list: A list of dictionaries with model_name and price.
         """
         if month and year:
             # Retrieve rates for the specified month and year
@@ -374,8 +434,13 @@ class BillingDbCore:
     @classmethod
     def get_rate_card_history(cls):
         """
-        Retrieve the historical rate card data, showing rates per month for each AI model.
-        Returns a list of dictionaries containing year_month, model_name, and price_per_token.
+        Retrieve historical rate card data for all AI models.
+        
+        Returns:
+            list: A sorted list of dictionaries containing:
+                - year_month (str)
+                - model_name (str)
+                - price_per_token (float)
         """
         try:
             sql = schemafy("""
@@ -387,21 +452,27 @@ class BillingDbCore:
                 ORDER BY year ASC, month ASC, model_name DESC;
             """)
             rate_history = read_db.do('select', sql=sql, data=[])
-            
+
             # Optionally, format the effective_date if needed
             # For example, ensure year_month is in 'YYYY-MM' format as a string
             # This is already handled in the SQL query using TO_CHAR
 
             return rate_history
         except Exception as e:
-            logging.error(f"Error retrieving rate card history: {str(e)}")
+            logging.error("Error retrieving rate card history: %s", str(e))
             raise
 
     @classmethod
     def get_invoice_by_id(cls, user_id, invoice_id):
         """
-        Retrieve a specific invoice for a user.
-        Returns amount in dollars as float rounded to two decimal places.
+        Retrieve detailed invoice information for a specific invoice.
+        
+        Args:
+            user_id (int): Unique identifier for the user.
+            invoice_id (int): Unique identifier for the invoice.
+            
+        Returns:
+            dict: Invoice details including amount (converted to dollars) and metadata.
         """
         sql = schemafy("""
             SELECT 
@@ -423,30 +494,30 @@ class BillingDbCore:
             amount_in_cents = Decimal(record['invoice_amount_cents'])
             amount_in_dollars = (amount_in_cents / Decimal('100')).quantize(Decimal('0.01'))
             record['invoice_amount'] = float(amount_in_dollars)
-            
+
             # Handle possible None for payment_date
             record['payment_date'] = record['payment_date'] if record['payment_date'] else None
-            
+
             # Process metadata
             if record['metadata'] and isinstance(record['metadata'], str):
                 record['metadata'] = json.loads(record['metadata'])
             elif record['metadata'] is None:
                 record['metadata'] = {}
-        
+
         return record
 
     @classmethod
     def get_price_per_token(cls, model_name: str, year: int, month: int) -> Optional[Decimal]:
         """
-        Retrieve the price per token for a specific model for a given month and year.
-
+        Retrieve the price per token for a specific model and time period.
+        
         Args:
-            model_name (str): The name of the AI model (e.g., 'standard', 'pi').
-            year (int): The year for which to fetch the rate.
-            month (int): The month for which to fetch the rate.
-
+            model_name (str): Name of the AI model.
+            year (int): Year to fetch the rate.
+            month (int): Month to fetch the rate.
+            
         Returns:
-            Optional[Decimal]: The price per token if found, else None.
+            Optional[Decimal]: Price per token if found; otherwise, None.
         """
         sql = schemafy("""
             SELECT price
@@ -463,13 +534,13 @@ class BillingDbCore:
     @classmethod
     def has_any_invoice(cls, user_id):
         """
-        Check if a user has any invoices.
-
+        Determine if the user has any invoices.
+        
         Args:
-            user_id (int): The user's ID.
-
+            user_id (int): Unique identifier for the user.
+            
         Returns:
-            bool: True if the user has any invoices, False otherwise.
+            bool: True if any invoice exists; otherwise, False.
         """
         try:
             sql = schemafy("""
@@ -486,11 +557,17 @@ class BillingDbCore:
         except Exception as e:
             print(f"Error checking if user {user_id} has any invoices: {str(e)}")
             raise RuntimeError(f"Error checking if user {user_id} has any invoices: {str(e)}")
-    
+
     @classmethod
     def get_last_invoice_end_date(cls, user_id):
         """
-        Get the end date of the last invoice for a user.
+        Retrieve the end date of the most recent invoice of a user.
+        
+        Args:
+            user_id (int): Unique identifier for the user.
+            
+        Returns:
+            date or None: The billing period end date of the latest invoice if available; otherwise, None.
         """
         sql = schemafy("""
             SELECT billing_period_end
@@ -505,15 +582,15 @@ class BillingDbCore:
             return result['billing_period_end']
         else:
             return None
-    
+
     @classmethod
     def update_last_invoice_run(cls, user_id: int, run_timestamp: datetime):
         """
-        Update the last_invoice_run_at timestamp for a user.
-
+        Update the timestamp for the last invoice generation run for a user.
+        
         Args:
-            user_id (int): The user's ID.
-            run_timestamp (datetime): The timestamp of the invoice run (timezone-aware).
+            user_id (int): Unique identifier for the user.
+            run_timestamp (datetime): The timestamp of the current invoice run.
         """
         try:
             sql = schemafy("""
@@ -531,13 +608,13 @@ class BillingDbCore:
     @classmethod
     def get_last_invoice_run(cls, user_id: int) -> Optional[datetime]:
         """
-        Retrieve the last_invoice_run_at timestamp for a user.
-
+        Retrieve the timestamp of the last invoice generation run for a user.
+        
         Args:
-            user_id (int): The user's ID.
-
+            user_id (int): Unique identifier for the user.
+            
         Returns:
-            Optional[datetime]: The timestamp of the last invoice run, or None if not available.
+            Optional[datetime]: The last invoice run timestamp if available; otherwise, None.
         """
         try:
             sql = schemafy("""
