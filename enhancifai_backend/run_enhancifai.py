@@ -40,8 +40,8 @@ def prepare_database(db: DbSession) -> None:
         try:
             process_sql_file(db, sql_file)
         except Exception as e:
-            logging.error(f"Error processing {sql_file}: {e}")
-    
+            logging.error("Error processing %s: %s", sql_file, e)
+
     db.do('commit')
 
 def run() -> NoReturn:
@@ -54,7 +54,7 @@ def run() -> NoReturn:
         logging.info("EnhancifAI Backend interrupted by user.")
         sys.exit(0)
     except Exception as e:
-        logging.error(f"Unexpected error: {e}")
+        logging.error("Unexpected error: %s", e)
         sys.exit(2)
 
 if __name__ == "__main__":
