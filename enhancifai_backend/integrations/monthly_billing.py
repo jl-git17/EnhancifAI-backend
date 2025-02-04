@@ -2,6 +2,7 @@ import logging
 from datetime import datetime, timedelta, date, time, timezone
 from decimal import Decimal
 import calendar
+import os
 from enhancifai_backend.database.access import read_db
 from enhancifai_backend.database.handlers.billing import BillingDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
@@ -13,7 +14,16 @@ logger = logging.getLogger(__name__)
 
 def add_one_month(dt):
     """
-    Adds one month to the given datetime object.
+    Returns a new datetime that is one month after the given datetime (dt).
+
+    If the resulting month has fewer days than dt.day, the day is adjusted to the
+    last valid day of the month.
+
+    Parameters:
+        dt (datetime): The original datetime.
+
+    Returns:
+        datetime: The datetime incremented by one month.
     """
     year = dt.year + (dt.month // 12)
     month = dt.month % 12 + 1
@@ -22,18 +32,27 @@ def add_one_month(dt):
 
 def generate_monthly_invoices():
     """
-    Generate monthly invoices for all users with detailed line items.
+    Generates monthly invoices for all users based on their token usage.
+
+    For each user, the function determines the billing period using the date of the last issued invoice
+    or the user's join date, up to the end of the previous month. It then processes both normal and PI token
+    usages. Detailed invoices are created if token consumption is detected, and the invoice run timestamp is updated.
+
+    Raises:
+        Logs errors and continues processing on individual user failures.
     """
     try:
         today = datetime.now(timezone.utc)
         first_day_of_current_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        last_day_of_previous_month = first_day_of_current_month - timedelta(seconds=1)
-        first_day_of_previous_month = last_day_of_previous_month.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        # Temporarily allow invoicing for the current month
+        last_day_current = calendar.monthrange(first_day_of_current_month.year, first_day_of_current_month.month)[1]
+        last_day_of_current_month = first_day_of_current_month.replace(
+            day=last_day_current, hour=23, minute=59, second=59, microsecond=999999
+        )
 
         logger.info(
-            "Generating invoices up to the period: %s to %s",
-            first_day_of_previous_month.strftime('%Y-%m-%d'),
-            last_day_of_previous_month.strftime('%Y-%m-%d')
+            "Generating invoices for period ending on: %s",
+            last_day_of_current_month.strftime('%Y-%m-%d')
         )
 
         sql = schemafy("SELECT user_id FROM enhancifai.users;")
@@ -57,10 +76,35 @@ def generate_monthly_invoices():
                     if current_start.tzinfo is None:
                         current_start = current_start.replace(tzinfo=timezone.utc)
                 else:
+                    billing_start_str = os.getenv('BILLING_START')
+                    if billing_start_str:
+                        try:
+                            billing_start_month, billing_start_day = map(int, billing_start_str.split('-'))
+                        except Exception as e:
+                            logger.error(
+                                "Invalid BILLING_START format: %s. "
+                                "Expected 'MM-DD'. Error: %s",
+                                billing_start_str, str(e)
+                                )
+                            continue
+                    else:
+                        billing_start_month, billing_start_day = 1, 1  # default to Jan 1 if not set
+
                     date_joined = UsersDbCore.get_date_joined(user_id)
                     if not date_joined:
                         logger.error("Could not retrieve date of joining for user %s. Skipping.", user_id)
                         continue
+                    # Determine the candidate billing start based on the join year.
+                    candidate = datetime(
+                        date_joined.year, billing_start_month, billing_start_day,
+                        0, 0, 0, tzinfo=timezone.utc
+                    )
+                    if date_joined > candidate:
+                        candidate = datetime(
+                            date_joined.year + 1, billing_start_month,
+                            billing_start_day, 0, 0, 0, tzinfo=timezone.utc
+                        )
+                    current_start = candidate
                     if isinstance(date_joined, date) and not isinstance(date_joined, datetime):
                         date_joined = datetime.combine(date_joined, time.min, tzinfo=timezone.utc)
                     current_start = date_joined.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -73,19 +117,19 @@ def generate_monthly_invoices():
                             current_start
                         )
 
-                if current_start > last_day_of_previous_month:
+                if current_start > last_day_of_current_month:
                     logger.info(
                         "User %s has no new periods to invoice up to %s.", 
-                        user_id, last_day_of_previous_month.strftime('%Y-%m-%d')
+                        user_id, last_day_of_current_month.strftime('%Y-%m-%d')
                     )
                     continue
 
-                while current_start <= last_day_of_previous_month:
+                while current_start <= last_day_of_current_month:
                     last_day = calendar.monthrange(current_start.year, current_start.month)[1]
                     current_end = current_start.replace(day=last_day, hour=23, minute=59, second=59, microsecond=999999)
 
-                    if current_end > last_day_of_previous_month:
-                        current_end = last_day_of_previous_month
+                    if current_end > last_day_of_current_month:
+                        current_end = last_day_of_current_month
                     if user_id == 5:
                         logger.debug(
                             "User 5: Processing period from %s to %s",
