@@ -45,6 +45,8 @@ class ExcelHandler:
         self.total_tokens = 0
         self.batched_processing = batched_processing
         self.performance_optimization = performance_optimization
+        self.input_tokens = 0
+        self.output_tokens = 0
 
     def _is_run_cancelled(self):
         return RunsDbCore.is_run_cancelled(self.run_id)
@@ -143,6 +145,8 @@ class ExcelHandler:
             "processed_records": self.processed,
             "time_elapsed": end_time - start_time,
             "total_tokens_sum": self.total_tokens,
+            "input_tokens_sum": self.input_tokens,
+            "output_tokens_sum": self.output_tokens,
             "error_count": len(self.errors),
             "errors": self.errors
         }
@@ -176,6 +180,8 @@ class ExcelHandler:
 
         with self.lock:
             self.total_tokens += data.get('tokens', 0)
+            self.input_tokens += data.get('input_tokens', 0)
+            self.output_tokens += data.get('output_tokens', 0)
             if idx in self.row_completion:
                 self.row_completion[idx] += 1
             else:
@@ -245,6 +251,8 @@ class ExcelHandler:
                 results_for_chunk.append(result)
 
             self.total_tokens += batch_data[0].get('tokens', 0)
+            self.input_tokens += item.get("input_tokens", 0)
+            self.output_tokens += item.get("output_tokens", 0)
 
         return results_for_chunk
 
@@ -338,6 +346,8 @@ class ExcelHandler:
             "processed_records": self.processed,
             "time_elapsed": end_time - start_time,
             "total_tokens_sum": self.total_tokens,
+            "input_tokens_sum": self.input_tokens,
+            "output_tokens_sum": self.output_tokens,
             "error_count": len(self.errors),
             "errors": self.errors
         }
@@ -353,7 +363,8 @@ class ExcelHandler:
             time_elapsed=time_elapsed,
             num_rows_in_file=len(self.data),
             num_prompts=0,  # Or set properly
-            num_tokens=self.total_tokens,
+            input_tokens=self.input_tokens,
+            output_tokens=self.output_tokens,
             errors=json.dumps(self.errors),
             filename=self.filename,
             overflow=self.overflow

@@ -42,6 +42,8 @@ class CSVHandler:
         self.errors = []
         self.overflow = False
         self.total_tokens = 0
+        self.input_tokens = 0
+        self.output_tokens = 0
         self.batched_processing = batched_processing
         self.performance_optimization = performance_optimization
 
@@ -162,7 +164,8 @@ class CSVHandler:
             "total_records": len(self.data),
             "processed_records": self.processed,
             "time_elapsed": end_time - start_time,
-            "total_tokens_sum": self.total_tokens,
+            "input_tokens_sum": self.input_tokens,
+            "output_tokens_sum": self.output_tokens,
             "error_count": len(self.errors),
             "errors": self.errors
         }
@@ -193,7 +196,8 @@ class CSVHandler:
         result[f"{output_heading}"] = data.get("content", "")
 
         with self.lock:
-            self.total_tokens += data.get('tokens', 0)
+            self.input_tokens += data.get('input_tokens', 0)
+            self.output_tokens += data.get('output_tokens', 0)
             self._increment_row_completion(idx)
             self.prompt_progress += 1
             runs_progress.update_progress(self.run_id, self.prompt_progress)
@@ -257,7 +261,8 @@ class CSVHandler:
 
                 results_for_chunk.append(result)
 
-            self.total_tokens += batch_data[0].get('tokens', 0)
+            self.input_tokens += item.get("input_tokens", 0)
+            self.output_tokens += item.get("output_tokens", 0)
 
         return results_for_chunk
 
@@ -360,7 +365,8 @@ class CSVHandler:
             "total_records": len(self.data),
             "processed_records": self.processed,
             "time_elapsed": end_time - start_time,
-            "total_tokens_sum": self.total_tokens,
+            "input_tokens_sum": self.input_tokens,
+            "output_tokens_sum": self.output_tokens,
             "error_count": len(self.errors),
             "errors": self.errors
         }
@@ -376,7 +382,8 @@ class CSVHandler:
             time_elapsed=time_elapsed,
             num_rows_in_file=len(self.data),
             num_prompts=0,  # Or adjust if you track total prompts used
-            num_tokens=self.total_tokens,
+            input_tokens=self.input_tokens,
+            output_tokens=self.output_tokens,
             errors=json.dumps(self.errors),
             filename=self.filename,
             overflow=self.overflow
