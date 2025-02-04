@@ -4,48 +4,49 @@ from enhancifai_backend.database.handlers.utils import schemafy
 
 class RunLogsDbCore:
     """
-    A class used to handle the operations related to run logs in the database.
+    A class to handle run log operations in the database.
     """
 
     @classmethod
     def insert_log(
         cls, run_id, user_name, engine_model, log_timestamp, num_rows_processed,
-        num_rows_in_file, num_prompts, num_tokens, errors, time_elapsed, filename,
+        num_rows_in_file, num_prompts, input_tokens, output_tokens, errors, time_elapsed, filename,
         overflow, batched=False
         ):
         """
         Insert a log entry into the run_logs table.
 
         Parameters:
-        run_id (str): The ID of the run.
-        user_name (str): The name of the user.
-        engine_model (str): The engine model used.
-        log_timestamp (datetime): The timestamp of the log.
-        num_rows_processed (int): Number of rows processed.
-        num_rows_in_file (int): Number of rows in the file.
-        num_prompts (int): Number of prompts.
-        num_tokens (int): Number of tokens.
-        errors (str): Errors encountered during the run.
-        time_elapsed (float): Time elapsed during the run.
-        filename (str): Name of the file processed.
-        overflow (bool): Indicates if there was an overflow.
-        batched (bool, optional): Indicates if the processing was batched. Defaults to False.
+            run_id (str): Unique identifier for the run.
+            user_name (str): Name of the user.
+            engine_model (str): Engine model used.
+            log_timestamp (datetime): Timestamp when the log was created.
+            num_rows_processed (int): Count of processed rows.
+            num_rows_in_file (int): Total rows in the file.
+            num_prompts (int): Number of prompts executed.
+            input_tokens (int): Number of input tokens processed.
+            output_tokens (int): Number of output tokens processed.
+            errors (str): Any errors encountered.
+            time_elapsed (float): Time taken for the run.
+            filename (str): Name of the processed file.
+            overflow (bool): Indicates if an overflow occurred.
+            batched (bool, optional): True if processed in batches. Defaults to False.
 
         Returns:
-        Any: Result of the write_db operation.
+            Result from write_db.do operation.
         """
         sql = schemafy("""
             INSERT INTO enhancifai.run_logs (
                        run_id, user_name, engine_model, log_timestamp,
-                       num_rows_processed, num_rows_in_file, num_prompts,
-                       num_tokens, errors, time_elapsed, filename, overflow, batched)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
+                       num_rows_processed, num_rows_in_file, num_prompts, input_tokens, output_tokens,
+                       errors, time_elapsed, filename, overflow, batched)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
         """)
         return write_db.do(
             'execute', sql=sql, data=(
                 run_id, user_name, engine_model, log_timestamp,
-                num_rows_processed, num_rows_in_file, num_prompts,
-                num_tokens, errors, time_elapsed, filename, overflow, batched
+                num_rows_processed, num_rows_in_file, num_prompts, input_tokens, output_tokens,
+                errors, time_elapsed, filename, overflow, batched
             )
         )
 
@@ -55,11 +56,11 @@ class RunLogsDbCore:
         Retrieve logs within a specified date range.
 
         Parameters:
-        start (datetime or str): The start date of the range.
-        end (datetime or str, optional): The end date of the range. Defaults to None.
+            start (datetime or str): Start date/time of the range.
+            end (datetime or str, optional): End date/time; defaults to one day after start if not provided.
 
         Returns:
-        list: A list of logs within the specified date range.
+            List of run logs sorted by log_id.
         """
         # Convert start to a datetime object if not already
         if not isinstance(start, datetime):
@@ -92,16 +93,16 @@ class PromptImproverRunLogsDbCore:
         Insert a log entry into the prompt_improver_run_logs table.
 
         Parameters:
-        user_id (int): The ID of the user.
-        engine_model (str): The engine model used.
-        log_timestamp (datetime): The timestamp of the log.
-        time_elapsed (float): Time elapsed during the run.
-        num_prompts (int): Number of prompts.
-        num_tokens (int): Number of tokens.
-        errors (str, optional): Errors encountered during the run. Defaults to None.
+            user_id (int): User identifier.
+            engine_model (str): Engine model used.
+            log_timestamp (datetime): Timestamp of the log entry.
+            time_elapsed (float): Duration of the run.
+            num_prompts (int): Count of prompts executed.
+            num_tokens (int): Number of tokens processed.
+            errors (str, optional): Errors encountered, if any.
 
         Returns:
-        Any: Result of the write_db operation.
+            Result from write_db.do operation.
         """
         sql = schemafy("""
             INSERT INTO enhancifai.prompt_improver_run_logs (
@@ -118,19 +119,18 @@ class PromptImproverRunLogsDbCore:
             )
         )
 
-
     @classmethod
     def retrieve_logs_by_user_and_date_range(cls, user_id, start, end=None):
         """
-        Retrieve logs for a specific user within a specified date range.
+        Retrieve logs for a specific user within a date range.
 
         Parameters:
-        user_id (int): The ID of the user.
-        start (datetime or str): The start date of the range.
-        end (datetime or str, optional): The end date of the range. Defaults to None.
+            user_id (int): User identifier.
+            start (datetime or str): Start date/time of the range.
+            end (datetime or str, optional): End date/time; defaults to one day after start if not provided.
 
         Returns:
-        list: A list of logs within the specified date range for the user.
+            List of user-specific logs sorted by log_id.
         """
         # Convert start to a datetime object if not already
         if not isinstance(start, datetime):
@@ -158,15 +158,14 @@ class PromptImproverRunLogsDbCore:
     @classmethod
     def retrieve_logs_by_date_range(cls, start, end=None):
         """
-        Retrieve logs within a specified date range from the prompt_improver_run_logs table,
-        without filtering by user.
+        Retrieve all logs within a specified date range.
 
         Parameters:
-        start (datetime or str): The start date of the range.
-        end (datetime or str, optional): The end date of the range. Defaults to None.
+            start (datetime or str): Start date/time of the range.
+            end (datetime or str, optional): End date/time; defaults to one day after start if not provided.
 
         Returns:
-        list: A list of logs within the specified date range.
+            List of logs sorted by log_id.
         """
         # Convert start to a datetime object if not already
         if not isinstance(start, datetime):
