@@ -1,8 +1,9 @@
 import os
-import psycopg2
-from psycopg2.extras import DictCursor
 import re
 import time
+
+import psycopg2
+from psycopg2.extras import DictCursor
 
 RETURNING_REGEX = re.compile(r"RETURNING (\w+);")
 RETRY_LIMIT = 3
@@ -35,7 +36,7 @@ class DbSession:
                 keepalives=2
             )
             self.conn.autocommit = True
-            
+
         except psycopg2.OperationalError as e:
             if self.config['db_name'] in e.args[0] and "does not exist" in e.args[0]:
                 print(f"No database found. Please create a '{self.config['db_name']}' database in PostgreSQL.")
@@ -43,7 +44,7 @@ class DbSession:
             else:
                 print(e)
                 os._exit(1)
-    
+
     def _process(self, query_type, sql='', data=None):
         if query_type == 'select':
             return self._select(sql, data)
@@ -102,7 +103,7 @@ class DbSession:
             return dict(res)
         else:
             return None
-    
+
     def _select_exists(self, sql, data) -> bool:
         assert "SELECT" in sql, "Only SELECT queries are allowed."
         res = self._select_one(f"SELECT EXISTS ({sql});", data)
@@ -114,7 +115,7 @@ class DbSession:
                 cur.execute(sql, data)
             else:
                 cur.execute(sql)
-            
+
             # If the SQL contains RETURNING, fetch the returned row
             if "RETURNING" in sql:
                 returned_row = cur.fetchone()
