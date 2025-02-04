@@ -8,14 +8,14 @@ class SheetsDbCore:
     @classmethod
     def update_user_google_credentials(cls, user_id, creds: Credentials):
         """
-        Update Google credentials for a user.
+        Save or update a user's Google credentials.
 
         Parameters:
-        user_id (str): The ID of the user.
-        creds (google.oauth2.credentials.Credentials): The Google credentials.
+            user_id (str): Unique identifier for the user.
+            creds (Credentials): Google credentials object.
 
         Returns:
-        None
+            None
         """
         creds_bytes = pickle.dumps(creds)
         sql = schemafy("""
@@ -26,17 +26,17 @@ class SheetsDbCore:
             updated_at = now();
         """)
         write_db.do('execute', sql=sql, data=(user_id, creds_bytes))
-    
+
     @classmethod
     def get_user_google_credentials(cls, user_id) -> Credentials:
         """
-        Retrieve Google credentials for a user.
+        Retrieve a user's Google credentials.
 
         Parameters:
-        user_id (str): The ID of the user.
+            user_id (str): Unique identifier for the user.
 
         Returns:
-        google.oauth2.credentials.Credentials: The Google credentials.
+            Credentials: The user's Google credentials, or None if not found.
         """
         sql = schemafy("SELECT credentials FROM enhancifai.google_sheets_credentials WHERE user_id = %s;")
         result = read_db.do('select_one', sql=sql, data=(user_id,))
@@ -44,32 +44,32 @@ class SheetsDbCore:
             creds_bytes = result['credentials']
             return pickle.loads(creds_bytes)
         return None
-    
+
     @classmethod
     def delete_user_google_credentials(cls, user_id):
         """
-        Delete Google credentials for a user.
+        Remove a user's Google credentials from the database.
 
         Parameters:
-        user_id (str): The ID of the user.
+            user_id (str): Unique identifier for the user.
 
         Returns:
-        None
+            None
         """
         sql = schemafy("DELETE FROM enhancifai.google_sheets_credentials WHERE user_id = %s;")
         write_db.do('execute', sql=sql, data=(user_id,))
-    
+
     @classmethod
     def store_oauth_state(cls, user_id, state):
         """
-        Store the OAuth state for a user.
+        Store the OAuth state for a user session.
 
         Parameters:
-        user_id (str): The ID of the user.
-        state (str): The OAuth state.
+            user_id (str): Unique identifier for the user.
+            state (str): The OAuth state token.
 
         Returns:
-        None
+            None
         """
         sql = schemafy("""
             INSERT INTO enhancifai.google_oauth_state (user_id, state)
@@ -81,13 +81,13 @@ class SheetsDbCore:
     @classmethod
     def get_oauth_state(cls, state):
         """
-        Retrieve the user ID associated with an OAuth state.
+        Fetch the user ID associated with a given OAuth state.
 
         Parameters:
-        state (str): The OAuth state.
+            state (str): The OAuth state token.
 
         Returns:
-        int: The user ID.
+            int: The user ID linked to the state, or None if not found.
         """
         sql = schemafy("SELECT user_id FROM enhancifai.google_oauth_state WHERE state = %s;")
         result = read_db.do('select_one', sql=sql, data=(state,))
@@ -96,13 +96,13 @@ class SheetsDbCore:
     @classmethod
     def delete_oauth_state(cls, state):
         """
-        Delete the OAuth state after use.
+        Remove an OAuth state from the database after it is used.
 
         Parameters:
-        state (str): The OAuth state.
+            state (str): The OAuth state token.
 
         Returns:
-        None
+            None
         """
         sql = schemafy("DELETE FROM enhancifai.google_oauth_state WHERE state = %s;")
         write_db.do('execute', sql=sql, data=(state,))
