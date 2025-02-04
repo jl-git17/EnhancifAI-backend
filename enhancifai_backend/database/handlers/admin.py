@@ -4,19 +4,19 @@ from enhancifai_backend.database.access import read_db, write_db
 
 class PromptsDbCore:
     """
-    A class to handle database operations related to prompts.
+    Provides operations for managing user prompts with version control.
     """
 
     @classmethod
     def get_latest_prompt_by_user(cls, user_id):
         """
-        Retrieve the latest prompt for a user.
+        Retrieve the most recent prompt for the specified user.
         
         Parameters:
-        user_id (int): The ID of the user.
+            user_id (int): Unique identifier of the user.
         
         Returns:
-        dict: The latest prompt and its metadata.
+            dict or None: The latest prompt details with metadata, or None if not found.
         """
         sql = schemafy("""
             SELECT * FROM enhancifai.prompts
@@ -29,13 +29,13 @@ class PromptsDbCore:
     @classmethod
     def get_prompt_versions_by_user(cls, user_id):
         """
-        Retrieve all prompt versions for a user.
+        Retrieve all prompt versions for the specified user, ordered from newest to oldest.
         
         Parameters:
-        user_id (int): The ID of the user.
+            user_id (int): Unique identifier of the user.
         
         Returns:
-        list: A list of all prompt versions and metadata for the user.
+            list: A list of dictionaries with prompt details and metadata.
         """
         sql = schemafy("""
             SELECT * FROM enhancifai.prompts
@@ -47,15 +47,15 @@ class PromptsDbCore:
     @classmethod
     def save_new_prompt(cls, user_id, prompt, ai_engine):
         """
-        Save a new prompt with versioning. It will increment the version number.
+        Save a new prompt for the user with an incremented version number.
         
         Parameters:
-        user_id (int): The ID of the user.
-        prompt (str): The prompt text.
-        ai_engine (str): The AI engine used.
+            user_id (int): Unique identifier of the user.
+            prompt (str): The text content of the prompt.
+            ai_engine (str): The AI engine used for the prompt.
         
         Returns:
-        None
+            None
         """
         # Get the latest version number
         latest_prompt = cls.get_latest_prompt_by_user(user_id)
@@ -70,14 +70,14 @@ class PromptsDbCore:
     @classmethod
     def get_prompt_by_version(cls, user_id, version):
         """
-        Retrieve a specific prompt version for a user.
+        Retrieve a specific version of the user's prompt.
         
         Parameters:
-        user_id (int): The ID of the user.
-        version (int): The version number of the prompt.
+            user_id (int): Unique identifier of the user.
+            version (int): The version number of the prompt.
         
         Returns:
-        dict: The prompt and its metadata.
+            dict or None: The prompt details if found, otherwise None.
         """
         sql = schemafy("""
             SELECT * FROM enhancifai.prompts
@@ -88,6 +88,12 @@ class PromptsDbCore:
 class ModelPricesDbCore:
     @classmethod
     def get_all_model_prices(cls):
+        """
+        Fetch all model pricing records ordered by model name, year, and month.
+        
+        Returns:
+            list: A list of dictionaries containing model pricing data.
+        """
         sql = schemafy("""
             SELECT model_name, month, year, price
             FROM enhancifai.model_pricing
@@ -98,7 +104,16 @@ class ModelPricesDbCore:
     @classmethod
     def update_model_price(cls, model_name, year, month, price):
         """
-        Update model price and insert into history.
+        Update or insert the pricing record for a model for a specific year and month.
+        
+        Parameters:
+            model_name (str): The name of the model.
+            year (int): The year of the pricing record.
+            month (int): The month of the pricing record.
+            price (float): The new price value.
+        
+        Returns:
+            None
         """
         sql = schemafy("""
             INSERT INTO enhancifai.model_pricing (model_name, year, month, price)
@@ -111,8 +126,10 @@ class ModelPricesDbCore:
     @classmethod
     def get_earliest_effective_month(cls):
         """
-        Return the earliest month (YYYY-MM-01) in the model_pricing.
-        If none, return None.
+        Determine the earliest month for which model pricing data is available.
+        
+        Returns:
+            str or None: The earliest effective month in 'YYYY-MM-01' format, or None if data is absent.
         """
         sql = schemafy("""
             SELECT MIN(year) AS min_year, MIN(month) AS min_month
@@ -126,15 +143,14 @@ class ModelPricesDbCore:
     @classmethod
     def get_model_prices_for_month(cls, year, month):
         """
-        Get all model prices that were in effect for a specific year-month.
+        Retrieve model pricing details for the specified year and month.
         
-        We define 'in effect' as any record whose effective_date is in that month
-        (i.e., [YYYY-MM-01, YYYY-MM-31]).
+        Parameters:
+            year (int): The year to filter records.
+            month (int): The month to filter records.
         
-        You may choose to show exactly the entries from that month or 
-        the price that was effective as of that month by querying the 
-        latest price <= year-month.
-        For simplicity, let's just fetch the rows with matching year-month.
+        Returns:
+            list: A list of dictionaries with model names and their corresponding prices.
         """
         sql = schemafy("""
             SELECT model_name, price
