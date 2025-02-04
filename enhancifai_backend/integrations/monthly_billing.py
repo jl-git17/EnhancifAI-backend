@@ -94,6 +94,8 @@ def generate_monthly_invoices():
                     if not date_joined:
                         logger.error("Could not retrieve date of joining for user %s. Skipping.", user_id)
                         continue
+                    if date_joined.tzinfo is None:
+                        date_joined = date_joined.replace(tzinfo=timezone.utc)
                     # Determine the candidate billing start based on the join year.
                     candidate = datetime(
                         date_joined.year, billing_start_month, billing_start_day,
