@@ -20,13 +20,38 @@ genai.configure(api_key=GOOGLE_AI_STUDIO_API_KEY)
 
 
 class GeminiConnector:
-    """Class to manage connections and requests to Gemini API."""
+    """
+    Manages the connection and requests to the Gemini API using the specified model.
 
+    Attributes:
+        model: An instance of the generative model based on the provided model name.
+        rate_limit (bool): Flag to enable or disable rate limiting.
+    """
     def __init__(self, model='gemini-pro') -> None:
         self.model = genai.GenerativeModel(model)
         self.rate_limit = True
 
     def process_csv_row(self, columns, rows, query, run_id: int):
+        """
+        Processes a CSV row by sending a query along with data payload to the Gemini API.
+
+        The method constructs a message containing a custom prompt and the JSON representation
+        of the columns and rows, then sends it to the API. It tracks token usage and aborts if
+        the run is cancelled.
+
+        Parameters:
+            columns (list): The list of column names from the CSV.
+            rows (list): The list of rows (data) from the CSV.
+            query (str): The query or question regarding the CSV data.
+            run_id (int): The identifier for the current run to check for cancellations.
+
+        Returns:
+            dict: A dictionary with keys 'content' for the trimmed response text and 'tokens'
+            for the total token count used.
+
+        Raises:
+            RuntimeError: If the run is cancelled.
+        """
         if RunsDbCore.is_run_cancelled(run_id):
             raise RuntimeError("Job cancelled.")
         chat = self.model.start_chat(history=[])
