@@ -41,6 +41,7 @@ class CSVHandler:
         self.user_id = user_id
         self.errors = []
         self.overflow = False
+        self.num_prompts_total = 0
         self.total_tokens = 0
         self.input_tokens = 0
         self.output_tokens = 0
@@ -106,7 +107,6 @@ class CSVHandler:
 
             if not self.performance_optimization:
                 # OLD approach: row-by-row
-                processed_rows_set = set()
                 for idx, row in enumerate(self.data):
                     if idx >= total_records:
                         break
@@ -214,7 +214,7 @@ class CSVHandler:
 
         # Choose the columns used by this prompt
         selected_columns = self.get_selected_columns(prompt_config, columns_list)
-        
+
         # Build a list of filtered row dicts, parallel to 'chunk_data'
         to_send = []
         indexes = []
@@ -239,7 +239,9 @@ class CSVHandler:
         output_heading = prompt_config['output_heading']
         results_for_chunk = []
         with self.lock:
+            _last_item = {}
             for i, item in enumerate(batch_data):
+                _last_item = item
                 actual_idx = indexes[i]
                 # Build a result dict for this row
                 result = {
@@ -261,8 +263,8 @@ class CSVHandler:
 
                 results_for_chunk.append(result)
 
-            self.input_tokens += item.get("input_tokens", 0)
-            self.output_tokens += item.get("output_tokens", 0)
+            self.input_tokens += _last_item.get("input_tokens", 0)
+            self.output_tokens += _last_item.get("output_tokens", 0)
 
         return results_for_chunk
 
@@ -319,7 +321,7 @@ class CSVHandler:
         else:
             return self.column_index_to_letter(index // 26 - 1) + string.ascii_uppercase[index % 26]
 
-    def _gather_results(self, futures, num_prompts, start_time):
+    def _gather_results(self, futures, _num_prompts, start_time):
         """
         Common method to gather results from futures in either row-by-row or chunk approach.
         """
@@ -381,7 +383,7 @@ class CSVHandler:
             num_rows_processed=self.processed,
             time_elapsed=time_elapsed,
             num_rows_in_file=len(self.data),
-            num_prompts=0,  # Or adjust if you track total prompts used
+            num_prompts=self.num_prompts_total,  # Or adjust if you track total prompts used
             input_tokens=self.input_tokens,
             output_tokens=self.output_tokens,
             errors=json.dumps(self.errors),
