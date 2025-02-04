@@ -209,10 +209,11 @@ class OpenAIConnector:
 
                 data = completion.choices[0].message.content
                 tokens_used = completion.usage.total_tokens
-                print(f"prompt_tokens: {completion.usage.prompt_tokens}")
-                print(f"calculated input tokens: {tokens_used - completion.usage.prompt_tokens}")
-                #input_tokens = completion.usage.prompt_tokens
-                #output_tokens = tokens_used - input_tokens
+                print(f"Tokens used: {tokens_used}")
+                input_tokens = completion.usage.prompt_tokens
+                print(f"Input tokens: {input_tokens}")
+                output_tokens = tokens_used - input_tokens
+                print(f"Output tokens: {output_tokens}")
 
                 # Update rate limit manager
                 rate_limit_manager.update_make_api_call(self.engine, tokens_used=tokens_used)
@@ -224,7 +225,12 @@ class OpenAIConnector:
                 user_id = RunsDbCore.get_user_id(run_id)
                 UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
 
-                return {"content": data.strip(), "tokens": tokens_used, 'engine_used': self.engine}
+                return {
+                    "content": data.strip(),
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "engine_used": self.engine
+                }
 
             except Exception as e:
                 print(e)
@@ -309,6 +315,8 @@ class OpenAIConnector:
                 print(f"Raw data: {raw_data}")
 
                 tokens_used = completion.usage.total_tokens
+                input_tokens = completion.usage.prompt_tokens
+                output_tokens = tokens_used - input_tokens
 
                 # Rate limit manager housekeeping
                 rate_limit_manager.update_make_api_call(self.engine, tokens_used=tokens_used)
@@ -333,7 +341,8 @@ class OpenAIConnector:
                     for line in _results:
                         results.append({
                             "content": line,
-                            "tokens": tokens_used,
+                            "input_tokens": input_tokens,
+                            "output_tokens": output_tokens,
                             "engine_used": self.engine
                         })
                     return results
