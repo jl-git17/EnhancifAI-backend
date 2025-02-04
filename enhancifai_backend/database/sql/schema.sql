@@ -201,7 +201,8 @@ CREATE TABLE IF NOT EXISTS enhancifai.prompt_improver_run_logs (
     log_timestamp TIMESTAMP DEFAULT NOW(),
     time_elapsed FLOAT CHECK (time_elapsed >= 0),
     num_prompts INT CHECK (num_prompts >= 0),
-    num_tokens INT CHECK (num_tokens >= 0),
+    input_tokens INT CHECK (num_tokens >= 0),
+    output_tokens INT CHECK (num_tokens >= 0),
     errors TEXT
 );
 
@@ -241,6 +242,11 @@ CREATE TABLE IF NOT EXISTS enhancifai.model_pricing (
 );
 
 ALTER TABLE enhancifai.run_logs
+    ADD COLUMN IF NOT EXISTS input_tokens INT,
+    ADD COLUMN IF NOT EXISTS output_tokens INT,
+    DROP COLUMN IF EXISTS num_tokens;
+
+ALTER TABLE enhancifai.prompt_improver_run_logs
     ADD COLUMN IF NOT EXISTS input_tokens INT,
     ADD COLUMN IF NOT EXISTS output_tokens INT,
     DROP COLUMN IF EXISTS num_tokens;
