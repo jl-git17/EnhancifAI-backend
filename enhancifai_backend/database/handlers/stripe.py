@@ -16,20 +16,23 @@ stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
 
 class StripeDbCore:
     """
-    A class to handle database operations related to Stripe functionalities.
-    This includes managing Stripe customers and handling invoices based on token usage.
+    Handles Stripe-related database operations including:
+    - Retrieving Stripe customer IDs.
+    - Creating and sending invoices.
+    - Updating invoice statuses.
+    - Checking invoice existence within a billing period.
     """
 
     @classmethod
     def get_stripe_customer_id(cls, user_id: int) -> Optional[str]:
         """
-        Retrieve the Stripe Customer ID for a given user.
+        Retrieve the Stripe Customer ID for the specified user.
 
-        Args:
-            user_id (int): The ID of the user.
+        Parameters:
+            user_id (int): The unique identifier of the user.
 
         Returns:
-            Optional[str]: Stripe Customer ID or None if not found.
+            Optional[str]: The Stripe Customer ID if found; otherwise, None.
         """
         sql = schemafy("SELECT stripe_customer_id FROM enhancifai.users WHERE user_id = %s;")
         result = read_db.do('select_one', sql=sql, data=(user_id,))
@@ -38,11 +41,11 @@ class StripeDbCore:
     @classmethod
     def update_invoice_status(cls, invoice_id: str, status: str) -> None:
         """
-        Update the status of an existing Stripe invoice.
+        Update the status of a specified Stripe invoice in the database.
 
-        Args:
-            invoice_id (str): The Stripe invoice ID.
-            status (str): The new status of the invoice.
+        Parameters:
+            invoice_id (str): The unique identifier of the invoice.
+            status (str): The new status to be applied.
         """
         sql = schemafy("UPDATE enhancifai.stripe_invoices SET status = %s WHERE invoice_id = %s;")
         write_db.do('execute', sql=sql, data=(status, invoice_id,))
@@ -58,17 +61,17 @@ class StripeDbCore:
         billing_period_end: date
     ) -> dict:
         """
-        Create a new invoice for the user with collection_method set to 'send_invoice'.
+        Create and send a new invoice for a user with a one-time fee.
 
-        Args:
-            user_id (int): The ID of the user.
-            amount (int): The amount in cents.
-            description (str): Description of the invoice.
-            billing_period_start (date): Start of the billing period.
-            billing_period_end (date): End of the billing period.
+        Parameters:
+            user_id (int): The unique identifier of the user.
+            amount (int): The charge amount in cents.
+            description (str): A description for the invoice.
+            billing_period_start (date): The start date of the billing period.
+            billing_period_end (date): The end date of the billing period.
 
         Returns:
-            dict: Created invoice details.
+            dict: Details of the created invoice.
         """
         try:
             # Check if an invoice for the billing period already exists
@@ -131,15 +134,15 @@ class StripeDbCore:
     @classmethod
     def invoice_exists(cls, user_id: int, billing_period_start: date, billing_period_end: date) -> bool:
         """
-        Check if an invoice already exists for the user within the specified billing period.
+        Check if an invoice already exists for the user during the specified billing period.
 
-        Args:
-            user_id (int): The ID of the user.
-            billing_period_start (date): Start of the billing period.
-            billing_period_end (date): End of the billing period.
+        Parameters:
+            user_id (int): The unique identifier of the user.
+            billing_period_start (date): Start date of the billing period.
+            billing_period_end (date): End date of the billing period.
 
         Returns:
-            bool: True if an invoice exists for the billing period, False otherwise.
+            bool: True if an invoice exists, otherwise False.
         """
         sql = schemafy("""
             SELECT 1 
@@ -166,12 +169,14 @@ class StripeDbCore:
     @classmethod
     def save_stripe_invoice(cls, invoice: stripe.Invoice, user_id: int) -> None:
         """
-        Save a new Stripe invoice record in the database.
-        Handles unique constraint to prevent duplicates.
+        Save the provided Stripe invoice to the local database.
 
-        Args:
-            invoice (stripe.Invoice): The Stripe invoice object.
-            user_id (int): The ID of the user associated with the invoice.
+        Parameters:
+            invoice (stripe.Invoice): The invoice object from Stripe.
+            user_id (int): The unique identifier of the user associated with the invoice.
+
+        Raises:
+            Exception: When saving to the database fails.
         """
         try:
             # Serialize metadata to JSON
