@@ -29,7 +29,7 @@ class RunsProgress:
         else:
             run_details['status'] = 'pending'
         run_details['rows_processed'] = rows_processed
-        
+
         RunsDbCore.insert_run_details(run_id, json.dumps(run_details))
 
     def update_details(self, run_id: int, details: Dict):
@@ -38,10 +38,10 @@ class RunsProgress:
         """
         run_details = RunsDbCore.get_run_details(run_id)['run_details']
         run_details['details'] = details
-        
+
         if run_details['status'] != 'completed' and RunsDbCore.is_run_cancelled(run_id) is False:
             run_details['status'] = 'completed'
-        
+
         RunsDbCore.insert_run_details(run_id, json.dumps(run_details))
 
     def check_status(self, run_id: int) -> Optional[Dict]:
@@ -49,7 +49,7 @@ class RunsProgress:
         Checks the status of a specific run.
         """
         _run_details = RunsDbCore.get_run_details(run_id)
-        
+
         if _run_details is not None:
             run_details = _run_details['run_details']
             #print(run_details)

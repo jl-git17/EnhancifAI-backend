@@ -17,7 +17,7 @@ class RateLimitManager:
             'text-embedding-3-small': {'token_limit': 5000000, 'rpm': 5000}
         }
         self.request_logs = {model: deque() for model in self.limits}
-        self.token_logs = {model: deque() for model in self.limits if 'token_limit' in self.limits[model]}
+        self.token_logs = {model: deque() for model, spec in self.limits.items() if 'token_limit' in spec}
         self.locks = {model: Lock() for model in self.limits}
         self.queue = {priority: deque() for priority in range(4)}
         self.awarded = {}
@@ -30,19 +30,19 @@ class RateLimitManager:
         with self.locks[model]:
             current_time = time.time()
             window_start = current_time - 60
-            
+
             # Remove old requests
             while self.request_logs[model] and self.request_logs[model][0] < window_start:
                 self.request_logs[model].popleft()
-            
+
             req_limit = self.limits[model]['rpm'] * 0.8
             total_reqs = len(self.request_logs[model])
-            
+
             if total_reqs < req_limit:
                 return True
             else:
                 return False
-    
+
     def _are_tokens_available(self, model):
         with self.locks[model]:
             current_time = time.time()
@@ -51,22 +51,22 @@ class RateLimitManager:
             # Remove old token logs
             while self.token_logs[model] and self.token_logs[model][0][0] < window_start:
                 self.token_logs[model].popleft()
-            
+
             current_tokens = sum(token for _, token in self.token_logs[model])
             limit_tokens = self.limits[model]['token_limit'] * 0.8
             if current_tokens <= limit_tokens:
                 return True
             else:
                 return False
-    
+
     def _update_tokens_available(self, model, tokens_used):
         with self.locks[model]:
             current_time = time.time()
             self.token_logs[model].append((current_time, tokens_used))
-    
+
     def _check_cancelled_run_id(self, run_id) -> bool:
         return RunsDbCore.is_run_cancelled(run_id)
-    
+
     def clean_cancelled_jobs(self):
         with self.queue_lock:
             for priority in self.queue:
@@ -77,7 +77,7 @@ class RateLimitManager:
                         with self.awarded_lock:
                             if unique_id in self.awarded:
                                 del self.awarded[unique_id]
-    
+
     def update_make_api_call(self, model, tokens_used):
         if model not in self.limits:
             raise ValueError("Model not recognized")
@@ -86,7 +86,7 @@ class RateLimitManager:
         with self.locks[model]:
             self.request_logs[model].append(time.time())
         return True, "API call successful"
-        
+
     def can_make_api_call(self, model, run_id, priority=0):
         if model not in self.limits:
             raise ValueError("Model not recognized")

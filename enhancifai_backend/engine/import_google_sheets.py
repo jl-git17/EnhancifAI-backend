@@ -2,7 +2,6 @@ from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
 from google.auth.exceptions import RefreshError
 from fastapi import HTTPException
-import pandas as pd
 import gspread
 from gspread_dataframe import get_as_dataframe
 
@@ -19,7 +18,7 @@ class GoogleSheetsHandler:
         creds = SheetsDbCore.get_user_google_credentials(self.user_id)
         if not creds:
             raise HTTPException(status_code=403, detail="User is not authenticated with Google")
-        
+
         if not creds.valid:
             if creds.expired and creds.refresh_token:
                 try:
@@ -28,7 +27,10 @@ class GoogleSheetsHandler:
                     SheetsDbCore.update_user_google_credentials(self.user_id, creds)
                 except RefreshError:
                     SheetsDbCore.delete_user_google_credentials(self.user_id)
-                    raise HTTPException(status_code=403, detail="Google credentials are invalid or expired, re-authentication required.")
+                    raise HTTPException(
+                        status_code=403,
+                        detail="Google credentials are invalid or expired, re-authentication required."
+                    )
             else:
                 raise HTTPException(status_code=403, detail="Google credentials are invalid or expired")
         print(f"Found creds: {creds}")
@@ -36,7 +38,7 @@ class GoogleSheetsHandler:
 
     def list_google_sheets(self, page_size=10, page_token=None):
         service = build('drive', 'v3', credentials=self.creds)
-        results = service.files().list(
+        results = service.files().list(  # pylint: disable=no-member
             q="mimeType='application/vnd.google-apps.spreadsheet'",
             orderBy="modifiedTime desc",
             fields="nextPageToken, files(id, name, modifiedTime)",
