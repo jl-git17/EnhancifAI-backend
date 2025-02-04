@@ -42,7 +42,6 @@ class CSVHandler:
         self.errors = []
         self.overflow = False
         self.num_prompts_total = 0
-        self.total_tokens = 0
         self.input_tokens = 0
         self.output_tokens = 0
         self.batched_processing = batched_processing
