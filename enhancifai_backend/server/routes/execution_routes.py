@@ -198,6 +198,11 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
                 elif _status.get("status") == "pending" and int(_status.get("progress", "0").replace("%", "")) < 1:
                     _status["progress"] = "1"
                     _status["remark"] = "1% completed."
+                elif _status.get("status") == "completed":
+                    input_tokens = _status.get("results", {}).get("input_tokens", 0)
+                    output_tokens = _status.get("results", {}).get("output_tokens", 0)
+                    total_tokens_sum = input_tokens + output_tokens
+                    _status['results']['total_tokens_sum'] = total_tokens_sum
                 return JSONResponse(status_code=status.HTTP_200_OK, content=_status)
             else:
                 raise HTTPException(status_code=400, detail=f"Run ID '{req_run.run_id}' not found.")
