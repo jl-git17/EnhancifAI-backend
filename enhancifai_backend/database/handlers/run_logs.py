@@ -37,9 +37,10 @@ class RunLogsDbCore:
         """
         sql = schemafy("""
             INSERT INTO enhancifai.run_logs (
-                       run_id, user_name, engine_model, log_timestamp,
-                       num_rows_processed, num_rows_in_file, num_prompts, input_tokens, output_tokens,
-                       errors, time_elapsed, filename, overflow, batched)
+                run_id, user_name, engine_model, log_timestamp,
+                num_rows_processed, num_rows_in_file, num_prompts, input_tokens, output_tokens,
+                errors, time_elapsed, filename, overflow, batched
+            )
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s);
         """)
         return write_db.do(
@@ -88,34 +89,44 @@ class RunLogsDbCore:
 
 class PromptImproverRunLogsDbCore:
     @classmethod
-    def insert_log(cls, user_id, engine_model, log_timestamp, time_elapsed, num_prompts, num_tokens, errors=None):
+    def insert_log(
+        cls,
+        user_id,
+        engine_model,
+        log_timestamp,
+        time_elapsed,
+        num_prompts,
+        input_tokens,
+        output_tokens,
+        errors=None
+    ):
         """
-        Insert a log entry into the prompt_improver_run_logs table.
-
+        Insert a log entry into the prompt_improver_run_logs table with new schema fields for input and output tokens.
+        
         Parameters:
             user_id (int): User identifier.
             engine_model (str): Engine model used.
             log_timestamp (datetime): Timestamp of the log entry.
             time_elapsed (float): Duration of the run.
             num_prompts (int): Count of prompts executed.
-            num_tokens (int): Number of tokens processed.
+            input_tokens (int): Number of input tokens processed.
+            output_tokens (int): Number of output tokens processed.
             errors (str, optional): Errors encountered, if any.
-
+            
         Returns:
             Result from write_db.do operation.
         """
         sql = schemafy("""
             INSERT INTO enhancifai.prompt_improver_run_logs (
                 user_id, engine_model, log_timestamp,
-                time_elapsed, num_prompts,
-                num_tokens, errors)
-            VALUES (%s, %s, %s, %s, %s, %s, %s);
+                time_elapsed, num_prompts, input_tokens, output_tokens, errors
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
         """)
         return write_db.do(
             'execute', sql=sql, data=(
                 user_id, engine_model, log_timestamp,
-                time_elapsed, num_prompts,
-                num_tokens, errors
+                time_elapsed, num_prompts, input_tokens, output_tokens, errors
             )
         )
 

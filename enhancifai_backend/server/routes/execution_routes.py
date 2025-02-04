@@ -111,11 +111,25 @@ def extract_columns_from_file(file_path):
     extracted_columns = [columns]
     return extracted_columns
 
-def start_async_run(run_id, data_file, prompts, max_recs, user_id, file_name, batched_processing=False, performance_optimization=False):
-    asyncio.run(process_run(run_id, data_file, prompts, max_recs, user_id, file_name, batched_processing=batched_processing, performance_optimization=performance_optimization))
+def start_async_run(
+        run_id, data_file, prompts, max_recs, user_id,
+        file_name, batched_processing=False, performance_optimization=False
+):
+    coro = process_run(
+        run_id,
+        data_file,
+        prompts,
+        max_recs,
+        user_id,
+        file_name,
+        batched_processing=batched_processing,
+        performance_optimization=performance_optimization
+    )
+    asyncio.run(coro)
 
 async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name,
                         batched_processing=False, performance_optimization=False):
+
     # Guess the MIME type based on the file extension
     mime_type, _ = mimetypes.guess_type(data_file)
 
@@ -164,7 +178,10 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
     """Check the progress of a given Run ID."""
     ai_consent = UsersDbCore.check_ai_consent(user_id)
     if ai_consent is False:
-        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
+        raise HTTPException(
+            status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+            detail="User has not consented for AI usage."
+        )
     retries = 3  # Number of retries
     for attempt in range(retries):
         try:
@@ -196,7 +213,12 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
             print(e)
             return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
     # If we get here, it means all retries have failed
-    return JSONResponse(status_code=400, content={"detail": f"Run ID '{req_run.run_id}' not found after {retries} attempts."})
+    return JSONResponse(
+        status_code=400,
+        content={
+            "detail": f"Run ID '{req_run.run_id}' not found after {retries} attempts."
+        }
+    )
 
 @router.post("/execution/upload", tags=["Execution"])
 async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFile = File(...),
@@ -207,8 +229,11 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
     """
     ai_consent = UsersDbCore.check_ai_consent(user_id)
     if ai_consent is False:
-        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
-    
+        raise HTTPException(
+            status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+            detail="User has not consented for AI usage."
+        )
+
     temp_data_file_path = None
     temp_prompt_file_path = None
     data_file_suffix = None
@@ -240,10 +265,10 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
         data_file_suffix = file_suffix_map.get(data_file.content_type, None)
         prompt_file_suffix = file_suffix_map.get(prompt_file.content_type, None)
         file_name = data_file.filename
-        
+
         if not data_file_suffix:
             raise HTTPException(status_code=400, detail="Invalid data file type")
-        
+
         if not prompt_file_suffix:
             raise HTTPException(status_code=400, detail="Invalid prompt file type")
 
@@ -251,7 +276,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
         with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
             temp_data_file_path = temp_data_file.name
             data_contents = await data_file.read()
-            
+
             temp_data_file.write(data_contents)
             temp_data_file.flush()
 
@@ -287,9 +312,16 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
     save_to_cache(temp_data_file_path, user_id, file_name)
     save_to_cache(temp_prompt_file_path, user_id, prompt_file.filename)
 
-    # Threading issues might arise if files are cleaned up too early, consider alternatives or move cleanup to a more appropriate place
+    # Threading issues might arise if files are cleaned up too early,
+    # consider alternatives or move cleanup to a more appropriate place
     try:
-        Thread(target=start_async_run, args=(run_id, temp_data_file_path, prompts, max_recs, user_id, file_name)).start()
+        Thread(
+            target=start_async_run,
+            args=(
+                run_id, temp_data_file_path, prompts,
+                max_recs, user_id, file_name
+            )
+        ).start()
     except Exception as e:
         print(f"Error starting async run: {str(e)}")
         time.sleep(1)
@@ -308,7 +340,10 @@ async def cancel_run(req_run: RunCancelsRequest, _: str = Depends(verify_secret_
     try:
         ai_consent = UsersDbCore.check_ai_consent(user_id)
         if ai_consent is False:
-            raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
+            raise HTTPException(
+                status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+                detail="User has not consented for AI usage."
+            )
         if RunsDbCore.check_run_ownership(user_id=user_id, run_id=req_run.run_id) is False:
             raise HTTPException(status_code=400, detail="User not owner of provided run_id.")
         RunsDbCore.cancel_run(req_run.run_id)
@@ -318,7 +353,7 @@ async def cancel_run(req_run: RunCancelsRequest, _: str = Depends(verify_secret_
         # Catch-all for unexpected errors
         return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
     return JSONResponse(status_code=200, content={"message": "Job cancelled successfully"})
-    
+
 
 @router.post("/execution/direct", tags=["Execution"])
 async def upload_direct_prompt(
@@ -335,21 +370,21 @@ async def upload_direct_prompt(
     Upload a CSV/Excel file or provide JSON data, with prompts payload.
     """
     logging.debug("Entered upload_direct_prompt endpoint")
-    logging.debug(f"User ID: {user_id}")
-    logging.debug(f"Prompts: {prompts}")
-    logging.debug(f"Data file provided: {'Yes' if data_file else 'No'}")
-    logging.debug(f"JSON data provided: {'Yes' if json_data else 'No'}")
-    logging.debug(f"Max records flag: {max_records}")
+    logging.debug("User ID: %s", user_id)
+    logging.debug("Prompts: %s", prompts)
+    logging.debug("Data file provided: %s", "Yes" if data_file else "No")
+    logging.debug("JSON data provided: %s", "Yes" if json_data else "No")
+    logging.debug("Max records flag: %s", max_records)
 
     ai_consent = UsersDbCore.check_ai_consent(user_id)
-    logging.debug(f"AI consent for user {user_id}: {ai_consent}")
+    logging.debug("AI consent for user %s: %s", user_id, ai_consent)
     if not ai_consent:
-        logging.warning(f"User {user_id} has not consented for AI usage.")
+        logging.warning("User %s has not consented for AI usage.", user_id)
         raise HTTPException(
             status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
             detail="User has not consented for AI usage."
         )
-    
+
     temp_data_file_path = None
     data_file_suffix = None
     file_name = None
@@ -365,19 +400,19 @@ async def upload_direct_prompt(
     if json_data:
         logging.info("Processing JSON data")
         try:
-            logging.debug(f"JSON data received: {json_data}")
+            logging.debug("JSON data received: %s", json_data)
             _json_data = json.loads(json_data)
-            logging.debug(f"Parsed JSON data: {_json_data}")
+            logging.debug("Parsed JSON data: %s", _json_data)
             sheet_name = _json_data['sheet_name']
-            logging.debug(f"Sheet name extracted: {sheet_name}")
+            logging.debug("Sheet name extracted: %s", sheet_name)
             data_json = _json_data['data']
             with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx') as temp_data_file:
                 temp_data_file_path = temp_data_file.name
-                logging.debug(f"Created temporary data file at {temp_data_file_path}")
+                logging.debug("Created temporary data file at %s", temp_data_file_path)
                 json_to_excel(data_json, temp_data_file_path)
             file_name = f"{sheet_name}.xlsx"
             data_file_suffix = '.xlsx'
-            logging.info(f"JSON data converted to Excel: {file_name}")
+            logging.info("JSON data converted to Excel: %s", file_name)
         except KeyError as e:
             logging.exception("Missing key in JSON data")
             raise HTTPException(status_code=400, detail="Invalid JSON data.") from e
@@ -394,32 +429,32 @@ async def upload_direct_prompt(
         data_file_suffix = file_suffix_map.get(data_file.content_type, None)
         file_name = data_file.filename
 
-        logging.debug(f"Received data file '{file_name}' with content type: {data_file.content_type}")
-        
+        logging.debug("Received data file '%s' with content type: %s", file_name, data_file.content_type)
+
         if not data_file_suffix:
-            logging.error(f"Invalid data file type: {data_file.content_type}")
+            logging.error("Invalid data file type: %s", data_file.content_type)
             raise HTTPException(status_code=400, detail="Invalid data file type")
-        
+
         prompt_file_suffix = file_suffix_map.get(data_file.content_type, None)  # Assuming prompt_file has similar types
         if not prompt_file_suffix:
-            logging.error(f"Invalid prompt file type for content type: {data_file.content_type}")
+            logging.error("Invalid prompt file type for content type: %s", data_file.content_type)
             raise HTTPException(status_code=400, detail="Invalid prompt file type")
 
         # Handling Data File
         try:
             with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
                 temp_data_file_path = temp_data_file.name
-                logging.debug(f"Created temporary data file at {temp_data_file_path}")
+                logging.debug("Created temporary data file at %s", temp_data_file_path)
                 data_contents = await data_file.read()
-                logging.debug(f"Read {len(data_contents)} bytes from data file")
+                logging.debug("Read %s bytes from data file", len(data_contents))
                 temp_data_file.write(data_contents)
                 temp_data_file.flush()
                 logging.debug("Data file written to temporary storage")
-            
+
             if os.path.exists(temp_data_file_path):
-                logging.info(f"Temporary data file exists at {temp_data_file_path}")
+                logging.info("Temporary data file exists at %s", temp_data_file_path)
             else:
-                logging.error(f"Temporary data file not found at {temp_data_file_path}")
+                logging.error("Temporary data file not found at %s", temp_data_file_path)
                 raise HTTPException(status_code=500, detail="Failed to create temporary data file.")
         except Exception as e:
             logging.exception("Error handling uploaded data file")
@@ -432,7 +467,7 @@ async def upload_direct_prompt(
     try:
         if data_file:
             logging.info("Processing uploaded prompt file")
-            prompt_file = data_file  # Adjust if prompt_file is different
+            #prompt_file = data_file  # Adjust if prompt_file is different
             # Implement prompt file handling if necessary
             # For now, assuming prompt_file_suffix and temp_prompt_file_path are handled elsewhere
     except Exception as e:
@@ -441,9 +476,9 @@ async def upload_direct_prompt(
 
     # Handle Prompts from 'prompts' Form Field
     try:
-        logging.debug(f"Parsing prompts payload: {prompts}")
+        logging.debug("Parsing prompts payload: %s", prompts)
         prompt_list = json.loads(prompts)
-        logging.debug(f"Parsed prompts list: {prompt_list}")
+        logging.debug("Parsed prompts list: %s", prompt_list)
     except json.JSONDecodeError as e:
         logging.exception("Invalid JSON in prompts payload")
         raise HTTPException(status_code=400, detail="Invalid prompts payload.") from e
@@ -452,19 +487,19 @@ async def upload_direct_prompt(
         read_prompts = PromptsProcessor.read_prompt_objects(
             [PromptObject(**prompt) for prompt in prompt_list]
         )
-        logging.info(f"Read {len(read_prompts)} prompts successfully")
+        logging.info("Read %s prompts successfully", len(read_prompts))
     except Exception as e:
         logging.exception("Error reading prompt objects")
         raise HTTPException(status_code=400, detail="Invalid prompts format.") from e
 
     max_recs = MAX_RECORDS if max_records else GLOBAL_MAX_ROWS
-    logging.debug(f"Max records set to: {max_recs}")
+    logging.debug("Max records set to: %s", max_recs)
 
     # Extract columns from data file
     try:
-        logging.info(f"Extracting columns from data file at {temp_data_file_path}")
+        logging.info("Extracting columns from data file at %s", temp_data_file_path)
         extracted_columns = extract_columns_from_file(temp_data_file_path)
-        logging.debug(f"Extracted columns: {extracted_columns}")
+        logging.debug("Extracted columns: %s", extracted_columns)
     except Exception as e:
         logging.exception("Error extracting columns from data file")
         cleanup_temp_files(None, temp_data_file_path)
@@ -472,15 +507,15 @@ async def upload_direct_prompt(
 
     run_type = 'csv' if data_file_suffix == '.csv' else 'excel'
     source_filename = sheet_name if sheet_name else os.path.splitext(file_name)[0]
-    logging.debug(f"Run type: {run_type}, Source filename: {source_filename}")
+    logging.debug("Run type: %s, Source filename: %s", run_type, source_filename)
 
     try:
         run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
         if not run_id:
             raise HTTPException(status_code=500, detail="Failed to created new run.")
-        logging.info(f"Created new run with ID: {run_id}")
+        logging.info("Created new run with ID: %s", run_id)
         runs_progress.add_run(run_id, None)
-        logging.debug(f"Added run {run_id} to runs_progress")
+        logging.debug("Added run %s to runs_progress", run_id)
     except Exception as e:
         logging.exception("Error creating new run")
         cleanup_temp_files(None, temp_data_file_path)
@@ -488,7 +523,7 @@ async def upload_direct_prompt(
 
     try:
         save_to_cache(temp_data_file_path, user_id, file_name)
-        logging.debug(f"Saved data file to cache for run {run_id}")
+        logging.debug("Saved data file to cache for run %s", run_id)
     except Exception as e:
         logging.exception("Error saving data file to cache")
         cleanup_temp_files(None, temp_data_file_path)
@@ -496,10 +531,10 @@ async def upload_direct_prompt(
 
     # Start asynchronous run in a separate thread, passing batched_processing
     try:
-        logging.info(f"Starting asynchronous run for run ID: {run_id}")
+        logging.info("Starting asynchronous run for run ID: %s", run_id)
         Thread(
             target=start_async_run,
-            args=(  
+            args=(
                 run_id,
                 temp_data_file_path,
                 read_prompts,
@@ -507,18 +542,18 @@ async def upload_direct_prompt(
                 user_id,
                 file_name
             ),
-                kwargs={
-                    "batched_processing": batched_processing,
-                    "performance_optimization": performance_optimization
-                }
-            ).start()
+            kwargs={
+                "batched_processing": batched_processing,
+                "performance_optimization": performance_optimization,
+            },
+        ).start()
         logging.debug("Asynchronous run thread started successfully")
     except Exception as e:
         logging.exception("Error starting asynchronous run")
         cleanup_temp_files(None, temp_data_file_path)
         raise HTTPException(status_code=500, detail="Failed to start the asynchronous process.") from e
 
-    logging.info(f"upload_direct_prompt completed successfully for run ID: {run_id}")
+    logging.info("upload_direct_prompt completed successfully for run ID: %s", run_id)
     return JSONResponse(
         status_code=200,
         content={'run_id': run_id, "data_columns": extracted_columns}
@@ -535,7 +570,10 @@ async def upload_prompts(prompt_file: UploadFile = File(...), _: str = Depends(v
         # Check AI consent
         ai_consent = UsersDbCore.check_ai_consent(user_id)
         if ai_consent is False:
-            raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
+            raise HTTPException(
+                status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+                detail="User has not consented for AI usage."
+            )
         # Determine the suffix for the file based on its content type
         file_suffix_map = {
             'text/csv': '.csv',
@@ -606,7 +644,11 @@ async def download_prompts(prompts: str = Form(...), _: str = Depends(verify_sec
                 sheet[f'D{idx + 1}'] = prompt['output_heading']
 
             wb.save(processed_excel_path)
-            return FileResponse(processed_excel_path, media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', filename="prompts.xlsx")
+            return FileResponse(
+                processed_excel_path,
+                media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                filename="prompts.xlsx"
+            )
 
         except Exception as err:
             raise HTTPException(status_code=400, detail="Invalid prompts payload.") from err
@@ -685,7 +727,8 @@ async def ai_prompt_improver(prompt_data: PromptImproveRequest, _: str = Depends
             log_timestamp=datetime.now(tz=timezone.utc),
             time_elapsed=end_time - start_time,
             num_prompts=1,
-            num_tokens=new_prompt['tokens']
+            input_tokens=new_prompt['input_tokens'],
+            output_tokens=new_prompt['output_tokens'],
         )
         return JSONResponse(status_code=200, content={
                 "message": "Prompts improved successfully.",

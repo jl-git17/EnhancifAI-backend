@@ -49,6 +49,7 @@ async def get_usage_history(
     """
     try:
         usage_history = BillingDbCore.get_usage_history(user_id)
+        # Note: total_tokens is computed as the sum of input_tokens and output_tokens.
         return JSONResponse(status_code=200, content={"usage_history": usage_history})
     except Exception as e:
         print(e)
@@ -103,6 +104,7 @@ async def get_monthly_balance(
     Provide the current monthly balance for the user.
     """
     try:
+        # Note: Monthly cost is based on the sum of input_tokens and output_tokens.
         monthly_balance = BillingDbCore.get_monthly_balance(user_id)
         return JSONResponse(status_code=200, content={"monthly_balance": monthly_balance})
     except Exception as e:

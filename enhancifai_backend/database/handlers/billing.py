@@ -39,9 +39,9 @@ class BillingDbCore:
                 rl.filename AS uploaded_file_name,
                 r.source_type AS type,
                 rl.num_rows_processed AS number_of_rows,
-                rl.num_tokens AS total_tokens,
+                (rl.input_tokens + rl.output_tokens) AS total_tokens,
                 mp.price AS cost_per_token,
-                (rl.num_tokens * mp.price) AS total_cost
+                ((rl.input_tokens + rl.output_tokens) * mp.price) AS total_cost
             FROM enhancifai.run_logs rl
             JOIN enhancifai.runs r ON rl.run_id = r.id
             JOIN enhancifai.model_pricing mp
@@ -79,7 +79,7 @@ class BillingDbCore:
         sql = schemafy("""
             SELECT 
                 TO_CHAR(DATE_TRUNC('month', NOW()), 'YYYY-MM') AS billing_month,
-                SUM(rl.num_tokens * mp.price) AS total_monthly_cost
+                SUM((rl.input_tokens + rl.output_tokens) * mp.price) AS total_monthly_cost
             FROM enhancifai.run_logs rl
             JOIN enhancifai.runs r ON rl.run_id = r.id
             JOIN enhancifai.model_pricing mp
