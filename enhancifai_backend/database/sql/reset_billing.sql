@@ -9,6 +9,8 @@ DELETE FROM enhancifai.users_token_usage;
 
 DELETE FROM enhancifai.users_token_usage_pi;
 
+DELETE FROM enhancifai.run_logs;
+
 -- Delete all records from model_price_history
 
 
