@@ -1,6 +1,14 @@
 -- Delete all records from stripe_invoices
 DELETE FROM enhancifai.stripe_invoices;
 
+DELETE FROM enhancifai.runs;
+
+DELETE FROM enhancifai.prompt_improver_run_logs;
+
+DELETE FROM enhancifai.users_token_usage;
+
+DELETE FROM enhancifai.users_token_usage_pi;
+
 -- Delete all records from model_price_history
 
 
@@ -12,11 +20,4 @@ TRUNCATE TABLE enhancifai.stripe_invoices RESTART IDENTITY CASCADE;
 
 -- Additionally, reset the invoice_number_seq if necessary
 SELECT setval('enhancifai.invoice_number_seq', 1, false);
-
-
--- Check if invoices table is empty
-SELECT COUNT(*) FROM enhancifai.stripe_invoices;
-
--- Check the current value of the invoice_number_seq
-SELECT currval('enhancifai.invoice_number_seq');
 
