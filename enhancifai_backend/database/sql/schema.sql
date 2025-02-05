@@ -68,7 +68,7 @@ BEGIN
         'INV-',
         TO_CHAR(NEW.created_at, 'YYYYMM'),
         '-',
-        LPAD(nextval('enhancifai.invoice_number_seq')::text, 7, '0') -- Seven-digit sequence
+        LPAD(nextval('enhancifai.invoice_number_seq')::text, 9, '0') -- Nine-digit sequence
     );
     RETURN NEW;
 END;
