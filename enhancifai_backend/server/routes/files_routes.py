@@ -7,7 +7,6 @@ from tempfile import NamedTemporaryFile
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse
 
-from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.server.models.execution import CacheRequest
 from enhancifai_backend.server.utils import get_current_user_id, verify_secret_key
@@ -41,11 +40,18 @@ def get_from_cache(user_id, filename):
 
 
 @router.post("/cache/download", tags=["Cache"])
-async def get_cached_file(req: CacheRequest, _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
+async def get_cached_file(
+    req: CacheRequest,
+    _: str = Depends(verify_secret_key),
+    user_id: int = Depends(get_current_user_id)
+):
     # Check AI consent
     ai_consent = UsersDbCore.check_ai_consent(user_id)
     if ai_consent is False:
-        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
+        raise HTTPException(
+            status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+            detail="User has not consented for AI usage."
+        )
     cache_path = get_from_cache(user_id, req.filename)
     if cache_path and os.path.exists(cache_path):
         return FileResponse(cache_path)
@@ -53,11 +59,18 @@ async def get_cached_file(req: CacheRequest, _: str = Depends(verify_secret_key)
         raise HTTPException(status_code=404, detail="File not found in cache or database")
 
 @router.post("/cache/upload", tags=["Cache"])
-async def add_cached_file(data_file: UploadFile = File(...), _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
+async def add_cached_file(
+    data_file: UploadFile = File(...),
+    _: str = Depends(verify_secret_key),
+    user_id: int = Depends(get_current_user_id)
+):
     # Check AI consent
     ai_consent = UsersDbCore.check_ai_consent(user_id)
     if ai_consent is False:
-        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
+        raise HTTPException(
+            status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+            detail="User has not consented for AI usage."
+        )
     # Determine the suffix for the file based on its content type
     file_suffix_map = {
         'text/csv': '.csv',

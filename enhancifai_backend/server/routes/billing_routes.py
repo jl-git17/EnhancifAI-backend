@@ -5,7 +5,7 @@ from decimal import Decimal
 import io
 import os
 from typing import Optional
-from fastapi import APIRouter, Depends, HTTPException, Header, Query, Request, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Header, Query, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 from weasyprint import HTML
 
@@ -41,7 +41,7 @@ def get_default_year(
 
 @router.get("/billing/usage", tags=["Billing"])
 async def get_usage_history(
-    user_id: int = Depends(get_current_user_id), 
+    user_id: int = Depends(get_current_user_id),
     _api_key: str = Depends(verify_secret_key)
 ):
     """
@@ -58,7 +58,7 @@ async def get_usage_history(
 @router.get("/billing/usage/download", tags=["Billing"])
 async def download_usage_history(
     file_format: str = "csv",
-    user_id: int = Depends(get_current_user_id), 
+    user_id: int = Depends(get_current_user_id),
     _api_key: str = Depends(verify_secret_key)
 ):
     """
@@ -77,7 +77,7 @@ async def download_usage_history(
                     writer.writerow(record.values())
             output.seek(0)
             response = StreamingResponse(
-                iter([output.getvalue()]), 
+                iter([output.getvalue()]),
                 media_type="text/csv"
             )
             response.headers["Content-Disposition"] = "attachment; filename=usage_history.csv"
@@ -97,7 +97,7 @@ async def download_usage_history(
 
 @router.get("/billing/monthly-balance", tags=["Billing"])
 async def get_monthly_balance(
-    user_id: int = Depends(get_current_user_id), 
+    user_id: int = Depends(get_current_user_id),
     _api_key: str = Depends(verify_secret_key)
 ):
     """
@@ -127,7 +127,7 @@ async def get_usage_by_model_endpoint(
         return JSONResponse(status_code=200, content={"usage_by_model": usage_by_model})
     except ValueError as ve:
         # Handle validation errors from BillingDbCore
-        print(f"Validation error in get_usage_by_model: {str(ve)}")
+        print('Validation error in get_usage_by_model: ' + str(ve))
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
         print(e)
@@ -165,14 +165,14 @@ async def download_invoice(
             raise HTTPException(status_code=404, detail="Invoice not found.")
 
         invoice_number = invoice['invoice_id']
-        
+
         # Format Date Issued
         date_issued_raw = invoice['date']
         date_issued = datetime.fromisoformat(date_issued_raw.replace('Z', '+00:00')).strftime('%B %d, %Y')
 
         amount = invoice['invoice_amount']
         status = invoice['payment_status']
-        
+
         # Format Payment Date or set to empty string
         payment_date_raw = invoice.get('payment_date')
         if payment_date_raw:
@@ -196,7 +196,7 @@ async def download_invoice(
 
         metadata = invoice.get('metadata', {})
         description = metadata.get('description', 'N/A')
-        
+
         # Status Coloring
         status_color_map = {
             'paid': '#28a745',      # Green
@@ -208,7 +208,7 @@ async def download_invoice(
         line_items = metadata.get('line_items', [])
         line_items_html = ""
         if line_items:
-            line_items_html = f"""
+            line_items_html = """
             <h3 style="margin-top: 40px;">Execution Token Usage Details</h3>
             <table class="line-items-table">
                 <thead>
@@ -241,7 +241,7 @@ async def download_invoice(
         pi_line_items = metadata.get('pi_line_items', [])
         pi_line_items_html = ""
         if pi_line_items:
-            pi_line_items_html = f"""
+            pi_line_items_html = """
             <h3 style="margin-top: 40px;">Prompt Improver Token Usage Details</h3>
             <table class="line-items-table">
                 <thead>
@@ -268,7 +268,7 @@ async def download_invoice(
                 </tr>
                 """
             pi_line_items_html += "</tbody></table>"
-        
+
         html_content = f"""
         <html>
         <head>
@@ -402,7 +402,7 @@ async def download_invoice(
 @router.post("/billing/invoice/pay/{invoice_id}", tags=["Billing"])
 async def pay_invoice(
     invoice_id: str,
-    user_id: int = Depends(get_current_user_id),
+    _user_id: int = Depends(get_current_user_id),
     _api_key: str = Depends(verify_secret_key)
 ):
     """
@@ -410,27 +410,27 @@ async def pay_invoice(
     """
     try:
         # Retrieve invoice data
-        invoice = BillingDbCore.get_invoice_by_id(user_id, invoice_id)
+        invoice = BillingDbCore.get_invoice_by_id(_user_id, invoice_id)
         if not invoice:
             raise HTTPException(status_code=404, detail="Invoice not found.")
-        
+
         # Check if invoice is already paid
         if invoice['payment_status'] == 'paid':
             raise HTTPException(status_code=400, detail="Invoice is already paid.")
-        
+
         # Retrieve or create Stripe customer
-        customer_id = BillingDbCore.get_stripe_customer_id(user_id)
+        customer_id = BillingDbCore.get_stripe_customer_id(_user_id)
         if not customer_id:
             # Create new Stripe customer
-            user = BillingDbCore.get_user_details(user_id)
+            user = BillingDbCore.get_user_details(_user_id)
             customer = stripe.Customer.create(
                 email=user['email'],
                 name=user['name']
             )
             customer_id = customer.id
             # Save customer ID in the database
-            BillingDbCore.update_stripe_customer_id(user_id, customer_id)
-        
+            BillingDbCore.update_stripe_customer_id(_user_id, customer_id)
+
         # Create a Checkout Session
         session = stripe.checkout.Session.create(
             customer=customer_id,
@@ -511,7 +511,7 @@ async def stripe_webhook(
 async def get_rate_card(
     month: Optional[int] = None,
     year: Optional[int] = None,
-    user_id: int = Depends(get_current_user_id),
+    _user_id: int = Depends(get_current_user_id),
     _api_key: str = Depends(verify_secret_key)
 ):
     """
@@ -529,7 +529,7 @@ async def get_rate_card(
 
 @router.get("/billing/rate-card/history", tags=["Billing"])
 async def get_rate_card_history(
-    user_id: int = Depends(get_current_user_id),
+    _user_id: int = Depends(get_current_user_id),
     _api_key: str = Depends(verify_secret_key)
 ):
     """
@@ -577,7 +577,7 @@ async def download_monthly_activity_logs(
 
         # Write headers
         writer.writerow(["Source", "Timestamp", "Model", "Tokens", "Prompts", "Errors", "Time Elapsed (s)"])
-        
+
         # Write normal logs
         for log in normal_logs:
             writer.writerow([

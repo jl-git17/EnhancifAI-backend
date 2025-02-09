@@ -1,8 +1,5 @@
-from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr, constr, validator
-from datetime import date
-from enum import Enum
+from pydantic import BaseModel, EmailStr
 
 class UserCreatePassword(BaseModel):
     email: str

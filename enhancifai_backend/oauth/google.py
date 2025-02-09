@@ -1,8 +1,7 @@
+# pylint: disable=import-error
 import logging
 import os
-import pickle
 from google_auth_oauthlib.flow import Flow
-from googleapiclient.discovery import build
 import requests
 
 SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email']
@@ -12,7 +11,11 @@ class GoogleAuthenticator:
         self.accounts = {}
 
     def _get_flow(self):
-        return Flow.from_client_config(os.getenv('GOOGLE_TOKEN_INFO_AUTH'), SCOPES, redirect_uri=os.getenv('GOOGLE_REDIRECT_URL'))
+        return Flow.from_client_config(
+            os.getenv('GOOGLE_TOKEN_INFO_AUTH'),
+            SCOPES,
+            redirect_uri=os.getenv('GOOGLE_REDIRECT_URL')
+        )
 
     def authenticate_url(self):
         flow = self._get_flow()
@@ -23,11 +26,11 @@ class GoogleAuthenticator:
         flow = Flow.from_client_config( # type: ignore
             os.getenv('GOOGLE_TOKEN_INFO_AUTH'), SCOPES, state=state, redirect_uri=os.getenv('GOOGLE_REDIRECT_URL')
         )
-        token = flow.fetch_token(code=code)
-        
+        _ = flow.fetch_token(code=code)
+
         user_info = self.get_user_info(flow.credentials)
         return user_info
-    
+
     def get_user_info(self, creds):
         """Fetch the email of the authenticated user."""
         url = 'https://www.googleapis.com/oauth2/v1/userinfo'
@@ -36,7 +39,7 @@ class GoogleAuthenticator:
             data = response.json()
             return data
         else:
-            logging.error(f"Failed to fetch user info: {response.status_code}, {response.text}")
+            logging.error("Failed to fetch user info: %s, %s", response.status_code, response.text)
             print(f"Failed to fetch user info: {response.status_code}, {response.text}")
             return None
 

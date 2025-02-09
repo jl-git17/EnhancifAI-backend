@@ -199,7 +199,7 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
                     _status["progress"] = "1"
                     _status["remark"] = "1% completed."
                 elif _status.get("status") == "completed":
-                    logging.info(f"Status: {_status}")
+                    logging.info("Status: %s", _status)
                     attempts = 0
                     while 'results' not in _status and attempts < 3:
                         time.sleep(1)
@@ -637,7 +637,10 @@ async def download_prompts(prompts: str = Form(...), _: str = Depends(verify_sec
         # Check AI consent
         ai_consent = UsersDbCore.check_ai_consent(user_id)
         if ai_consent is False:
-            raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
+            raise HTTPException(
+                status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+                detail="User has not consented for AI usage."
+            )
         file_path = os.path.join(STATIC_FILES_DIRECTORY, "prompts_template.xlsx")
         unique_filename = f"prompts_{uuid.uuid4()}_{int(time.time()*1000)}.xlsx"
         processed_excel_path = os.path.join('/tmp', unique_filename)
@@ -669,7 +672,11 @@ async def download_prompts(prompts: str = Form(...), _: str = Depends(verify_sec
         return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
 
 @router.post("/execution/get-data", tags=["Execution"])
-async def get_data(req_data: RunDataRequest, _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
+async def get_data(
+    req_data: RunDataRequest,
+    _: str = Depends(verify_secret_key),
+    user_id: int = Depends(get_current_user_id)
+):
     """
     Retrieve CSV or Excel data for a given run_id and return it in JSON format.
     """
@@ -677,7 +684,10 @@ async def get_data(req_data: RunDataRequest, _: str = Depends(verify_secret_key)
         # Check AI consent
         ai_consent = UsersDbCore.check_ai_consent(user_id)
         if ai_consent is False:
-            raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
+            raise HTTPException(
+                status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+                detail="User has not consented for AI usage."
+            )
         # Get the file URL using the run_id
         file_url = RunsDbCore.get_run_file_url(req_data.run_id)
         if not file_url:
@@ -703,10 +713,17 @@ async def get_data(req_data: RunDataRequest, _: str = Depends(verify_secret_key)
         })
 
     except Exception as e:
-        return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "An unexpected error occurred", "error": str(e)}
+        )
 
 @router.post("/execution/tools/ai-prompt-improver", tags=["Execution"])
-async def ai_prompt_improver(prompt_data: PromptImproveRequest, _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
+async def ai_prompt_improver(
+    prompt_data: PromptImproveRequest,
+    _: str = Depends(verify_secret_key),
+    user_id: int = Depends(get_current_user_id)
+):
     """
     Enhance the provided prompt data using AI tools.
 
@@ -731,7 +748,7 @@ async def ai_prompt_improver(prompt_data: PromptImproveRequest, _: str = Depends
             raise HTTPException(status_code=404, detail="Error in processing request.")
         # save to log file
         end_time = time.time()
-        logging.info(f"new_prompt: {new_prompt}")
+        logging.info("new_prompt: %s", new_prompt)
         PromptImproverRunLogsDbCore.insert_log(
             user_id=user_id,
             engine_model="gpt-4o-mini",
