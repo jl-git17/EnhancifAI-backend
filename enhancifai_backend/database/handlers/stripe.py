@@ -233,3 +233,18 @@ class StripeDbCore:
         except Exception as e:
             logger.error("Failed to save invoice %s to DB: %s", invoice.id, str(e))
             raise Exception(f"Failed to save invoice to DB: {str(e)}") from e
+
+    @classmethod
+    def is_user_subscribed(cls, user_id: int) -> bool:
+        """
+        Check if a user is currently subscribed.
+
+        Parameters:
+            user_id (int): The unique identifier of the user.
+
+        Returns:
+            bool: True if the user is subscribed, otherwise False.
+        """
+        sql = schemafy("SELECT 1 FROM enhancifai.stripe_subscriptions WHERE user_id = %s AND status = 'active' LIMIT 1;")
+        result = read_db.do('select_one', sql=sql, data=(user_id,))
+        return bool(result)

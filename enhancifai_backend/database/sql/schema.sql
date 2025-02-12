@@ -201,8 +201,8 @@ CREATE TABLE IF NOT EXISTS enhancifai.prompt_improver_run_logs (
     log_timestamp TIMESTAMP DEFAULT NOW(),
     time_elapsed FLOAT CHECK (time_elapsed >= 0),
     num_prompts INT CHECK (num_prompts >= 0),
-    input_tokens INT CHECK (num_tokens >= 0),
-    output_tokens INT CHECK (num_tokens >= 0),
+    input_tokens INT CHECK (input_tokens >= 0),
+    output_tokens INT CHECK (output_tokens >= 0),
     errors TEXT
 );
 
@@ -250,3 +250,22 @@ ALTER TABLE enhancifai.prompt_improver_run_logs
     ADD COLUMN IF NOT EXISTS input_tokens INT,
     ADD COLUMN IF NOT EXISTS output_tokens INT,
     DROP COLUMN IF EXISTS num_tokens;
+
+CREATE TABLE IF NOT EXISTS enhancifai.stripe_subscriptions (
+    subscription_id VARCHAR(255) PRIMARY KEY,
+    user_id INT REFERENCES enhancifai.users(user_id),
+    status VARCHAR(50),
+    created_at TIMESTAMP DEFAULT now(),
+    current_period_start TIMESTAMP,
+    current_period_end TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS enhancifai.subscription_payments (
+    payment_id VARCHAR(255) PRIMARY KEY,
+    subscription_id VARCHAR(255) REFERENCES enhancifai.stripe_subscriptions(subscription_id),
+    amount FLOAT NOT NULL,
+    currency VARCHAR(10) NOT NULL,
+    status VARCHAR(50),
+    created_at TIMESTAMP DEFAULT now(),
+    paid_at TIMESTAMP
+);
