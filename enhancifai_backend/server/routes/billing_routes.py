@@ -13,6 +13,7 @@ import stripe
 
 from enhancifai_backend.database.handlers.billing import BillingDbCore
 from enhancifai_backend.database.handlers.run_logs import PromptImproverRunLogsDbCore, RunLogsDbCore
+from enhancifai_backend.database.handlers.stripe import StripeDbCore
 from enhancifai_backend.server.utils import get_current_user_id, verify_secret_key
 
 router = APIRouter()
@@ -624,6 +625,10 @@ async def start_subscription(
     Create a Stripe Checkout Session to start a subscription.
     """
     try:
+        # Check if the user is already subscribed
+        if StripeDbCore.is_user_subscribed(user_id):
+            raise HTTPException(status_code=400, detail="User is already subscribed.")
+
         # Retrieve or create Stripe customer
         customer_id = BillingDbCore.get_stripe_customer_id(user_id)
         if not customer_id:
@@ -655,3 +660,17 @@ async def start_subscription(
     except Exception as e:
         print("Error in start_subscription: %s", str(e), exc_info=True)
         return JSONResponse(status_code=500, content={"detail": "Internal server error."})
+
+@router.get("/billing/subscription/status", tags=["Billing"])
+async def check_subscription_status(user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
+    """
+    Check if the current user is subscribed.
+
+    Returns:
+        JSONResponse: A JSON response containing the subscription status.
+    """
+    try:
+        is_subscribed = StripeDbCore.is_user_subscribed(user_id)
+        return JSONResponse(status_code=200, content={"subscribed": is_subscribed})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
