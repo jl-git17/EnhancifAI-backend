@@ -52,6 +52,19 @@ class StripeDbCore:
         logger.debug("Updated Invoice Status: %s to %s", invoice_id, status)
 
     @classmethod
+    def update_subscription_status(cls, subscription_id: str, status: str) -> None:
+        """
+        Update the status of a specified Stripe subscription in the database.
+
+        Parameters:
+            subscription_id (str): The unique identifier of the subscription.
+            status (str): The new status to be applied.
+        """
+        sql = schemafy("UPDATE enhancifai.stripe_subscriptions SET status = %s WHERE subscription_id = %s;")
+        write_db.do('execute', sql=sql, data=(status, subscription_id,))
+        logger.debug("Updated Subscription Status: %s to %s", subscription_id, status)
+
+    @classmethod
     def create_invoice(
         cls,
         user_id: int,
