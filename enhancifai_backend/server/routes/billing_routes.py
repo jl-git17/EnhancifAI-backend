@@ -614,3 +614,44 @@ async def download_monthly_activity_logs(
         raise e
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": str(e)})
+
+@router.post("/billing/subscription/start", tags=["Billing"])
+async def start_subscription(
+    user_id: int = Depends(get_current_user_id),
+    _api_key: str = Depends(verify_secret_key)
+):
+    """
+    Create a Stripe Checkout Session to start a subscription.
+    """
+    try:
+        # Retrieve or create Stripe customer
+        customer_id = BillingDbCore.get_stripe_customer_id(user_id)
+        if not customer_id:
+            # Create new Stripe customer
+            user = BillingDbCore.get_user_details(user_id)
+            customer = stripe.Customer.create(
+                email=user['email'],
+                name=user['name']
+            )
+            customer_id = customer.id
+            # Save customer ID in the database
+            BillingDbCore.update_stripe_customer_id(user_id, customer_id)
+
+        # Create a Checkout Session for subscription
+        session = stripe.checkout.Session.create(
+            customer=customer_id,
+            payment_method_types=['card'],
+            line_items=[{
+                'price': os.getenv('STRIPE_SUBSCRIPTION_PRICE_ID'),  # Subscription price ID from Stripe
+                'quantity': 1,
+            }],
+            mode='subscription',
+            success_url=f"{os.getenv('FRONTEND_URL')}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{os.getenv('FRONTEND_URL')}/billing/cancel",
+        )
+        return JSONResponse(status_code=200, content={'checkout_url': session.url})
+    except HTTPException as e:
+        return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+    except Exception as e:
+        print("Error in start_subscription: %s", str(e), exc_info=True)
+        return JSONResponse(status_code=500, content={"detail": "Internal server error."})
