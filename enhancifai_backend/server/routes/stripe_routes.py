@@ -1,9 +1,10 @@
-from fastapi import APIRouter, Request, Depends, HTTPException, Header
+import os
+
+from fastapi import APIRouter, Request, HTTPException, Header
 from fastapi.responses import JSONResponse
 import stripe
-import os
+
 from enhancifai_backend.database.handlers.stripe import StripeDbCore
-from enhancifai_backend.server.utils import verify_secret_key
 
 # Initialize Stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
