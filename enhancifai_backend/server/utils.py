@@ -163,13 +163,19 @@ def get_current_user_id_unverified(token: str = Header(None, alias="token")) -> 
         Optional[int]: The user ID.
     """
     if not token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="No token. Your session has expired. Please login again.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="No token. Your session has expired. Please login again."
+        )
 
     jwt_data = decode_jwt(token)
     user_email = jwt_data.get("email")
 
     if not user_email:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token. Your session has expired. Please login again.")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token. Your session has expired. Please login again."
+        )
 
     user_details = UsersDbCore.get_user_by_email_unverified(user_email)
     return user_details.get("user_id")
