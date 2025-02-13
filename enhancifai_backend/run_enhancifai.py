@@ -3,9 +3,9 @@ import os
 import sys
 import logging
 from typing import NoReturn
+
 from enhancifai_backend.database.core import DbSession
 from enhancifai_backend.database.handlers.utils import schemafy
-
 from enhancifai_backend.server.serve import run_server
 
 # Configure logging
