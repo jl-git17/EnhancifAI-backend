@@ -1,15 +1,12 @@
 import os
-from tempfile import NamedTemporaryFile
 import time
-import aiofiles
 import uuid
 
-from fastapi import HTTPException, UploadFile
+from fastapi import HTTPException
 
 from enhancifai_backend.ai.openai_api import OpenAIConnector
 from enhancifai_backend.ai.gemini import GeminiConnector
 from enhancifai_backend.database.handlers.runs import RunsDbCore
-from enhancifai_backend.engine.runs_progress import runs_progress
 from enhancifai_backend.engine.csv_handler import CSVHandler
 from enhancifai_backend.engine.excel_handler import ExcelHandler
 from enhancifai_backend.server.utils import AdminSettings
