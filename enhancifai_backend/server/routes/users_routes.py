@@ -1,19 +1,31 @@
 
 from datetime import datetime, timezone
-import os
 import re
-import time
-from fastapi import APIRouter, Depends, HTTPException, Request, status, Form
 
-
-from typing import Optional
-
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
-from enhancifai_backend.database.handlers.users import UsersDbCore, UsersDbLoginTokens, UsersDbPswdResetTokens, UsersDbRegisterTokens
+
+from enhancifai_backend.database.handlers.users import UsersDbCore, UsersDbPswdResetTokens, UsersDbRegisterTokens
 from enhancifai_backend.integrations.sendgrid_api import SendGrid
-from enhancifai_backend.server.models.users import Password, PasswordReset, Profile, UserCreatePassword, UserLoginPassword, UserPasswordReset, ValidateRegister
+from enhancifai_backend.server.models.users import (
+    Password,
+    PasswordReset,
+    Profile,
+    UserCreatePassword,
+    UserLoginPassword,
+    UserPasswordReset,
+    ValidateRegister
+)
 from enhancifai_backend.oauth.google import google_auth
-from enhancifai_backend.server.utils import clean_user_data, create_jwt_token, generate_unique_token, get_current_user_id, get_current_user_id_unverified, hash_password, verify_secret_key
+from enhancifai_backend.server.utils import (
+    clean_user_data,
+    create_jwt_token,
+    generate_unique_token,
+    get_current_user_id,
+    get_current_user_id_unverified,
+    hash_password,
+    verify_secret_key
+)
 
 router = APIRouter()
 
@@ -28,18 +40,31 @@ def require_ai_consent(func):
     async def wrapper(user_id: int = Depends(get_current_user_id)):
         ai_consent = UsersDbCore.check_ai_consent(user_id)
         if not ai_consent:
-            raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
+            raise HTTPException(
+                status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+                detail="User has not consented for AI usage."
+            )
         return await func(user_id)
     return wrapper
 
 @router.post("/users/profile", tags=["Users"])
 @require_ai_consent
-async def update_user_profile(profile: Profile, user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
+async def update_user_profile(
+    profile: Profile,
+    user_id: int = Depends(get_current_user_id),
+    _api_key: str = Depends(verify_secret_key)
+):
     try:
-        UsersDbCore.update_user_profile(user_id=user_id, name=profile.name)
+        UsersDbCore.update_user_profile(
+            user_id=user_id,
+            name=profile.name
+        )
     except Exception as e:
         return handle_exception(e)
-    return JSONResponse(status_code=200, content={"message": "Profile updated successfully."})
+    return JSONResponse(
+        status_code=200,
+        content={"message": "Profile updated successfully."}
+    )
 
 
 @router.get("/users/profile", tags=["Users"])
@@ -47,7 +72,10 @@ async def get_user_profile(user_id: int = Depends(get_current_user_id), _api_key
     try:
         ai_consent = UsersDbCore.check_ai_consent(user_id)
         if ai_consent is False:
-            raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
+            raise HTTPException(
+                status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+                detail="User has not consented for AI usage."
+            )
         user_details = UsersDbCore.get_user_by_id(user_id)
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
@@ -57,32 +85,44 @@ async def get_user_profile(user_id: int = Depends(get_current_user_id), _api_key
     return JSONResponse(status_code=200, content=clean_user_data(user_details))
 
 @router.post("/users/password/update", tags=["Users"])
-async def update_password(password: Password, user_id: int = Depends(get_current_user_id), _api_key: str = Depends(verify_secret_key)):
+async def update_password(
+    password: Password,
+    user_id: int = Depends(get_current_user_id),
+    _api_key: str = Depends(verify_secret_key)
+):
     try:
         ai_consent = UsersDbCore.check_ai_consent(user_id)
         if ai_consent is False:
-            raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
+            raise HTTPException(
+                status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+                detail="User has not consented for AI usage."
+            )
         user = UsersDbCore.get_user_by_id(user_id)
-        email = user['email']
+        email = user["email"]
         if password.old_password == "":
             old = True
         else:
             old_hash = hash_password(password.old_password)
             old = UsersDbCore.check_user_password(email, old_hash)
         if old is False:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Old password is incorrect.")
-        else:
-            new_hash = hash_password(password.new_password)
-            UsersDbCore.set_user_password(user_id, new_hash)
-            result = {
-                "message": "User password has been updated successfully."
-            }
-            return JSONResponse(status_code=200, content=result)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Old password is incorrect."
+            )
+        new_hash = hash_password(password.new_password)
+        UsersDbCore.set_user_password(user_id, new_hash)
+        result = {"message": "User password has been updated successfully."}
+        return JSONResponse(status_code=200, content=result)
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
     except Exception as e:
-        # Catch-all for unexpected errors
-        return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": "An unexpected error occurred",
+                "error": str(e)
+            }
+        )
 
 @router.post("/users/password/forgot", tags=["Users"])
 async def forgot_password(user: UserPasswordReset, _api_key: str = Depends(verify_secret_key)):
@@ -141,38 +181,56 @@ async def create_user_google(_api_key: str = Depends(verify_secret_key)):
     return JSONResponse(status_code=200, content=url)
 
 @router.post("/users/register/", tags=["Users"])
-async def create_user(user: UserCreatePassword, _api_key: str = Depends(verify_secret_key)):
+async def create_user(
+    user: UserCreatePassword,
+    _api_key: str = Depends(verify_secret_key)
+):
     try:
         # Validate email
         if not re.match(r"[^@]+@[^@]+\.[^@]+", user.email):
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Invalid email format')
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid email format"
+            )
 
-        # check if user exists
+        # Check if user exists
         exists = UsersDbCore.get_user_by_email(user.email) is not None
         if exists:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="This email is already registered, please login instead.")
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="This email is already registered, please login instead."
+            )
 
         # Validate password
         if len(user.password) < 8:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail='Password must be at least 8 characters long')
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password must be at least 8 characters long"
+            )
 
         user_reg_token = generate_unique_token()
         password_hash = hash_password(user.password)
         UsersDbRegisterTokens.create_user_register_token(user.email, user_reg_token)
-        UsersDbCore.create_user_by_email(user.email,user.name, password_hash)
+        UsersDbCore.create_user_by_email(user.email, user.name, password_hash)
         SendGrid.send_registration_email(user.email, user_reg_token, user.name)
-        
+
         login_token, login_expiration = create_jwt_token({"email": user.email})
         result = {
             "message": "User registration email sent successfully.",
             "token": login_token,
-            "expiration": login_expiration
+            "expiration": login_expiration,
         }
     except HTTPException as e:
-        return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+        return JSONResponse(
+            status_code=e.status_code,
+            content={"detail": e.detail}
+        )
     except Exception as e:
         # Catch-all for unexpected errors
-        return JSONResponse(status_code=500, content={"detail": str(e), "error": str(e)})
+        return JSONResponse(
+            status_code=500,
+            content={"detail": str(e), "error": str(e)}
+        )
     return JSONResponse(status_code=200, content=result)
 
 @router.post("/validate/register", tags=["Users"])
@@ -190,37 +248,6 @@ async def validate_register_token(req_validate: ValidateRegister):
         # Catch-all for unexpected errors
         return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
     return JSONResponse(status_code=200, content={"token": token, "expiration": expiration})
-
-@router.get("/auth/google/callback", tags=["Users"])
-async def google_callback(code: str, state: str, _api_key: str = Depends(verify_secret_key)):
-    try:
-        user_info = google_auth.fetch_token(code, state=state)
-        user_email = user_info['email']
-        user_details = UsersDbCore.get_user_by_email(user_email)
-        timestamp = time.time()
-        if user_details is None:
-            # create new user
-            user_id = UsersDbCore.create_user_by_email(user_email,name="")
-        else:
-            # update existing user
-            user_id = user_details['user_id']
-            UsersDbCore.update_google_login(
-                user_id=user_id,
-                google_oauth_token=timestamp
-            )
-        new_token, expiration = create_jwt_token({"email": user_email}, days=7)
-        result = {
-            "email": user_email,
-            "token": new_token,
-            "expiration": expiration
-        }
-        SendGrid.send_social_account_ready_email(user_email, f"{os.getenv('FRONTEND_URL')}/login")
-    except HTTPException as e:
-        return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
-    except Exception as e:
-        # Catch-all for unexpected errors
-        return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
-    return JSONResponse(status_code=200, content=result)
 
 @router.post("/users/login/password", tags=["Users"])
 async def login_password(user: UserLoginPassword, _api_key: str = Depends(verify_secret_key)):
@@ -258,7 +285,10 @@ async def validate_password_reset_token(token: str, email: str):
     return JSONResponse(content={"exists": exists})
 
 @router.get("/users/consent/ai", tags=["Users"])
-async def check_user_ai_consent(user_id: int = Depends(get_current_user_id_unverified), _api_key: str = Depends(verify_secret_key)):
+async def check_user_ai_consent(
+    user_id: int = Depends(get_current_user_id_unverified),
+    _api_key: str = Depends(verify_secret_key)
+):
     """
     Check if the current user has given consent for AI usage.
 
@@ -274,7 +304,10 @@ async def check_user_ai_consent(user_id: int = Depends(get_current_user_id_unver
     return JSONResponse(content={"consent": consent})
 
 @router.post("/users/consent/ai", tags=["Users"])
-async def update_user_ai_consent(user_id: int = Depends(get_current_user_id_unverified), _api_key: str = Depends(verify_secret_key)):
+async def update_user_ai_consent(
+    user_id: int = Depends(get_current_user_id_unverified),
+    _api_key: str = Depends(verify_secret_key)
+):
     """
     Update the AI consent status for the current user.
 
@@ -300,16 +333,22 @@ async def session_check(user_id: int = Depends(get_current_user_id_unverified), 
     """
     ai_consent = UsersDbCore.check_ai_consent(user_id)
     if ai_consent is False:
-        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
+        raise HTTPException(
+            status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+            detail="User has not consented for AI usage."
+        )
     exp = UsersDbCore.get_session_expiration_by_user_id(user_id)
     if not exp:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session token. Please login again.")
-    
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid session token. Please login again."
+        )
+
     # Convert exp to timezone-aware datetime if it is naive
     if exp.tzinfo is None:
         exp = exp.replace(tzinfo=timezone.utc)
-    
+
     # Check if the expiration date has not been reached
     valid = exp > datetime.now(timezone.utc)
-    
+
     return JSONResponse(content={"expires": exp.isoformat(), "valid": valid})
