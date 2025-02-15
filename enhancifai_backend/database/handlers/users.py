@@ -371,7 +371,6 @@ class UsersDbCore:
         result = read_db.do('select', sql=sql, data=data)
         return result if result else []
 
-
     @classmethod
     def get_user_normal_token_usage_per_model_per_day(
         cls, user_id: int, start_date: datetime, end_date: datetime
@@ -432,7 +431,19 @@ class UsersDbCore:
         result = read_db.do('select', sql=sql, data=data)
         return result if result else []
 
+    @classmethod
+    def get_user_by_stripe_customer_id(cls, stripe_customer_id):
+        """
+        Retrieve user details by stripe customer id.
 
+        Args:
+            stripe_customer_id (str): The user's Stripe customer id.
+        
+        Returns:
+            dict or None: User record if found, else None.
+        """
+        sql = schemafy("SELECT * FROM enhancifai.users WHERE stripe_customer_id = %s;")
+        return read_db.do('select_one', sql=sql, data=(stripe_customer_id,))
 
 
 

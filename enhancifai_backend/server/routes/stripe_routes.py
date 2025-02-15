@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 import stripe
 
 from enhancifai_backend.database.handlers.stripe import StripeDbCore
+from enhancifai_backend.database.handlers.users import UsersDbCore
 
 # Initialize Stripe
 stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
@@ -50,9 +51,19 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         # Update subscription status in the database
         StripeDbCore.update_subscription_status(subscription["id"], "canceled")
     elif event["type"] == "checkout.session.completed":
-        subscription = event["data"]["object"]
-        # Update subscription status in the database
-        StripeDbCore.update_subscription_status(subscription["subscription"], subscription["status"])
+        data = event["data"]["object"]
+        customer_id = data["customer"]
+        user = UsersDbCore.get_user_by_stripe_customer_id(customer_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        user_id = user["id"]
+        exists = StripeDbCore.get_subscription(data["subscription"])
+        if exists:
+            # Update subscription status in the database
+            StripeDbCore.update_subscription_status(subscription["subscription"], "active")
+        else:
+            # Create a new subscription in the database
+            StripeDbCore.create_subscription(subscription["subscription"], user_id, "active")
     else:
         # Log unsupported webhook events in detail
         print(str(event))
