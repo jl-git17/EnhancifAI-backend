@@ -248,3 +248,26 @@ class StripeDbCore:
         sql = schemafy("SELECT 1 FROM enhancifai.stripe_subscriptions WHERE user_id = %s AND status = 'active' LIMIT 1;")
         result = read_db.do('select_one', sql=sql, data=(user_id,))
         return bool(result)
+
+    @classmethod
+    def get_subscription(cls, subscription_id: str) -> Optional[dict]:
+        """
+        Retrieve a subscription record from the database.
+        """
+        sql = schemafy("SELECT * FROM enhancifai.stripe_subscriptions WHERE subscription_id = %s;")
+        result = read_db.do('select_one', sql=sql, data=(subscription_id,))
+        return result
+
+    @classmethod
+    def create_subscription(cls, subscription_id: str, user_id: int, status: str) -> None:
+        """
+        Create a new subscription record in the database.
+        """
+        sql = schemafy("""
+            INSERT INTO enhancifai.stripe_subscriptions 
+            (subscription_id, user_id, status, created_at) 
+            VALUES (%s, %s, %s, now())
+            ON CONFLICT (subscription_id) DO NOTHING;
+        """)
+        write_db.do('execute', sql=sql, data=(subscription_id, user_id, status))
+        logger.debug("Created Subscription: %s for User: %s with status: %s", subscription_id, user_id, status)

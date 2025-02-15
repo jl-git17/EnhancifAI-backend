@@ -49,6 +49,21 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         subscription = event["data"]["object"]
         # Update subscription status in the database
         StripeDbCore.update_subscription_status(subscription["id"], "canceled")
+    elif event["type"] == "checkout.session.completed":
+        session = event["data"]["object"]
+        subscription_id = session.get("subscription")
+        if subscription_id:
+            subscription = StripeDbCore.get_subscription(subscription_id)  # new method call
+            if not subscription:
+                user_id = session.get("client_reference_id")
+                if user_id:
+                    StripeDbCore.create_subscription(subscription_id, int(user_id), "active")  # new method call
+                else:
+                    logging.info("Checkout session missing client_reference_id for subscription creation: %s", session)
+            else:
+                StripeDbCore.update_subscription_status(subscription_id, "active")
+        else:
+            logging.info("Checkout session completed without subscription id: %s", session)
     else:
         # Log unsupported webhook events in detail
         logging.info("Received unsupported event type: %s, event details: %s", event.get("type"), event)
