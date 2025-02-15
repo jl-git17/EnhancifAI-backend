@@ -51,6 +51,6 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         StripeDbCore.update_subscription_status(subscription["id"], "canceled")
     else:
         # Log unsupported webhook events in detail
-        print(event)
+        print(str(event))
 
     return JSONResponse(status_code=200, content={"detail": "Webhook received"})
