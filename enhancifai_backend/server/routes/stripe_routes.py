@@ -49,6 +49,10 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         subscription = event["data"]["object"]
         # Update subscription status in the database
         StripeDbCore.update_subscription_status(subscription["id"], "canceled")
+    elif event["type"] == "checkout.session.completed":
+        subscription = event["data"]["object"]
+        # Update subscription status in the database
+        StripeDbCore.update_subscription_status(subscription["subscription"], subscription["status"])
     else:
         # Log unsupported webhook events in detail
         print(str(event))
