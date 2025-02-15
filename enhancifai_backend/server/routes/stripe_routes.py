@@ -56,7 +56,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         user = UsersDbCore.get_user_by_stripe_customer_id(customer_id)
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        user_id = user["id"]
+        user_id = user["user_id"]
         exists = StripeDbCore.get_subscription(data["subscription"])
         if exists:
             # Update subscription status in the database
