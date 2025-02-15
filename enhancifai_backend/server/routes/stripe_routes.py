@@ -1,4 +1,5 @@
 import os
+import logging  # added logging module
 
 from fastapi import APIRouter, Request, HTTPException, Header
 from fastapi.responses import JSONResponse
@@ -48,6 +49,8 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         subscription = event["data"]["object"]
         # Update subscription status in the database
         StripeDbCore.update_subscription_status(subscription["id"], "canceled")
-    # ... handle other event types as needed
+    else:
+        # Log unsupported webhook events in detail
+        logging.info("Received unsupported event type: %s, event details: %s", event.get("type"), event)
 
     return JSONResponse(status_code=200, content={"detail": "Webhook received"})
