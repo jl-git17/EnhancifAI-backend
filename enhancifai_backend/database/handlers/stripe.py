@@ -271,3 +271,17 @@ class StripeDbCore:
         """)
         write_db.do('execute', sql=sql, data=(subscription_id, user_id, status))
         logger.debug("Created Subscription: %s for User: %s with status: %s", subscription_id, user_id, status)
+
+    @staticmethod
+    def store_invoice_record(user_id, invoice_id, amount, status):
+        """
+        Store a newly created Stripe invoice record in the database.
+        """
+        sql = schemafy("""
+            INSERT INTO enhancifai.stripe_invoices 
+            (user_id, invoice_id, amount, status, created_at) 
+            VALUES (%s, %s, %s, %s, now())
+            ON CONFLICT (invoice_id) DO NOTHING;
+        """)
+        write_db.do('execute', sql=sql, data=(user_id, invoice_id, amount, status))
+        logger.debug("Stored Invoice Record: %s for User: %s with status: %s", invoice_id, user_id, status)
