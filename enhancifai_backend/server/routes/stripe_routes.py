@@ -1,5 +1,4 @@
 import os
-import logging  # added logging module
 
 from fastapi import APIRouter, Request, HTTPException, Header
 from fastapi.responses import JSONResponse
@@ -38,14 +37,23 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
     # Handle the event
     if event["type"] == "invoice.payment_succeeded":
         invoice = event["data"]["object"]
-        subscription_id = invoice["subscription"]
-        # Update subscription status in the database
-        StripeDbCore.update_subscription_status(subscription_id, "active")
+        subscription_id = invoice.get("subscription")
+        if subscription_id:
+            # Update subscription status in the database
+            StripeDbCore.update_subscription_status(subscription_id, "active")
+        else:
+            # One-time invoice
+            StripeDbCore.update_invoice_status(invoice["id"], "paid")
+            print(f"Invoice {invoice['id']} paid successfully.")
     elif event["type"] == "invoice.payment_failed":
         invoice = event["data"]["object"]
-        subscription_id = invoice["subscription"]
-        # Update subscription status in the database
-        StripeDbCore.update_subscription_status(subscription_id, "past_due")
+        subscription_id = invoice.get("subscription")
+        if subscription_id:
+            # Update subscription status in the database
+            StripeDbCore.update_subscription_status(subscription_id, "past_due")
+        else:
+            StripeDbCore.update_invoice_status(invoice["id"], "failed")
+            print(f"Invoice {invoice['id']} failed to charge.")
     elif event["type"] == "customer.subscription.deleted":
         subscription = event["data"]["object"]
         # Update subscription status in the database
