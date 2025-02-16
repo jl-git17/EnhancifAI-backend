@@ -42,7 +42,8 @@ setup(
         'WeasyPrint',
         'requests',
         'httpx == 0.23.0',
-        'titlecase'
+        'titlecase',
+        'python-dotenv'
     ],
     entry_points={
         'console_scripts': [
