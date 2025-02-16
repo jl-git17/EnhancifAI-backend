@@ -3,8 +3,10 @@ from datetime import datetime, timedelta, date, time, timezone
 from decimal import Decimal
 import calendar
 import os
+import stripe
 from enhancifai_backend.database.access import read_db
 from enhancifai_backend.database.handlers.billing import BillingDbCore
+from enhancifai_backend.database.handlers.stripe import StripeDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.database.handlers.utils import schemafy
 
@@ -29,6 +31,37 @@ def add_one_month(dt):
     month = dt.month % 12 + 1
     day = min(dt.day, calendar.monthrange(year, month)[1])
     return dt.replace(year=year, month=month, day=day)
+
+def create_and_charge_invoice(user_id: int, amount: int, currency: str = "usd", description: str = "Invoice charge"):
+    """
+    Automatically create and charge a Stripe invoice when an internal invoice is created.
+    """
+    try:
+        customer_id = BillingDbCore.get_stripe_customer_id(user_id)
+        if not customer_id:
+            raise ValueError(f"No Stripe customer ID found for user {user_id}")
+
+        customer = stripe.Customer.retrieve(customer_id)
+        if not customer.invoice_settings.get("default_payment_method"):
+            raise ValueError(f"User {user_id} does not have a default payment method.")
+
+        stripe.InvoiceItem.create(
+            customer=customer_id,
+            amount=amount,  # Amount in cents
+            currency=currency,
+            description=description
+        )
+
+        invoice = stripe.Invoice.create(
+            customer=customer_id,
+            collection_method="charge_automatically",
+            auto_advance=True
+        )
+        stripe.Invoice.finalize_invoice(invoice["id"])
+
+        StripeDbCore.store_invoice_record(user_id, invoice["id"], amount, "pending")
+    except Exception as e:
+        print(f"Error creating invoice for user {user_id}: {str(e)}")
 
 def generate_monthly_invoices():
     """
@@ -55,6 +88,8 @@ def generate_monthly_invoices():
 
         for user in users:
             user_id = user['user_id']
+            if not StripeDbCore.is_user_subscribed(user_id):
+                continue
             invoices_generated = False
             try:
                 last_invoice_end_date = BillingDbCore.get_last_invoice_end_date(user_id)
@@ -192,6 +227,7 @@ def generate_monthly_invoices():
                             )
                             if invoice:
                                 invoices_generated = True
+                                create_and_charge_invoice(user_id, total_amount_cents, "usd", description)
 
                     current_start = add_one_month(current_start)
 
