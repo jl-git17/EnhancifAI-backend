@@ -83,11 +83,11 @@ BEGIN
         JOIN pg_class c ON c.oid = t.tgrelid
         JOIN pg_namespace n ON n.oid = c.relnamespace
         WHERE t.tgname = 'trg_generate_invoice_number'
-          AND c.relname = 'stripe_invoices'
+          AND c.relname = 'internal_invoices'
           AND n.nspname = 'enhancifai'
     ) THEN
         CREATE TRIGGER trg_generate_invoice_number
-        BEFORE INSERT ON enhancifai.stripe_invoices
+        BEFORE INSERT ON enhancifai.internal_invoices
         FOR EACH ROW
         EXECUTE FUNCTION enhancifai.generate_invoice_number();
     END IF;
