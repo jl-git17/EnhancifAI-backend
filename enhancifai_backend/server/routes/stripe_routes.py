@@ -44,6 +44,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         else:
             # One-time invoice
             StripeDbCore.update_invoice_status(invoice["id"], "paid")
+            StripeDbCore.update_invoice_record(invoice["id"], "paid")
             print(f"Invoice {invoice['id']} paid successfully.")
     elif event["type"] == "invoice.payment_failed":
         invoice = event["data"]["object"]
@@ -53,6 +54,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
             StripeDbCore.update_subscription_status(subscription_id, "past_due")
         else:
             StripeDbCore.update_invoice_status(invoice["id"], "failed")
+            StripeDbCore.update_invoice_record(invoice["id"], "failed")
             print(f"Invoice {invoice['id']} failed to charge.")
     elif event["type"] == "customer.subscription.deleted":
         subscription = event["data"]["object"]
