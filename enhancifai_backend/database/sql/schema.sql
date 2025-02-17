@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage_pi (
     created_at TIMESTAMP DEFAULT now()
 );
 
-CREATE TABLE IF NOT EXISTS enhancifai.stripe_invoices (
+CREATE TABLE IF NOT EXISTS enhancifai.internal_invoices (
     id SERIAL PRIMARY KEY,
     invoice_id VARCHAR(25) UNIQUE NOT NULL,
     user_id INT REFERENCES enhancifai.users(user_id),
@@ -94,6 +94,14 @@ BEGIN
 END
 $do$ LANGUAGE plpgsql;
 
+CREATE TABLE IF NOT EXISTS enhancifai.stripe_invoices (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES enhancifai.users(user_id),
+    invoice_id VARCHAR(25) UNIQUE NOT NULL,
+    amount FLOAT NOT NULL,
+    status VARCHAR(50),
+    created_at TIMESTAMP DEFAULT now()
+);
 
 CREATE TABLE IF NOT EXISTS enhancifai.google_sheets_credentials (
     user_id INT REFERENCES enhancifai.users(user_id) UNIQUE,
