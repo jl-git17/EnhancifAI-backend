@@ -223,7 +223,7 @@ class BillingDbCore:
                     metadata['description'] = description
 
             sql = schemafy("""
-                INSERT INTO enhancifai.stripe_invoices (
+                INSERT INTO enhancifai.internal_invoices (
                     user_id, amount, status, created_at,
                     billing_period_start, billing_period_end, metadata
                 ) VALUES (%s, %s, 'unpaid', NOW(), %s, %s, %s)
@@ -260,7 +260,7 @@ class BillingDbCore:
         try:
             sql = schemafy("""
                 SELECT 1
-                FROM enhancifai.stripe_invoices
+                FROM enhancifai.internal_invoices
                 WHERE user_id = %s
                 AND billing_period_start = %s
                 AND billing_period_end = %s;
@@ -302,7 +302,7 @@ class BillingDbCore:
                 TO_CHAR(si.billing_period_start, 'YYYY-MM-DD') AS billing_period_start,
                 TO_CHAR(si.billing_period_end, 'YYYY-MM-DD') AS billing_period_end,
                 si.metadata
-            FROM enhancifai.stripe_invoices si
+            FROM enhancifai.internal_invoices si
             WHERE si.user_id = %s
             ORDER BY si.created_at DESC;
         """)
@@ -384,11 +384,11 @@ class BillingDbCore:
             status (str): New status ('paid' or 'failed').
         """
         if status == 'paid':
-            sql = schemafy("UPDATE enhancifai.stripe_invoices SET status = %s, paid_at = NOW() WHERE invoice_id = %s;")
+            sql = schemafy("UPDATE enhancifai.internal_invoices SET status = %s, paid_at = NOW() WHERE invoice_id = %s;")
             data = (status, invoice_id)
             write_db.do('execute', sql=sql, data=data)
         elif status == 'failed':
-            sql = schemafy("UPDATE enhancifai.stripe_invoices SET status = %s WHERE invoice_id = %s;")
+            sql = schemafy("UPDATE enhancifai.internal_invoices SET status = %s WHERE invoice_id = %s;")
             data = (status, invoice_id)
             write_db.do('execute', sql=sql, data=data)
 
@@ -484,7 +484,7 @@ class BillingDbCore:
                 TO_CHAR(si.billing_period_start, 'YYYY-MM-DD') AS billing_period_start,
                 TO_CHAR(si.billing_period_end, 'YYYY-MM-DD') AS billing_period_end,
                 si.metadata
-            FROM enhancifai.stripe_invoices si
+            FROM enhancifai.internal_invoices si
             WHERE si.user_id = %s AND si.invoice_id = %s;
         """)
         data = (user_id, invoice_id)
@@ -545,7 +545,7 @@ class BillingDbCore:
         try:
             sql = schemafy("""
                 SELECT 1
-                FROM enhancifai.stripe_invoices
+                FROM enhancifai.internal_invoices
                 WHERE user_id = %s
                 LIMIT 1;
             """)
@@ -571,7 +571,7 @@ class BillingDbCore:
         """
         sql = schemafy("""
             SELECT billing_period_end
-            FROM enhancifai.stripe_invoices
+            FROM enhancifai.internal_invoices
             WHERE user_id = %s
             ORDER BY billing_period_end DESC
             LIMIT 1;
