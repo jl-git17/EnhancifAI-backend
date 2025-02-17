@@ -243,7 +243,7 @@ class UsersDbCore:
             list: A list of invoice records.
         """
         sql = schemafy("""
-            SELECT * FROM enhancifai.stripe_invoices 
+            SELECT * FROM enhancifai.internal_invoices 
             WHERE user_id = %s 
             ORDER BY created_at DESC;
         """)
