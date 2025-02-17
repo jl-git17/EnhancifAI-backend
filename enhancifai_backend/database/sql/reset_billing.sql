@@ -1,5 +1,10 @@
 TRUNCATE TABLE enhancifai.stripe_invoices
 RESTART IDENTITY CASCADE;
+TRUNCATE TABLE enhancifai.internal_invoices
+RESTART IDENTITY CASCADE;
+
+SELECT setval('enhancifai.invoice_number_seq', 1, false);
+
 --,
                --enhancifai.runs,
                --enhancifai.prompt_improver_run_logs,
@@ -9,12 +14,3 @@ RESTART IDENTITY CASCADE;
 
 
 -- Reset the invoice_number_seq to start at 1
-SELECT setval('enhancifai.invoice_number_seq', 1, false);
-
--- Truncate invoices table (stripe_invoices) and reset its sequence with cascade
-TRUNCATE TABLE enhancifai.stripe_invoices
-RESTART IDENTITY CASCADE;
-
--- Additionally, reset the invoice_number_seq if necessary
-SELECT setval('enhancifai.invoice_number_seq', 1, false);
-
