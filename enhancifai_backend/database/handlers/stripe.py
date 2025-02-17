@@ -47,7 +47,7 @@ class StripeDbCore:
             invoice_id (str): The unique identifier of the invoice.
             status (str): The new status to be applied.
         """
-        sql = schemafy("UPDATE enhancifai.stripe_invoices SET status = %s WHERE invoice_id = %s;")
+        sql = schemafy("UPDATE enhancifai.internal_invoices SET status = %s, paid_at = NOW() WHERE invoice_id = %s;")
         write_db.do('execute', sql=sql, data=(status, invoice_id,))
         logger.debug("Updated Invoice Status: %s to %s", invoice_id, status)
 
@@ -159,7 +159,7 @@ class StripeDbCore:
         """
         sql = schemafy("""
             SELECT 1 
-            FROM enhancifai.stripe_invoices 
+            FROM enhancifai.internal_invoices 
             WHERE user_id = %s 
               AND billing_period_start = %s 
               AND billing_period_end = %s
@@ -211,7 +211,7 @@ class StripeDbCore:
 
             # Insert the main invoice record
             sql = schemafy("""
-                INSERT INTO enhancifai.stripe_invoices 
+                INSERT INTO enhancifai.internal_invoices 
                 (invoice_id, user_id, amount, currency, status, created_at, billing_period_start, billing_period_end, metadata)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (user_id, billing_period_start, billing_period_end) 
@@ -278,10 +278,28 @@ class StripeDbCore:
         Store a newly created Stripe invoice record in the database.
         """
         sql = schemafy("""
-            INSERT INTO enhancifai.stripe_invoices 
+            INSERT INTO enhancifai.stripe_invoices
             (user_id, invoice_id, amount, status, created_at) 
             VALUES (%s, %s, %s, %s, now())
             ON CONFLICT (invoice_id) DO NOTHING;
         """)
         write_db.do('execute', sql=sql, data=(user_id, invoice_id, amount, status))
         logger.debug("Stored Invoice Record: %s for User: %s with status: %s", invoice_id, user_id, status)
+
+    @classmethod
+    def update_invoice_record(cls, invoice_id: str, status: str) -> None:
+        """
+        Update an existing Stripe invoice record in the database.
+
+        Parameters:
+            invoice_id (str): The unique identifier of the invoice.
+            amount (int): The updated charge amount in cents.
+            status (str): The new status to be applied.
+        """
+        sql = schemafy("""
+            UPDATE enhancifai.stripe_invoices
+            SET status = %s
+            WHERE invoice_id = %s;
+        """)
+        write_db.do('execute', sql=sql, data=(status, invoice_id))
+        logger.debug("Updated Invoice Record: %s and status: %s", invoice_id, status)
