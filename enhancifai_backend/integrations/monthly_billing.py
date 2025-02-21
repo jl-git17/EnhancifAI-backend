@@ -33,6 +33,7 @@ def add_one_month(dt):
     return dt.replace(year=year, month=month, day=day)
 
 def create_and_charge_invoice(user_id: int, amount: int, currency: str = "usd", description: str = "Invoice charge"):
+    print(f"[DEBUG] create_and_charge_invoice called with user_id={user_id}, amount={amount}, currency={currency}, description='{description}'")
     """
     Automatically create and charge a Stripe invoice when an internal invoice is created.
     """
@@ -42,6 +43,7 @@ def create_and_charge_invoice(user_id: int, amount: int, currency: str = "usd", 
             raise ValueError(f"No Stripe customer ID found for user {user_id}")
 
         customer = stripe.Customer.retrieve(customer_id)
+        print(f"[DEBUG] Retrieved customer: {customer_id}")
         if not customer.invoice_settings.get("default_payment_method"):
             raise ValueError(f"User {user_id} does not have a default payment method.")
 
@@ -51,6 +53,7 @@ def create_and_charge_invoice(user_id: int, amount: int, currency: str = "usd", 
             currency=currency,
             description=description
         )
+        print(f"[DEBUG] Invoice item created, amount={amount}, currency={currency}")
 
         invoice = stripe.Invoice.create(
             customer=customer_id,
@@ -58,12 +61,14 @@ def create_and_charge_invoice(user_id: int, amount: int, currency: str = "usd", 
             auto_advance=True
         )
         stripe.Invoice.finalize_invoice(invoice["id"])
+        print(f"[DEBUG] Finalized invoice with ID: {invoice['id']}")
 
         StripeDbCore.store_invoice_record(user_id, invoice["id"], amount, "pending")
     except Exception as e:
         print(f"Error creating invoice for user {user_id}: {str(e)}")
 
 def generate_monthly_invoices():
+    print("[DEBUG] Starting generate_monthly_invoices")
     """
     Generates monthly invoices for all users based on their token usage.
 
@@ -85,14 +90,17 @@ def generate_monthly_invoices():
 
         sql = schemafy("SELECT user_id FROM enhancifai.users;")
         users = read_db.do('select', sql=sql)
+        print(f"[DEBUG] Retrieved all users: {len(users)} total")
 
         for user in users:
             user_id = user['user_id']
+            print(f"[DEBUG] Processing user_id={user_id}")
             if not StripeDbCore.is_user_subscribed(user_id):
                 continue
             invoices_generated = False
             try:
                 last_invoice_end_date = BillingDbCore.get_last_invoice_end_date(user_id)
+                print(f"[DEBUG] Last invoice end date: {last_invoice_end_date}")
                 if last_invoice_end_date:
                     current_start = last_invoice_end_date + timedelta(days=1)
                     if isinstance(current_start, date) and not isinstance(current_start, datetime):
@@ -137,6 +145,7 @@ def generate_monthly_invoices():
                     if current_start.tzinfo is None:
                         current_start = current_start.replace(tzinfo=timezone.utc)
 
+                print(f"[DEBUG] Current start: {current_start}, last day of current month: {last_day_of_current_month}")
                 if current_start > last_day_of_current_month:
                     continue
 
@@ -147,6 +156,7 @@ def generate_monthly_invoices():
                     if current_end > last_day_of_current_month:
                         current_end = last_day_of_current_month
 
+                    print(f"[DEBUG] Checking invoices for range {current_start} to {current_end}")
                     invoice_exists = BillingDbCore.invoice_exists(user_id, current_start, current_end)
                     if not invoice_exists:
                         normal_tokens_per_model_per_day = UsersDbCore.get_user_normal_token_usage_per_model_per_day(
@@ -162,6 +172,8 @@ def generate_monthly_invoices():
                         pi_line_items = []
                         total_amount_cents = 0
 
+                        print(f"[DEBUG] Normal usage records: {normal_tokens_per_model_per_day}")
+                        print(f"[DEBUG] PI usage records: {pi_tokens_per_model_per_day}")
                         for usage in normal_tokens_per_model_per_day:
                             usage_date = usage['usage_date']
                             model = usage['model']
@@ -221,12 +233,14 @@ def generate_monthly_invoices():
                                 'line_items': normal_line_items,
                                 'pi_line_items': pi_line_items
                             }
+                            print(f"[DEBUG] Creating invoice with amount (cents): {total_amount_cents}")
                             invoice = BillingDbCore.create_invoice(
                                 user_id, total_amount_cents, description,
                                 current_start.date(), current_end.date(), metadata=metadata_dict
                             )
                             if invoice:
                                 invoices_generated = True
+                                print(f"[DEBUG] Invoice creation successful: {invoice}")
                                 create_and_charge_invoice(user_id, total_amount_cents, "usd", description)
 
                     current_start = add_one_month(current_start)
@@ -239,6 +253,7 @@ def generate_monthly_invoices():
                 logger.error("Failed to create invoice for user %s: %s", user_id, str(e), exc_info=True)
     except Exception as e:
         logger.critical("Failed to generate monthly invoices: %s", str(e), exc_info=True)
+    print("[DEBUG] Finished generate_monthly_invoices")
 
 
 if __name__ == "__main__":
