@@ -43,14 +43,27 @@ def create_and_charge_invoice(user_id: int, amount: int, currency: str = "usd", 
             raise ValueError(f"No Stripe customer ID found for user {user_id}")
             
         customer = stripe.Customer.retrieve(customer_id)
-        if not customer.invoice_settings.get("default_payment_method"):
-            raise ValueError(f"User {user_id} does not have a saved payment method.")
+        
+        # Attempt to retrieve the default payment method
+        default_pm = customer.invoice_settings.get("default_payment_method")
+        
+        # Fallback: If no default payment method is set, list attached payment methods and pick the first one.
+        if not default_pm:
+            payment_methods = stripe.PaymentMethod.list(
+                customer=customer_id,
+                type="card"
+            )
+            if payment_methods.data:
+                default_pm = payment_methods.data[0].id
+                print(f"[DEBUG] Fallback: Using attached payment method {default_pm}")
+            else:
+                raise ValueError(f"User {user_id} does not have any saved payment methods.")
 
         payment_intent = stripe.PaymentIntent.create(
             amount=amount,  # Amount in cents
             currency=currency,
             customer=customer_id,
-            payment_method=customer.invoice_settings["default_payment_method"],
+            payment_method=default_pm,
             confirm=True,
             off_session=True,  # Charges the customer without their confirmation
             description=description
@@ -64,6 +77,7 @@ def create_and_charge_invoice(user_id: int, amount: int, currency: str = "usd", 
         print(f"Card error: {e.user_message}")
     except Exception as e:
         print(f"Error charging customer: {str(e)}")
+
 
 def generate_monthly_invoices():
     print("[DEBUG] Starting generate_monthly_invoices")
