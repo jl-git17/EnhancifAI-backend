@@ -267,6 +267,31 @@ def generate_monthly_invoices():
         logger.critical("Failed to generate monthly invoices: %s", str(e), exc_info=True)
     print("[DEBUG] Finished generate_monthly_invoices")
 
+def charge_unpaid_invoices():
+    """
+    Loops through unpaid internal_invoices and attempts to charge them.
+    """
+    from enhancifai_backend.database.handlers.billing import BillingDbCore
+    from enhancifai_backend.database.access import read_db
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    try:
+        sql = "SELECT invoice_id, user_id, amount FROM enhancifai.internal_invoices WHERE status = 'unpaid';"
+        unpaid_invoices = read_db.do('select', sql=sql, data=[])
+        for invoice in unpaid_invoices:
+            user_id = invoice['user_id']
+            invoice_id = invoice['invoice_id']
+            amount_cents = invoice['amount']
+
+            try:
+                create_and_charge_invoice(user_id, amount_cents)
+                BillingDbCore.update_invoice_status(invoice_id, 'paid')
+            except Exception as e:
+                logger.error("Failed to charge invoice %s for user %s: %s", invoice_id, user_id, str(e))
+    except Exception as e:
+        logger.error("Failed to retrieve or charge unpaid invoices: %s", str(e))
 
 if __name__ == "__main__":
     generate_monthly_invoices()

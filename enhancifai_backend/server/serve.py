@@ -13,7 +13,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from enhancifai_backend.database.handlers.sys import SysDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.rate_limit_manager import rate_limit_manager
-from enhancifai_backend.integrations.monthly_billing import generate_monthly_invoices
+from enhancifai_backend.integrations.monthly_billing import generate_monthly_invoices, charge_unpaid_invoices
 from enhancifai_backend.server.jobs import delete_old_files
 from enhancifai_backend.server.routes.users_routes import router as router_users
 from enhancifai_backend.server.routes.execution_routes import router as router_execution
@@ -80,6 +80,7 @@ scheduler.add_job(SysDbCore.keep_db_alive, 'interval', seconds=21)
 scheduler.add_job(UsersDbCore.cleanup_timed_out_jobs, 'interval', seconds=13)
 scheduler.add_job(rate_limit_manager.clean_cancelled_jobs, 'interval', minutes=1)
 scheduler.add_job(generate_monthly_invoices, 'interval', minutes=5)
+scheduler.add_job(charge_unpaid_invoices, 'interval', minutes=5)
 #scheduler.add_job(refresh_google_sheets_creds, 'interval', minutes=30) # TODO: check if it is corrupting existing creds
 scheduler.start()
 logging.getLogger('apscheduler.executors.default').setLevel(logging.WARNING)
