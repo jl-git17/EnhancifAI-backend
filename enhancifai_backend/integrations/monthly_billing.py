@@ -272,19 +272,17 @@ def charge_unpaid_invoices():
     Loops through unpaid internal_invoices and attempts to charge them.
     """
     from enhancifai_backend.database.handlers.billing import BillingDbCore
-    from enhancifai_backend.database.access import read_db
     import logging
 
     logger = logging.getLogger(__name__)
 
     try:
-        sql = "SELECT invoice_id, user_id, amount FROM enhancifai.internal_invoices WHERE status = 'unpaid';"
-        unpaid_invoices = read_db.do('select', sql=sql, data=[])
+        unpaid_invoices = BillingDbCore.list_unpaid_invoices()
         for invoice in unpaid_invoices:
             user_id = invoice['user_id']
             invoice_id = invoice['invoice_id']
-            amount_cents = invoice['amount']
-
+            # invoice['amount'] is in dollars; convert to cents for charging
+            amount_cents = int(round(invoice['amount'] * 100))
             try:
                 create_and_charge_invoice(user_id, amount_cents)
                 BillingDbCore.update_invoice_status(invoice_id, 'paid')

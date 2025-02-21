@@ -630,3 +630,39 @@ class BillingDbCore:
         except Exception as e:
             logging.error("Failed to retrieve last_invoice_run_at for user %s: %s", user_id, str(e))
             raise
+
+    @classmethod
+    def list_unpaid_invoices(cls):
+        """
+        Retrieve all internal invoices with status 'unpaid', converting amounts to dollars.
+        
+        Returns:
+            list: A list of invoice dictionaries.
+        """
+        sql = schemafy("""
+            SELECT 
+                invoice_id,
+                user_id,
+                amount,
+                status,
+                created_at,
+                billing_period_start,
+                billing_period_end,
+                metadata
+            FROM enhancifai.internal_invoices
+            WHERE status = 'unpaid'
+            ORDER BY created_at DESC;
+        """)
+        data = ()
+        records = read_db.do('select', sql=sql, data=data) or []
+        invoices = []
+        for record in records:
+            amount_cents = Decimal(record['amount'])
+            # Convert amount from cents to dollars
+            record['amount'] = float((amount_cents / Decimal('100')).quantize(Decimal('0.01')))
+            if record.get('metadata') and isinstance(record['metadata'], str)):
+                record['metadata'] = json.loads(record['metadata'])
+            else:
+                record['metadata'] = {}
+            invoices.append(record)
+        return invoices
