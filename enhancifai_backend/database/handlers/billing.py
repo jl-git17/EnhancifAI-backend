@@ -660,7 +660,7 @@ class BillingDbCore:
             amount_cents = Decimal(record['amount'])
             # Convert amount from cents to dollars
             record['amount'] = float((amount_cents / Decimal('100')).quantize(Decimal('0.01')))
-            if record.get('metadata') and isinstance(record['metadata'], str)):
+            if record.get('metadata') and isinstance(record['metadata'], str):
                 record['metadata'] = json.loads(record['metadata'])
             else:
                 record['metadata'] = {}
