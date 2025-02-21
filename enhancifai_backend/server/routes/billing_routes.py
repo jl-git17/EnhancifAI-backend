@@ -519,6 +519,9 @@ async def get_rate_card(
     Retrieve the rate card for AI models.
     """
     try:
+        # Return blank array if the user is not subscribed
+        if not StripeDbCore.is_user_subscribed(_user_id):
+            return JSONResponse(status_code=200, content={"rates": []})
         rates = BillingDbCore.get_rate_card(month, year)
         # Convert price_per_token to float with four decimal places
         for rate in rates:
@@ -537,6 +540,8 @@ async def get_rate_card_history(
     Retrieve the historical rate card data, showing rates per month.
     """
     try:
+        if not StripeDbCore.is_user_subscribed(_user_id):
+            return JSONResponse(status_code=200, content={"rate_history": []})
         rate_history = BillingDbCore.get_rate_card_history()
         # Process the rate_history to include price_per_1000_tokens
         for rate in rate_history:

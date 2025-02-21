@@ -41,31 +41,29 @@ def create_and_charge_invoice(user_id: int, amount: int, currency: str = "usd", 
         customer_id = BillingDbCore.get_stripe_customer_id(user_id)
         if not customer_id:
             raise ValueError(f"No Stripe customer ID found for user {user_id}")
-
+            
         customer = stripe.Customer.retrieve(customer_id)
-        print(f"[DEBUG] Retrieved customer: {customer_id}")
         if not customer.invoice_settings.get("default_payment_method"):
-            raise ValueError(f"User {user_id} does not have a default payment method.")
+            raise ValueError(f"User {user_id} does not have a saved payment method.")
 
-        stripe.InvoiceItem.create(
-            customer=customer_id,
+        payment_intent = stripe.PaymentIntent.create(
             amount=amount,  # Amount in cents
             currency=currency,
+            customer=customer_id,
+            payment_method=customer.invoice_settings["default_payment_method"],
+            confirm=True,
+            off_session=True,  # Charges the customer without their confirmation
             description=description
         )
-        print(f"[DEBUG] Invoice item created, amount={amount}, currency={currency}")
-
-        invoice = stripe.Invoice.create(
-            customer=customer_id,
-            collection_method="charge_automatically",
-            auto_advance=True
-        )
-        stripe.Invoice.finalize_invoice(invoice["id"])
-        print(f"[DEBUG] Finalized invoice with ID: {invoice['id']}")
-
-        StripeDbCore.store_invoice_record(user_id, invoice["id"], amount, "pending")
+        print(f"[DEBUG] Successfully charged user {user_id}, PaymentIntent ID: {payment_intent['id']}")
+        
+        # Record the payment (status updated to "charged")
+        StripeDbCore.store_invoice_record(user_id, payment_intent["id"], amount, "charged")
+        return payment_intent
+    except stripe.error.CardError as e:
+        print(f"Card error: {e.user_message}")
     except Exception as e:
-        print(f"Error creating invoice for user {user_id}: {str(e)}")
+        print(f"Error charging customer: {str(e)}")
 
 def generate_monthly_invoices():
     print("[DEBUG] Starting generate_monthly_invoices")
