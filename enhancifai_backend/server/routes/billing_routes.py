@@ -653,9 +653,8 @@ async def start_subscription(
             mode='subscription',
             success_url=f"{os.getenv('FRONTEND_URL')}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
             cancel_url=f"{os.getenv('FRONTEND_URL')}/billing/cancel",
-            payment_intent_data={
-                "setup_future_usage": "off_session"
-            },
+            payment_method_collection="always",
+            allow_promotion_codes=True,
         )
         return JSONResponse(status_code=200, content={'checkout_url': session.url})
     except HTTPException as e:
