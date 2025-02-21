@@ -122,6 +122,10 @@ async def get_usage_by_model_endpoint(
     """
     Get usage data aggregated by AI model, filtered by month and year if provided.
     """
+    # Return blank array if user is not subscribed.
+    if not StripeDbCore.is_user_subscribed(user_id):
+        return JSONResponse(status_code=200, content={"usage_by_model": []})
+    
     try:
         # Call the modified get_usage_by_model function with month and year
         usage_by_model = BillingDbCore.get_usage_by_model(user_id, month=month, year=year)
