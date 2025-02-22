@@ -1,8 +1,9 @@
-import logging
 from datetime import datetime, timedelta, date, time, timezone
 from decimal import Decimal
+import logging
 import calendar
 import os
+
 import stripe
 from enhancifai_backend.database.access import read_db
 from enhancifai_backend.database.handlers.billing import BillingDbCore
@@ -32,11 +33,15 @@ def add_one_month(dt):
     day = min(dt.day, calendar.monthrange(year, month)[1])
     return dt.replace(year=year, month=month, day=day)
 
-def create_and_charge_invoice(user_id: int, invoice_id: str, amount: int, currency: str = "usd", description: str = "Invoice charge"):
-    print(f"[DEBUG] create_and_charge_invoice called with user_id={user_id}, amount={amount}, currency={currency}, description='{description}'")
+def create_and_charge_invoice(
+        user_id: int, invoice_id: str,
+        amount: int, currency: str = "usd",
+        description: str = "Invoice charge"
+    ):
     """
     Automatically create and charge a Stripe invoice when an internal invoice is created.
     """
+    print(f"[DEBUG] create_and_charge_invoice called with user_id={user_id}, amount={amount}, currency={currency}, description='{description}'")
     try:
         customer_id = BillingDbCore.get_stripe_customer_id(user_id)
         if not customer_id:
@@ -80,7 +85,6 @@ def create_and_charge_invoice(user_id: int, invoice_id: str, amount: int, curren
 
 
 def generate_monthly_invoices():
-    print("[DEBUG] Starting generate_monthly_invoices")
     """
     Generates monthly invoices for all users based on their token usage.
 
@@ -91,6 +95,7 @@ def generate_monthly_invoices():
     Raises:
         Logs errors and continues processing on individual user failures.
     """
+    print("[DEBUG] Starting generate_monthly_invoices")
     try:
         today = datetime.now(timezone.utc)
         first_day_of_current_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -271,10 +276,6 @@ def charge_unpaid_invoices():
     """
     Loops through unpaid internal_invoices and attempts to charge them.
     """
-    from enhancifai_backend.database.handlers.billing import BillingDbCore
-    import logging
-
-    logger = logging.getLogger(__name__)
 
     try:
         unpaid_invoices = BillingDbCore.list_unpaid_invoices()
