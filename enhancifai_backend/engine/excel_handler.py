@@ -82,7 +82,7 @@ class ExcelHandler:
         # Duplicate-check start
         seen_rows = set()
         for row in self.data:
-            row_tuple = tuple(sorted(row.items()))
+            row_tuple = tuple(sorted((str(k), str(v)) for k, v in row.items()))
             if row_tuple in seen_rows:
                 raise ValueError("Duplicate row found in Excel data.")
             seen_rows.add(row_tuple)
