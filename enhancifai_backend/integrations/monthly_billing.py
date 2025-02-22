@@ -32,7 +32,7 @@ def add_one_month(dt):
     day = min(dt.day, calendar.monthrange(year, month)[1])
     return dt.replace(year=year, month=month, day=day)
 
-def create_and_charge_invoice(user_id: int, amount: int, currency: str = "usd", description: str = "Invoice charge"):
+def create_and_charge_invoice(user_id: int, invoice_id: str, amount: int, currency: str = "usd", description: str = "Invoice charge"):
     print(f"[DEBUG] create_and_charge_invoice called with user_id={user_id}, amount={amount}, currency={currency}, description='{description}'")
     """
     Automatically create and charge a Stripe invoice when an internal invoice is created.
@@ -69,9 +69,9 @@ def create_and_charge_invoice(user_id: int, amount: int, currency: str = "usd", 
             description=description
         )
         print(f"[DEBUG] Successfully charged user {user_id}, PaymentIntent ID: {payment_intent['id']}")
-        
+
         # Record the payment (status updated to "charged")
-        StripeDbCore.store_invoice_record(user_id, payment_intent["id"], amount, "charged")
+        StripeDbCore.store_invoice_record(user_id, invoice_id, amount, "charged")
         return payment_intent
     except stripe.error.CardError as e:
         print(f"Card error: {e.user_message}")
@@ -253,7 +253,7 @@ def generate_monthly_invoices():
                             if invoice:
                                 invoices_generated = True
                                 print(f"[DEBUG] Invoice creation successful: {invoice}")
-                                create_and_charge_invoice(user_id, total_amount_cents, "usd", description)
+                                create_and_charge_invoice(user_id, invoice['invoice_id'], total_amount_cents, "usd", description)
 
                     current_start = add_one_month(current_start)
 
@@ -284,7 +284,7 @@ def charge_unpaid_invoices():
             # invoice['amount'] is in dollars; convert to cents for charging
             amount_cents = int(round(invoice['amount'] * 100))
             try:
-                create_and_charge_invoice(user_id, amount_cents)
+                create_and_charge_invoice(user_id, invoice_id, amount_cents)
                 BillingDbCore.update_invoice_status(invoice_id, 'paid')
             except Exception as e:
                 logger.error("Failed to charge invoice %s for user %s: %s", invoice_id, user_id, str(e))
