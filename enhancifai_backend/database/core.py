@@ -76,7 +76,7 @@ class DbSession:
                     print(f"An unexpected database error occurred: {err}")
                     raise
             except Exception as e:
-                print(f"Error in SQL: {sql}")
+                print(f"Error in SQL: {sql} | Data: {data}")
                 print(f"An unexpected error occurred: {e}")
                 raise
         print("Reached the maximum number of retries for reconnection. Exiting.")
