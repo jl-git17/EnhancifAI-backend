@@ -97,7 +97,7 @@ $do$ LANGUAGE plpgsql;
 CREATE TABLE IF NOT EXISTS enhancifai.stripe_invoices (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES enhancifai.users(user_id),
-    invoice_id VARCHAR(25) UNIQUE NOT NULL,
+    invoice_id VARCHAR(25) UNIQUE NOT NULL REFERENCES enhancifai.internal_invoices(invoice_id),
     amount FLOAT NOT NULL,
     status VARCHAR(50),
     created_at TIMESTAMP DEFAULT now()
