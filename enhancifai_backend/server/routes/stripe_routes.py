@@ -41,6 +41,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         if subscription_id:
             # Update subscription status in the database
             StripeDbCore.update_subscription_status(subscription_id, "active")
+            # TODO: send email to user
         else:
             # One-time invoice
             StripeDbCore.update_invoice_status(invoice["id"], "paid")
@@ -52,6 +53,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         if subscription_id:
             # Update subscription status in the database
             StripeDbCore.update_subscription_status(subscription_id, "past_due")
+            # TODO: send email to user
         else:
             StripeDbCore.update_invoice_status(invoice["id"], "failed")
             StripeDbCore.update_invoice_record(invoice["id"], "failed")
@@ -60,6 +62,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         subscription = event["data"]["object"]
         # Update subscription status in the database
         StripeDbCore.update_subscription_status(subscription["id"], "canceled")
+        # TODO: send email to user
     elif event["type"] == "checkout.session.completed":
         data = event["data"]["object"]
         customer_id = data["customer"]
@@ -74,6 +77,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         else:
             # Create a new subscription in the database
             StripeDbCore.create_subscription(data["subscription"], user_id, "active")
+        # TODO: send email to user
     else:
         # Log unsupported webhook events in detail
         print(str(event))
