@@ -41,14 +41,17 @@ def create_and_charge_invoice(
     """
     Automatically create and charge a Stripe invoice when an internal invoice is created.
     """
-    print(f"[DEBUG] create_and_charge_invoice called with user_id={user_id}, amount={amount}, currency={currency}, description='{description}'")
+    print(
+        f"[DEBUG] create_and_charge_invoice called with user_id={user_id}, "
+        f"amount={amount}, currency={currency}, description='{description}'"
+    )
     try:
         customer_id = BillingDbCore.get_stripe_customer_id(user_id)
         if not customer_id:
             raise ValueError(f"No Stripe customer ID found for user {user_id}")
-            
+
         customer = stripe.Customer.retrieve(customer_id)
-        
+
         # Attempt to retrieve the default payment method
         default_pm = customer.invoice_settings.get("default_payment_method")
         
