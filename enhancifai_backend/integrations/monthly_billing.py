@@ -72,11 +72,11 @@ def create_and_charge_invoice(user_id: int, invoice_id: str, amount: int, curren
 
         # Record the payment (status updated to "charged")
         StripeDbCore.store_invoice_record(user_id, invoice_id, amount, "charged")
+        # TODO: send email receipt to user
         return payment_intent
-    except stripe.error.CardError as e:
-        print(f"Card error: {e.user_message}")
     except Exception as e:
         print(f"Error charging customer: {str(e)}")
+        # TODO: send email to user about failed payment
 
 
 def generate_monthly_invoices():
