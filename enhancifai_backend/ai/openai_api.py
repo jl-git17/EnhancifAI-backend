@@ -167,7 +167,6 @@ class OpenAIConnector:
             'columns': columns,
             'rows': rows,
         }
-        print(f"Length of payload: {len(payload['rows'])}")
 
         max_attempts = 3
         _err = None
@@ -205,15 +204,10 @@ class OpenAIConnector:
                     #top_p=self.top_p
                 )
 
-                print("AI API call successful.")
-
                 data = completion.choices[0].message.content
                 tokens_used = completion.usage.total_tokens
-                print(f"Tokens used: {tokens_used}")
                 input_tokens = completion.usage.prompt_tokens
-                print(f"Input tokens: {input_tokens}")
                 output_tokens = tokens_used - input_tokens
-                print(f"Output tokens: {output_tokens}")
 
                 # Update rate limit manager
                 rate_limit_manager.update_make_api_call(self.engine, tokens_used=tokens_used)
@@ -288,7 +282,7 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            f"{query}\n"
+                            f"Query: {query}\n"
                             "---\n"
                             "DATA:\n"
                             f"{json.dumps(rows)}"
@@ -298,7 +292,7 @@ class OpenAIConnector:
                         "role": "user",
                         "content": (
                             "For each data entry, process the query. Return the results "
-                            "in a JSON array. One string for each entry containing the full answer."
+                            "in a JSON array. One string for each entry containing the full answer to the user's query only."
                         )
                     }
                 ]
@@ -307,7 +301,7 @@ class OpenAIConnector:
                 completion = self.client.chat.completions.create(
                     model=self.engine,
                     messages=messages,
-                    temperature=0.6
+                    temperature=0.9
                 )
 
                 raw_data = completion.choices[0].message.content
