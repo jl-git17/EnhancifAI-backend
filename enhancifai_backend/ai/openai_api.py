@@ -416,7 +416,12 @@ class OpenAIConnector:
 
                 new_prompt = data.replace("```", "").strip()
                 UsersDbCore.add_user_token_usage_pi(user_id, self.engine, tokens_used)
-                return {"content": new_prompt, "input_tokens": input_tokens, "output_tokens": output_tokens, 'engine_used': self.engine}
+                return {
+                    "content": new_prompt,
+                    "input_tokens": input_tokens,
+                    "output_tokens": output_tokens,
+                    "engine_used": self.engine
+                }
 
             except json.JSONDecodeError:
                 # Handle the case where the response is not a valid JSON string
