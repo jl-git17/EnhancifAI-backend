@@ -5,6 +5,8 @@ import time
 import psycopg2
 from psycopg2.extras import DictCursor
 
+from enhancifai_backend.config import settings
+
 RETURNING_REGEX = re.compile(r"RETURNING (\w+);")
 RETRY_LIMIT = 3
 RETRY_DELAY = 1  # in seconds
@@ -18,11 +20,11 @@ class DbSession:
 
     def load_config(self):
         self.config = {}
-        self.config['db_host'] = os.getenv('DB_HOST')
-        self.config['db_name'] = os.getenv('DB_NAME')
-        self.config['db_username'] = os.getenv('DB_USERNAME')
-        self.config['db_password'] = os.getenv('DB_PASSWORD')
-        self.config['schema'] = os.getenv('DB_SCHEMA')
+        self.config['db_host'] = settings.db_host
+        self.config['db_name'] = settings.db_name
+        self.config['db_username'] = settings.db_username
+        self.config['db_password'] = settings.db_password
+        self.config['schema'] = settings.db_schema
 
     def new_conn(self):
         try:
