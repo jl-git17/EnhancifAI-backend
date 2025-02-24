@@ -1,5 +1,6 @@
-import os
 import re
+
+from enhancifai_backend.config import settings
 
 def schemafy(data: str) -> str:
     """
@@ -14,7 +15,7 @@ def schemafy(data: str) -> str:
     Raises:
         ValueError: If the environment variable 'DB_SCHEMA' is not set.
     """
-    schema = os.getenv('DB_SCHEMA')
+    schema = settings.db_schema
     if not schema:
         raise ValueError("Environment variable 'DB_SCHEMA' is not set.")
 
