@@ -1,8 +1,9 @@
 # pylint: disable=import-error
 import logging
-import os
 from google_auth_oauthlib.flow import Flow
 import requests
+
+from enhancifai_backend.config import settings
 
 SCOPES = ['openid', 'https://www.googleapis.com/auth/userinfo.email']
 
@@ -12,9 +13,9 @@ class GoogleAuthenticator:
 
     def _get_flow(self):
         return Flow.from_client_config(
-            os.getenv('GOOGLE_TOKEN_INFO_AUTH'),
+            settings.google_token_info_auth,
             SCOPES,
-            redirect_uri=os.getenv('GOOGLE_REDIRECT_URL')
+            redirect_uri=settings.google_sheets_redirect_uri
         )
 
     def authenticate_url(self):
@@ -24,7 +25,7 @@ class GoogleAuthenticator:
 
     def fetch_token(self, code, state):
         flow = Flow.from_client_config( # type: ignore
-            os.getenv('GOOGLE_TOKEN_INFO_AUTH'), SCOPES, state=state, redirect_uri=os.getenv('GOOGLE_REDIRECT_URL')
+            settings.google_token_info_auth, SCOPES, state=state, redirect_uri=settings.google_sheets_redirect_uri
         )
         _ = flow.fetch_token(code=code)
 

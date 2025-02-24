@@ -7,6 +7,7 @@ from fastapi import APIRouter, Body, Depends, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
+from enhancifai_backend.config import settings
 from enhancifai_backend.ai.openai_api import PI_DEFAULT_AI_ENGINE, PI_DEFAULT_PROMPT
 from enhancifai_backend.database.handlers.admin import PromptsDbCore, ModelPricesDbCore
 from enhancifai_backend.database.handlers.run_logs import PromptImproverRunLogsDbCore, RunLogsDbCore
@@ -14,8 +15,8 @@ from enhancifai_backend.server.models.admin import AdminAISettings, RunLogsReque
 from enhancifai_backend.server.utils import STATIC_PAGES_DIRECTORY, get_current_user_id, verify_secret_key, AdminSettings
 
 
-USERNAME = os.getenv('ADMIN_USERNAME')
-PASSWORD = os.getenv('ADMIN_PASSWORD')
+USERNAME = settings.admin_username
+PASSWORD = settings.admin_password
 
 
 router = APIRouter()
@@ -82,7 +83,7 @@ async def get_settings(credentials: HTTPBasicCredentials = Depends(security)):
     Return default values if none are found.
     """
     if credentials.username == USERNAME and credentials.password == PASSWORD:
-        user_id = int(os.getenv("ADMIN_USER_ID"))  # Get the user ID from the session
+        user_id = settings.admin_user_id  # Get the user ID from the session
 
         # Fetch the latest prompt for the user
         latest_prompt = PromptsDbCore.get_latest_prompt_by_user(user_id)
@@ -112,7 +113,7 @@ async def get_prompt_versions(credentials: HTTPBasicCredentials = Depends(securi
     Fetch all versions of prompts for the current user.
     """
     if credentials.username == USERNAME and credentials.password == PASSWORD:
-        user_id = int(os.getenv("ADMIN_USER_ID"))  # Assuming there's a way to get current user ID
+        user_id = settings.admin_user_id  # Assuming there's a way to get current user ID
         prompts = PromptsDbCore.get_prompt_versions_by_user(user_id)
         return {"prompts": prompts}
     else:
@@ -129,7 +130,7 @@ async def get_prompt_by_version(version: int, credentials: HTTPBasicCredentials 
     Fetch a specific version of a prompt.
     """
     if credentials.username == USERNAME and credentials.password == PASSWORD:
-        user_id = int(os.getenv("ADMIN_USER_ID"))
+        user_id = settings.admin_user_id
         prompt = PromptsDbCore.get_prompt_by_version(user_id, version)
         if prompt:
             return prompt
@@ -162,7 +163,7 @@ async def update_settings(
             )
 
         # Save the new prompt version
-        user_id = int(os.getenv("ADMIN_USER_ID"))
+        user_id = settings.admin_user_id
         PromptsDbCore.save_new_prompt(user_id, prompt, ai_engine)
 
         return {"message": "Settings updated successfully"}
