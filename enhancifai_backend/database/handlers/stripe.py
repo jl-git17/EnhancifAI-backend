@@ -1,9 +1,10 @@
 from datetime import datetime, date
 import json
-import os
 from typing import Optional
 import logging
 import stripe
+
+from enhancifai_backend.config import settings
 from enhancifai_backend.database.access import read_db, write_db
 from enhancifai_backend.database.handlers.utils import schemafy
 
@@ -11,7 +12,7 @@ from enhancifai_backend.database.handlers.utils import schemafy
 logger = logging.getLogger(__name__)
 
 # Initialize Stripe
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+stripe.api_key = settings.stripe_secret_key
 
 
 class StripeDbCore:
