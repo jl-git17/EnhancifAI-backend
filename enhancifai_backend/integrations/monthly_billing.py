@@ -2,9 +2,10 @@ from datetime import datetime, timedelta, date, time, timezone
 from decimal import Decimal
 import logging
 import calendar
-import os
 
 import stripe
+
+from enhancifai_backend.config import settings
 from enhancifai_backend.database.access import read_db
 from enhancifai_backend.database.handlers.billing import BillingDbCore
 from enhancifai_backend.database.handlers.stripe import StripeDbCore
@@ -128,8 +129,9 @@ def generate_monthly_invoices():
                     if current_start.tzinfo is None:
                         current_start = current_start.replace(tzinfo=timezone.utc)
                 else:
-                    billing_start_str = os.getenv('BILLING_START')
+                    billing_start_str = settings.billing_start
                     if billing_start_str:
+                        billing_start_str = str(billing_start_str)
                         try:
                             billing_start_month, billing_start_day = map(int, billing_start_str.split('-'))
                         except Exception as e:

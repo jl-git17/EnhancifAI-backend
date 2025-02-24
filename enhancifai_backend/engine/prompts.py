@@ -1,11 +1,11 @@
-import os
 from typing import List
 import pandas as pd
 from fastapi import HTTPException
 
+from enhancifai_backend.config import settings
 from enhancifai_backend.server.models.execution import PromptObject
 
-GLOBAL_MAX_PROMPTS = int(os.getenv('GLOBAL_MAX_PROMPTS'))
+GLOBAL_MAX_PROMPTS = settings.global_max_prompts
 
 # TODO: add check if env vars are set
 
