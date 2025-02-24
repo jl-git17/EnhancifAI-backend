@@ -1,10 +1,10 @@
 import json
-import os
 import google.generativeai as genai
 
+from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.runs import RunsDbCore
 
-GOOGLE_AI_STUDIO_API_KEY = os.getenv('GOOGLE_AI_STUDIO_API_KEY')
+GOOGLE_AI_STUDIO_API_KEY = settings.google_ai_studio_api_key
 
 PROMPT ="""
 - You are an assistant with expertise in data analysis and can use your general knowledge to answer.\n
@@ -59,7 +59,7 @@ class GeminiConnector:
                 'columns': columns,
                 'rows': rows,
             }
-        msg = f"```{PROMPT}```\n\n{query}:\n\n```{json.dumps(payload)}```"
+        msg = f"```{PROMPT}```\n\n{query}:\n\n```{json.dumps(payload)}```
         response = chat.send_message(msg)
         tokens = self.model.count_tokens(chat.history).total_tokens
         # Save token usage entry TODO:

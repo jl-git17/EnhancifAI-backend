@@ -4,6 +4,7 @@ import sys
 import logging
 from typing import NoReturn
 
+from enhancifai_backend.config import settings
 from enhancifai_backend.database.core import DbSession
 from enhancifai_backend.database.handlers.utils import schemafy
 from enhancifai_backend.server.serve import run_server
@@ -13,8 +14,8 @@ logging.basicConfig(level=logging.INFO)
 
 SOURCE_DIR = os.path.join(os.path.dirname(__file__), "database", "sql")
 STRIPE_PLAN_ID_FREE = "sys"
-STRIPE_PLAN_ID_BASIC = os.getenv('STRIPE_PLAN_ID_BASIC')
-STRIPE_PLAN_ID_PRO = os.getenv('STRIPE_PLAN_ID_PRO')
+STRIPE_PLAN_ID_BASIC = settings.stripe_plan_id_basic
+STRIPE_PLAN_ID_PRO = settings.stripe_plan_id_pro
 STRIPE_PLAN_ID_ENTERPRISE = "sys"
 
 def process_sql_file(db: DbSession, filename: str) -> None:
@@ -30,7 +31,7 @@ def process_sql_file(db: DbSession, filename: str) -> None:
 
 def prepare_database(db: DbSession) -> None:
     """Prepares the database by creating a schema and processing SQL files."""
-    schema_name = os.getenv('DB_SCHEMA')
+    schema_name = settings.db_schema
     if not schema_name:
         print("Environment variable 'DB_SCHEMA' not set.")
         sys.exit(1)

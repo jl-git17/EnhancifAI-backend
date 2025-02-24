@@ -8,6 +8,7 @@ from typing import Dict, List
 from fastapi import HTTPException
 from openai import OpenAI
 
+from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.database.handlers.admin import PromptsDbCore
@@ -23,7 +24,7 @@ PI_DEFAULT_PROMPT = (
     "Feel free to enhance the wording, structure, and tone as needed."
 )
 PI_DEFAULT_AI_ENGINE = "gpt-4o-mini"
-ADMIN_USER_ID = int(os.getenv('ADMIN_USER_ID'))
+ADMIN_USER_ID = settings.admin_user_id
 
 DEFAULT_PROMPT = (
     "- You are an assistant with expertise in data analysis and can use your general knowledge "
@@ -149,7 +150,7 @@ class OpenAIConnector:
         #self.temperature = temperature
         #self.top_p = top_p
         # Initialize OpenAI client with API key
-        self.client = OpenAI(api_key=os.getenv('OPENAI_API_KEY'))
+        self.client = OpenAI(api_key=settings.openai_api_key)
         self.rate_limit = False
 
     def process_csv_row(self, columns: list, rows: dict, query: str, run_id: int) -> dict:
