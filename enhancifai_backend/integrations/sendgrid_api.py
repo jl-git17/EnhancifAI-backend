@@ -1,5 +1,13 @@
 from sendgrid import SendGridAPIClient
-from sendgrid.helpers.mail import Mail
+from sendgrid.helpers.mail import (
+    Mail,
+    Asm,
+    IpPoolName,
+    TrackingSettings,
+    ClickTracking,
+    OpenTracking,
+    SubscriptionTracking
+)
 import logging  # Add logging import
 
 from enhancifai_backend.config import settings
@@ -20,6 +28,14 @@ class SendGrid:
             to_emails=[to_email])
         # pass custom values for our HTML placeholders
         activation_url = f'{settings.frontend_url}/auth?email={to_email}&token={token}'
+        
+        # disable tracking
+        tracking_settings = TrackingSettings()
+        tracking_settings.click_tracking = ClickTracking(enable=False)
+        tracking_settings.open_tracking = OpenTracking(enable=False)
+        tracking_settings.subscription_tracking = SubscriptionTracking(enable=False)
+        message.tracking_settings = tracking_settings
+
         message.dynamic_template_data = {
             'login_url': activation_url,
             'name': name
@@ -42,6 +58,14 @@ class SendGrid:
             to_emails=[to_email])
         # pass custom values for our HTML placeholders
         reset_url = f'{settings.frontend_url}/auth_password_reset?email={to_email}&token={token}'
+
+        # disable tracking
+        tracking_settings = TrackingSettings()
+        tracking_settings.click_tracking = ClickTracking(enable=False)
+        tracking_settings.open_tracking = OpenTracking(enable=False)
+        tracking_settings.subscription_tracking = SubscriptionTracking(enable=False)
+        message.tracking_settings = tracking_settings
+
         message.dynamic_template_data = {
             'reset_url': reset_url
         }
@@ -67,6 +91,13 @@ class SendGrid:
         # pass custom values for our HTML placeholders
         button_url = f'{settings.frontend_url}/billings'
         logging.debug(f"Button URL: {button_url}")
+
+        # disable tracking
+        tracking_settings = TrackingSettings()
+        tracking_settings.click_tracking = ClickTracking(enable=False)
+        tracking_settings.open_tracking = OpenTracking(enable=False)
+        tracking_settings.subscription_tracking = SubscriptionTracking(enable=False)
+        message.tracking_settings = tracking_settings
         
         message.dynamic_template_data = {
             'button_url': button_url,
