@@ -268,7 +268,9 @@ def generate_monthly_invoices():
                                     to_email=user['email'],
                                     user_name=user['name'],
                                     invoice_month=current_start.strftime('%B'),
-                                    invoice_year=current_start.year
+                                    invoice_year=current_start.year,
+                                    invoice_id=invoice['invoice_id'],
+                                    user_id=user_id
                                 )
                                 create_and_charge_invoice(
                                     user_id,
