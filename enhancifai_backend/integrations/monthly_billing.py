@@ -11,6 +11,7 @@ from enhancifai_backend.database.handlers.billing import BillingDbCore
 from enhancifai_backend.database.handlers.stripe import StripeDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.database.handlers.utils import schemafy
+from enhancifai_backend.integrations.sendgrid_api import SendGrid
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -55,7 +56,7 @@ def create_and_charge_invoice(
 
         # Attempt to retrieve the default payment method
         default_pm = customer.invoice_settings.get("default_payment_method")
-        
+
         # Fallback: If no default payment method is set, list attached payment methods and pick the first one.
         if not default_pm:
             payment_methods = stripe.PaymentMethod.list(
@@ -263,7 +264,19 @@ def generate_monthly_invoices():
                             if invoice:
                                 invoices_generated = True
                                 print(f"[DEBUG] Invoice creation successful: {invoice}")
-                                create_and_charge_invoice(user_id, invoice['invoice_id'], total_amount_cents, "usd", description)
+                                SendGrid.send_invoice_email(
+                                    to_email=user['email'],
+                                    user_name=user['name'],
+                                    invoice_month=current_start.strftime('%B'),
+                                    invoice_year=current_start.year
+                                )
+                                create_and_charge_invoice(
+                                    user_id,
+                                    invoice['invoice_id'],
+                                    total_amount_cents,
+                                    "usd",
+                                    description
+                                )
 
                     current_start = add_one_month(current_start)
 
