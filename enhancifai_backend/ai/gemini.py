@@ -59,7 +59,7 @@ class GeminiConnector:
                 'columns': columns,
                 'rows': rows,
             }
-        msg = f"```{PROMPT}```\n\n{query}:\n\n```{json.dumps(payload)}```
+        msg = f"```{PROMPT}```\n\n{query}:\n\n```{json.dumps(payload)}```"
         response = chat.send_message(msg)
         tokens = self.model.count_tokens(chat.history).total_tokens
         # Save token usage entry TODO:
