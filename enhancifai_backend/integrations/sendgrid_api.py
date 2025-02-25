@@ -1,5 +1,6 @@
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
+import logging  # Add logging import
 
 from enhancifai_backend.config import settings
 
@@ -56,27 +57,40 @@ class SendGrid:
 
     @classmethod
     def send_invoice_email(cls, to_email, user_name, invoice_month, invoice_year):
+        logging.debug(f"Preparing to send invoice email to {to_email}")
         # create Mail object and populate
         message = Mail(
             from_email="info@enhancifai.com",
             to_emails=[to_email])
+        logging.debug("Mail object created")
+        
         # pass custom values for our HTML placeholders
         button_url = f'{settings.frontend_url}/billings'
+        logging.debug(f"Button URL: {button_url}")
+        
         message.dynamic_template_data = {
             'button_url': button_url,
             'user_name': user_name,
             'invoice_month': invoice_month,
             'invoice_year': invoice_year
         }
+        logging.debug(f"Dynamic template data: {message.dynamic_template_data}")
+        
         message.template_id = BILLING_INVOICE_READY
+        logging.debug(f"Template ID set to {BILLING_INVOICE_READY}")
+        
         # create our sendgrid client object, pass it our key, then send and return our response objects
         try:
             sg = SendGridAPIClient(settings.sendgrid_api_key)
+            logging.debug("SendGridAPIClient created")
             response = sg.send(message)
             _code, _body, _headers = response.status_code, response.body, response.headers
+            logging.debug(f"Email sent with status code: {_code}")
+            logging.debug(f"Response body: {_body}")
+            logging.debug(f"Response headers: {_headers}")
             print("Dynamic Messages Sent!")
         except Exception as e:
-            print(f"Error: {e}")
+            logging.error(f"Error sending email: {e}")
 
     @classmethod
     def send_invoice_payment_success_email(cls, to_email):
