@@ -13,10 +13,6 @@ from enhancifai_backend.server.serve import run_server
 logging.basicConfig(level=logging.INFO)
 
 SOURCE_DIR = os.path.join(os.path.dirname(__file__), "database", "sql")
-STRIPE_PLAN_ID_FREE = "sys"
-STRIPE_PLAN_ID_BASIC = settings.stripe_plan_id_basic
-STRIPE_PLAN_ID_PRO = settings.stripe_plan_id_pro
-STRIPE_PLAN_ID_ENTERPRISE = "sys"
 
 def process_sql_file(db: DbSession, filename: str) -> None:
     """Reads an SQL file, schemafies it, and executes it on the database."""
