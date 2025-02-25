@@ -33,7 +33,7 @@ class SendGrid:
         tracking_settings = TrackingSettings()
         tracking_settings.click_tracking = ClickTracking(enable=False)
         tracking_settings.open_tracking = OpenTracking(enable=False)
-        tracking_settings.subscription_tracking = SubscriptionTracking(enable=False)
+        tracking_settings.subscription_tracking = SubscriptionTracking(enable=True)
         message.tracking_settings = tracking_settings
 
         message.dynamic_template_data = {
@@ -63,7 +63,7 @@ class SendGrid:
         tracking_settings = TrackingSettings()
         tracking_settings.click_tracking = ClickTracking(enable=False)
         tracking_settings.open_tracking = OpenTracking(enable=False)
-        tracking_settings.subscription_tracking = SubscriptionTracking(enable=False)
+        tracking_settings.subscription_tracking = SubscriptionTracking(enable=True)
         message.tracking_settings = tracking_settings
 
         message.dynamic_template_data = {
@@ -96,7 +96,7 @@ class SendGrid:
         tracking_settings = TrackingSettings()
         tracking_settings.click_tracking = ClickTracking(enable=False)
         tracking_settings.open_tracking = OpenTracking(enable=False)
-        tracking_settings.subscription_tracking = SubscriptionTracking(enable=False)
+        tracking_settings.subscription_tracking = SubscriptionTracking(enable=True)
         message.tracking_settings = tracking_settings
         
         message.dynamic_template_data = {
