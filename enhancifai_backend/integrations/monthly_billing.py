@@ -263,6 +263,7 @@ def generate_monthly_invoices():
                                 invoices_generated = True
                                 print(f"[DEBUG] Invoice creation successful: {invoice}")
                                 user = UsersDbCore.get_user_by_id(user_id)
+                                print(user)
                                 SendGrid.send_invoice_email(
                                     to_email=user['email'],
                                     user_name=user['name'],
