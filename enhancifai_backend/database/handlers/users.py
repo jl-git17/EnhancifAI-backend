@@ -445,7 +445,17 @@ class UsersDbCore:
         sql = schemafy("SELECT * FROM enhancifai.users WHERE stripe_customer_id = %s;")
         return read_db.do('select_one', sql=sql, data=(stripe_customer_id,))
 
+    @classmethod
+    def get_all_user_ids(cls):
+        """
+        Retrieve all user IDs.
 
+        Returns:
+            List[int]: List of all user IDs.
+        """
+        sql = schemafy("SELECT user_id FROM enhancifai.users;")
+        result = read_db.do('select', sql=sql)
+        return [row['user_id'] for row in result] if result else []
 
 class UsersDbRegisterTokens:
     """

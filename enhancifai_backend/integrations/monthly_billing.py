@@ -110,12 +110,10 @@ def generate_monthly_invoices():
             day=last_day_current, hour=23, minute=59, second=59, microsecond=999999
         )
 
-        sql = schemafy("SELECT user_id FROM enhancifai.users;")
-        users = read_db.do('select', sql=sql)
+        users = UsersDbCore.get_all_user_ids()
         print(f"[DEBUG] Retrieved all users: {len(users)} total")
 
-        for user in users:
-            user_id = user['user_id']
+        for user_id in users:
             print(f"[DEBUG] Processing user_id={user_id}")
             if not StripeDbCore.is_user_subscribed(user_id):
                 continue
@@ -264,6 +262,7 @@ def generate_monthly_invoices():
                             if invoice:
                                 invoices_generated = True
                                 print(f"[DEBUG] Invoice creation successful: {invoice}")
+                                user = UsersDbCore.get_user_by_id(user_id)
                                 SendGrid.send_invoice_email(
                                     to_email=user['email'],
                                     user_name=user['name'],
