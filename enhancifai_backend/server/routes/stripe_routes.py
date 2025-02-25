@@ -1,14 +1,13 @@
-import os
-
 from fastapi import APIRouter, Request, HTTPException, Header
 from fastapi.responses import JSONResponse
 import stripe
 
+from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.stripe import StripeDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 
 # Initialize Stripe
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+stripe.api_key = settings.stripe_secret_key
 
 router = APIRouter()
 
@@ -17,7 +16,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
     """
     Handle Stripe webhooks for subscription events.
     """
-    endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+    endpoint_secret = settings.stripe_webhook_secret
     if not endpoint_secret:
         raise HTTPException(status_code=500, detail="Webhook secret not configured.")
 
