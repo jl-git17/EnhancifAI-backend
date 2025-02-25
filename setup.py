@@ -31,6 +31,7 @@ setup(
         'PyJWT == 2.10.1',
         'psycopg2-binary',
         'pydantic[email]',
+        'pydantic-settings',
         'sendgrid == 6.11.0',
         'openpyxl == 3.1.5',
         'gspread == 4.0.0',
