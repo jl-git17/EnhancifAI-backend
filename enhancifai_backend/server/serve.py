@@ -1,5 +1,4 @@
 import logging
-import os
 from datetime import datetime, timezone
 
 import uvicorn
@@ -10,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.security import HTTPBasic
 from apscheduler.schedulers.background import BackgroundScheduler
 
+from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.sys import SysDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.rate_limit_manager import rate_limit_manager
@@ -28,8 +28,8 @@ from enhancifai_backend.server.utils import STATIC_FILES_DIRECTORY
 
 
 # Environment variables
-SERVER_HOST = os.getenv("SERVER_HOST", "127.0.0.1")
-SERVER_PORT = int(os.getenv("SERVER_PORT", "8000"))
+SERVER_HOST = settings.server_host
+SERVER_PORT = settings.server_port
 
 # Set global variables
 APP_VERSION = "1.3.2"
