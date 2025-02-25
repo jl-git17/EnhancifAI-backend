@@ -4,6 +4,7 @@ import uuid
 
 from fastapi import HTTPException
 
+from enhancifai_backend.config import settings
 from enhancifai_backend.ai.openai_api import OpenAIConnector
 from enhancifai_backend.ai.gemini import GeminiConnector
 from enhancifai_backend.database.handlers.runs import RunsDbCore
@@ -58,7 +59,7 @@ async def handle_csv_file(csv_file, prompts, max_recs, run_id, user_id, filename
     if os.path.exists(temp_csv_file_path):
         os.remove(temp_csv_file_path)
 
-    host_address = os.getenv("BACKEND_URL")
+    host_address = settings.backend_url
     file_url = f"{host_address}/downloads/{unique_filename}"
 
     response_data = {
@@ -104,7 +105,7 @@ async def handle_excel_file(excel_file, prompts, max_recs, run_id, user_id, file
     if os.path.exists(temp_excel_file_path):
         os.remove(temp_excel_file_path)
 
-    host_address = os.getenv("BACKEND_URL")
+    host_address = settings.backend_url
     file_url = f"{host_address}/downloads/{unique_filename}"
 
     response_data = {
