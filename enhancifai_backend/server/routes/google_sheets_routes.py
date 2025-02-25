@@ -1,10 +1,10 @@
-import os
 import json
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
 from google_auth_oauthlib.flow import Flow
 
+from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.sheets import SheetsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
@@ -16,7 +16,7 @@ from enhancifai_backend.engine.export_google_sheets import export_to_google_shee
 router = APIRouter()
 
 # Load client secrets from environment variable
-client_secrets_json = os.getenv("GOOGLE_TOKEN_INFO_AUTH")
+client_secrets_json = settings.google_token_info_auth
 if client_secrets_json is None:
     raise ValueError("GOOGLE_TOKEN_INFO_AUTH environment variable not set")
 
@@ -27,7 +27,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/drive",
 ]
-REDIRECT_URI = os.getenv("GOOGLE_SHEETS_REDIRECT_URI")
+REDIRECT_URI = settings.google_sheets_redirect_uri
 if REDIRECT_URI is None:
     raise ValueError("GOOGLE_SHEETS_REDIRECT_URI environment variable not set")
 
