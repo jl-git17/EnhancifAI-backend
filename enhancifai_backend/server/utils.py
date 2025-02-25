@@ -7,10 +7,11 @@ from typing import Optional
 from fastapi import HTTPException, Header, status
 import jwt
 
+from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.users import UsersDbCore
 
-SECRET_KEY = os.getenv("API_KEY")
-JWT_SECRET = os.getenv("JWT_SECRET_KEY")
+SECRET_KEY = settings.api_key
+JWT_SECRET = settings.jwt_secret_key
 JWT_ALGORITHM = "HS256"
 JWT_EXPIRATION = 2  # in days
 
@@ -26,7 +27,7 @@ FILE_AGE_LIMIT = 86400  # seconds (1 day)
 class AdminSettings:
     """Class to manage AI settings for the application."""
     settings = {
-        'ai_api_key': os.getenv('OPENAI_API_KEY'),
+        'ai_api_key': settings.openai_api_key,
         'ai_engine': 'gpt-4o-mini'
     }
 
@@ -41,7 +42,7 @@ class AdminSettings:
         """
         if engine == 'gemini':
             cls.settings['ai_engine'] = engine
-            cls.settings['ai_api_key'] = os.getenv('OPENAI_API_KEY')
+            cls.settings['ai_api_key'] = settings.google_ai_studio_api_key
         else:
             cls.settings['ai_engine'] = engine
             cls.settings['ai_api_key'] = api_key
