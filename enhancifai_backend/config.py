@@ -14,10 +14,6 @@ class Settings(BaseSettings):
     server_host: str = Field("127.0.0.1", env="SERVER_HOST")
     server_port: int = Field(8000, env="SERVER_PORT")
     
-    # Stripe configuration
-    stripe_plan_id_basic: str = Field(..., env="STRIPE_PLAN_ID_BASIC")
-    stripe_plan_id_pro: str = Field(..., env="STRIPE_PLAN_ID_PRO")
-    
     # AI and integration settings
     openai_api_key: str = Field(..., env="OPENAI_API_KEY")
     jwt_secret_key: str = Field(..., env="JWT_SECRET_KEY")
