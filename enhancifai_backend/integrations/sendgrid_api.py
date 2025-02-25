@@ -7,6 +7,8 @@ REGISTRATION_CONFIRMATION_TEMPLATE = "d-c037b53618264a6caf6d64b653675819"
 SOCIAL_ACCOUNT_READY_TEMPLATE = "d-0b74381cc5f2401e94321a6c166e2d9b"
 PASSWORD_RESET_TEMPLATE = "d-75c53f9a77304ae480856b429ef8ff7c"
 
+BILLING_INVOICE_READY = "d-b8e31bce0613459188bb69813cd40be6"
+
 class SendGrid:
 
     @classmethod
@@ -53,17 +55,20 @@ class SendGrid:
             print(f"Error: {e}")
 
     @classmethod
-    def send_invoice_email(cls, to_email):
+    def send_invoice_email(cls, to_email, user_name, invoice_month, invoice_year):
         # create Mail object and populate
         message = Mail(
             from_email="info@enhancifai.com",
             to_emails=[to_email])
         # pass custom values for our HTML placeholders
-        button_url = f'{settings.frontend_url}/billing'
+        button_url = f'{settings.frontend_url}/billings'
         message.dynamic_template_data = {
-            'button_url': button_url
+            'button_url': button_url,
+            'user_name': user_name,
+            'invoice_month': invoice_month,
+            'invoice_year': invoice_year
         }
-        message.template_id = PASSWORD_RESET_TEMPLATE
+        message.template_id = BILLING_INVOICE_READY
         # create our sendgrid client object, pass it our key, then send and return our response objects
         try:
             sg = SendGridAPIClient(settings.sendgrid_api_key)
