@@ -3,7 +3,6 @@ import csv
 from datetime import datetime
 from decimal import Decimal
 import io
-import os
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Header, Query, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -11,13 +10,14 @@ from weasyprint import HTML
 
 import stripe
 
+from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.billing import BillingDbCore
 from enhancifai_backend.database.handlers.run_logs import PromptImproverRunLogsDbCore, RunLogsDbCore
 from enhancifai_backend.database.handlers.stripe import StripeDbCore
 from enhancifai_backend.server.utils import get_current_user_id, verify_secret_key
 
 router = APIRouter()
-stripe.api_key = os.getenv("STRIPE_SECRET_KEY")
+stripe.api_key = settings.stripe_secret_key
 
 
 def get_default_month(
@@ -451,8 +451,8 @@ async def pay_invoice(
                 'quantity': 1,
             }],
             mode='payment',
-            success_url=f"{os.getenv('FRONTEND_URL')}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{os.getenv('FRONTEND_URL')}/billing/cancel",
+            success_url=f"{settings.frontend_url}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{settings.frontend_url}/billing/cancel",
             metadata={
                 'invoice_id': invoice_id
             }
@@ -472,7 +472,7 @@ async def stripe_webhook(
     """
     Handle Stripe webhooks for invoice payment events.
     """
-    endpoint_secret = os.getenv("STRIPE_WEBHOOK_SECRET")
+    endpoint_secret = settings.stripe_webhook_secret
     if not endpoint_secret:
         raise HTTPException(status_code=500, detail="Webhook secret not configured.")
 
@@ -656,12 +656,12 @@ async def start_subscription(
             customer=customer_id,
             payment_method_types=['card'],
             line_items=[{
-                'price': os.getenv('STRIPE_SUBSCRIPTION_PRICE_ID'),  # Subscription price ID from Stripe
+                'price': settings.stripe_subscription_price_id,  # Subscription price ID from Stripe
                 'quantity': 1,
             }],
             mode='subscription',
-            success_url=f"{os.getenv('FRONTEND_URL')}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
-            cancel_url=f"{os.getenv('FRONTEND_URL')}/billing/cancel",
+            success_url=f"{settings.frontend_url}/billing/success?session_id={{CHECKOUT_SESSION_ID}}",
+            cancel_url=f"{settings.frontend_url}/billing/cancel",
             payment_method_collection="always",
             allow_promotion_codes=True,
         )

@@ -15,6 +15,7 @@ from fastapi.responses import FileResponse, JSONResponse
 import openpyxl
 import pandas as pd
 
+from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.prompts import PromptsProcessor
@@ -28,8 +29,8 @@ from enhancifai_backend.server.utils import (
     STATIC_FILES_DIRECTORY, get_current_user_id, verify_secret_key)
 
 MAX_RECORDS = 10
-GLOBAL_MAX_ROWS = int(os.getenv('GLOBAL_MAX_ROWS', "0"))
-GLOBAL_MAX_PROMPTS = int(os.getenv('GLOBAL_MAX_PROMPTS', "0"))
+GLOBAL_MAX_ROWS = settings.global_max_rows
+GLOBAL_MAX_PROMPTS = settings.global_max_prompts
 EXCEL_MIME_TYPES = ['application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
 
