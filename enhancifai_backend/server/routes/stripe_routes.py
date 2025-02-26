@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException, Header
 from fastapi.responses import JSONResponse
 import stripe
+import logging
 
 from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.stripe import StripeDbCore
@@ -10,6 +11,10 @@ from enhancifai_backend.database.handlers.users import UsersDbCore
 stripe.api_key = settings.stripe_secret_key
 
 router = APIRouter()
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 @router.post("/stripe/webhook", tags=["Stripe"])
 async def stripe_webhook(request: Request, stripe_signature: str = Header(None, alias="Stripe-Signature")):
@@ -32,6 +37,9 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
     except stripe.error.SignatureVerificationError:
         # Invalid signature
         return JSONResponse(status_code=400, content={"detail": "Invalid signature"})
+
+    # Log the event
+    logger.info(f"Received Stripe event: {event}")
 
     # Handle the event
     if event["type"] == "invoice.payment_succeeded":
