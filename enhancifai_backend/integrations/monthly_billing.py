@@ -87,7 +87,7 @@ def create_and_charge_invoice(
         return payment_intent
     except Exception as e:
         print(f"Error charging customer: {str(e)}")
-        # TODO: send email to user about failed payment
+        # TODO: send an email to user about failed payment
 
 
 def generate_monthly_invoices():
