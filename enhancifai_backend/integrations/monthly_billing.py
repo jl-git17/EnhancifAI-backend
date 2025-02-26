@@ -84,10 +84,29 @@ def create_and_charge_invoice(
 
         # Record the payment (status updated to "charged")
         StripeDbCore.store_invoice_record(user_id, invoice_id, amount, "charged")
+        # Update the invoice as paid
+        BillingDbCore.update_invoice_status(invoice_id, "paid")
+        # Send an email to the user
+        user = UsersDbCore.get_user_by_id(user_id)
+        SendGrid.send_invoice_payment_success_email(
+            to_email=user['email'],
+            user_name=user['name'],
+            invoice_month=metadata['invoice_month'],
+            invoice_year=metadata['invoice_year'],
+            invoice_id=invoice_id,
+            user_id=user_id
+        )
         return payment_intent
     except Exception as e:
         print(f"Error charging customer: {str(e)}")
-        # TODO: send an email to user about failed payment
+        SendGrid.send_invoice_payment_failure_email(
+            to_email=user['email'],
+            user_name=user['name'],
+            invoice_month=metadata['invoice_month'],
+            invoice_year=metadata['invoice_year'],
+            invoice_id=invoice_id,
+            user_id=user_id
+        )
 
 
 def generate_monthly_invoices():

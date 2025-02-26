@@ -24,6 +24,7 @@ PASSWORD_RESET_TEMPLATE = "d-75c53f9a77304ae480856b429ef8ff7c"
 
 BILLING_INVOICE_READY = "d-b8e31bce0613459188bb69813cd40be6"
 BILLING_INVOICE_PAYMENT_SUCCESS = "d-060257d7c1254441a301792ab484d445"
+BILLING_INVOICE_PAYMENT_FAILURE = ""
 
 class SendGrid:
 
@@ -204,8 +205,62 @@ class SendGrid:
             logging.error(f"Error sending email: {e}")
 
     @classmethod
-    def send_invoice_payment_failure_email(cls, to_email):
-        pass
+    def send_invoice_payment_failure_email(cls, to_email, user_name, invoice_month, invoice_year, invoice_id, user_id):
+        # create Mail object and populate
+        message = Mail(
+            from_email="info@enhancifai.com",
+            to_emails=[to_email])
+        logging.debug("Mail object created")
+        
+        # pass custom values for our HTML placeholders
+        button_url = f'{settings.frontend_url}/billings'
+        logging.debug(f"Button URL: {button_url}")
+
+        # disable tracking
+        tracking_settings = TrackingSettings()
+        tracking_settings.click_tracking = ClickTracking(enable=False)
+        tracking_settings.open_tracking = OpenTracking(enable=False)
+        tracking_settings.subscription_tracking = SubscriptionTracking(enable=True)
+        message.tracking_settings = tracking_settings
+        
+        message.dynamic_template_data = {
+            'button_url': button_url,
+            'user_name': user_name,
+            'invoice_month': invoice_month,
+            'invoice_year': invoice_year
+        }
+        logging.debug(f"Dynamic template data: {message.dynamic_template_data}")
+        
+        message.template_id = BILLING_INVOICE_PAYMENT_SUCCESS
+        logging.debug(f"Template ID set to {BILLING_INVOICE_PAYMENT_SUCCESS}")
+        
+        # Download the invoice PDF
+        pdf_data = cls._download_invoice_pdf(user_id, invoice_id)
+        logging.debug("Invoice PDF downloaded")
+
+        # Attach the PDF to the email
+        encoded_pdf = base64.b64encode(pdf_data).decode()
+        attachment = Attachment(
+            file_content=encoded_pdf,
+            file_name=f"Invoice_{invoice_month}_{invoice_year}.pdf",
+            file_type="application/pdf",
+            disposition="attachment"
+        )
+        message.attachment = attachment
+        logging.debug("PDF attached to the email")
+        
+        # create our sendgrid client object, pass it our key, then send and return our response objects
+        try:
+            sg = SendGridAPIClient(settings.sendgrid_api_key)
+            logging.debug("SendGridAPIClient created")
+            response = sg.send(message)
+            _code, _body, _headers = response.status_code, response.body, response.headers
+            logging.debug(f"Email sent with status code: {_code}")
+            logging.debug(f"Response body: {_body}")
+            logging.debug(f"Response headers: {_headers}")
+            print("Dynamic Messages Sent!")
+        except Exception as e:
+            logging.error(f"Error sending email: {e}")
 
     @classmethod
     def send_subscription_start_email(cls, to_email):
