@@ -666,3 +666,23 @@ class BillingDbCore:
                 record['metadata'] = {}
             invoices.append(record)
         return invoices
+
+    @classmethod
+    def get_user_id_by_invoice_id(cls, invoice_id):
+        """
+        Retrieve the user_id associated with a given invoice_id.
+        
+        Args:
+            invoice_id (str): Unique identifier for the invoice.
+            
+        Returns:
+            int or None: The user_id if found; otherwise, None.
+        """
+        sql = schemafy("""
+            SELECT user_id
+            FROM enhancifai.internal_invoices
+            WHERE invoice_id = %s;
+        """)
+        data = (invoice_id,)
+        result = read_db.do('select_one', sql=sql, data=data)
+        return result['user_id'] if result else None

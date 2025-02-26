@@ -14,6 +14,8 @@ from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.billing import BillingDbCore
 from enhancifai_backend.database.handlers.run_logs import PromptImproverRunLogsDbCore, RunLogsDbCore
 from enhancifai_backend.database.handlers.stripe import StripeDbCore
+from enhancifai_backend.database.handlers.users import UsersDbCore
+from enhancifai_backend.integrations.sendgrid_api import SendGrid
 from enhancifai_backend.server.utils import get_current_user_id, verify_secret_key
 
 router = APIRouter()
@@ -492,10 +494,23 @@ async def stripe_webhook(
     # Handle the event
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
+        print(session.get("metadata"))
         invoice_id = session["metadata"].get("invoice_id")
+        invoice_month = session["metadata"].get("invoice_month")
+        invoice_year = session["metadata"].get("invoice_year")
         payment_status = "paid"  # Since payment was successful
         if invoice_id:
             BillingDbCore.update_invoice_status(invoice_id, payment_status)
+            user_id = BillingDbCore.get_user_id_by_invoice_id(invoice_id)
+            user = UsersDbCore.get_user_by_id(user_id)
+            SendGrid.send_invoice_payment_success_email(
+                to_email=user['email'],
+                user_name=user['name'],
+                invoice_month=invoice_month,
+                invoice_year=invoice_year,
+                invoice_id=invoice_id,
+                user_id=user_id
+            )
         else:
             # Handle missing invoice_id in metadata
             return JSONResponse(status_code=400, content={"detail": "Missing invoice_id in session metadata"})
