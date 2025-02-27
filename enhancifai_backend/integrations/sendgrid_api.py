@@ -295,7 +295,7 @@ class SendGrid:
             status_color = status_color_map.get(status, '#000000')
             line_items = metadata.get('line_items', [])
             if isinstance(line_items, str):
-                line_tems = json.loads(line_items)
+                line_items = json.loads(line_items)
             line_items_html = ""
             if line_items:
                 line_items_html = """
