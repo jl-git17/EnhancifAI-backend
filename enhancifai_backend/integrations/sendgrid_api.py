@@ -294,8 +294,6 @@ class SendGrid:
             status_color_map = {'paid': '#28a745', 'unpaid': '#dc3545'}
             status_color = status_color_map.get(status, '#000000')
             line_items = metadata.get('line_items', [])
-            if isinstance(line_items, str):
-                line_items = json.loads(line_items)
             line_items_html = ""
             if line_items:
                 line_items_html = """
@@ -326,8 +324,6 @@ class SendGrid:
                     """
                 line_items_html += "</tbody></table>"
             pi_line_items = metadata.get('pi_line_items', [])
-            if isinstance(pi_line_items, str):
-                pi_line_items = json.loads(pi_line_items)
             pi_line_items_html = ""
             if pi_line_items:
                 pi_line_items_html = """

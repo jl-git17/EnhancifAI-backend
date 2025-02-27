@@ -37,9 +37,12 @@ def add_one_month(dt):
     return dt.replace(year=year, month=month, day=day)
 
 def create_and_charge_invoice(
-        user_id: int, invoice_id: str,
-        metadata: dict,
-        amount: int, currency: str = "usd"
+        user_id: int,
+        invoice_id: str,
+        invoice_month: str,
+        invoice_year: int,
+        amount: int, currency: str = "usd",
+        description: str = "Monthly token usage",
     ):
     """
     Automatically create and charge a Stripe invoice when an internal invoice is created.
@@ -48,7 +51,6 @@ def create_and_charge_invoice(
         f"[DEBUG] create_and_charge_invoice called with user_id={user_id}, "
         f"amount={amount}, currency={currency}"
     )
-    description = metadata.get("description", "Monthly token usage")
     try:
         customer_id = BillingDbCore.get_stripe_customer_id(user_id)
         if not customer_id:
@@ -78,8 +80,7 @@ def create_and_charge_invoice(
             payment_method=default_pm,
             confirm=True,
             off_session=True,  # Charges the customer without their confirmation
-            description=description,
-            metadata=metadata  # Include metadata
+            description=description
         )
         print(f"[DEBUG] Successfully charged user {user_id}, PaymentIntent ID: {payment_intent['id']}")
 
@@ -92,8 +93,8 @@ def create_and_charge_invoice(
         SendGrid.send_invoice_payment_success_email(
             to_email=user['email'],
             user_name=user['name'],
-            invoice_month=metadata['invoice_month'],
-            invoice_year=metadata['invoice_year'],
+            invoice_month=invoice_month,
+            invoice_year=invoice_year,
             invoice_id=invoice_id,
             user_id=user_id
         )
@@ -101,8 +102,8 @@ def create_and_charge_invoice(
         SendGrid.send_invoice_payment_failure_email(
             to_email=user['email'],
             user_name=user['name'],
-            invoice_month=metadata['invoice_month'],
-            invoice_year=metadata['invoice_year'],
+            invoice_month=invoice_month,
+            invoice_year=invoice_year,
             invoice_id=invoice_id,
             user_id=user_id
         )
@@ -112,8 +113,8 @@ def create_and_charge_invoice(
         SendGrid.send_invoice_payment_failure_email(
             to_email=user['email'],
             user_name=user['name'],
-            invoice_month=metadata['invoice_month'],
-            invoice_year=metadata['invoice_year'],
+            invoice_month=invoice_month,
+            invoice_year=invoice_year,
             invoice_id=invoice_id,
             user_id=user_id
         )
@@ -281,10 +282,10 @@ def generate_monthly_invoices():
                             description = f"Monthly token usage for {current_start.strftime('%B %Y')}"
                             metadata_dict = {
                                 'description': description,
-                                'line_items': json.dumps(normal_line_items),
-                                'pi_line_items': json.dumps(pi_line_items),
+                                'line_items': normal_line_items,
+                                'pi_line_items': pi_line_items,
                                 'invoice_month': current_start.strftime('%B'),
-                                'invoice_year': str(current_start.year)
+                                'invoice_year': current_start.year
                             }
                             print(f"[DEBUG] Creating invoice with amount (cents): {total_amount_cents}")
                             invoice = BillingDbCore.create_invoice(
@@ -304,11 +305,13 @@ def generate_monthly_invoices():
                                     user_id=user_id
                                 )
                                 create_and_charge_invoice(
-                                    user_id,
-                                    invoice['invoice_id'],
-                                    metadata_dict,
-                                    total_amount_cents,
-                                    "usd"
+                                    user_id=user_id,
+                                    invoice_id=invoice['invoice_id'],
+                                    amount=total_amount_cents,
+                                    currency="usd",
+                                    description=description,
+                                    invoice_month=current_start.strftime('%B'),
+                                    invoice_year=current_start.year
                                 )
 
                     current_start = add_one_month(current_start)
@@ -340,9 +343,11 @@ def charge_unpaid_invoices():
                 create_and_charge_invoice(
                     user_id=user_id,
                     invoice_id=invoice_id,
-                    metadata=metadata,
                     amount=amount_cents,
-                    currency="usd"
+                    currency="usd",
+                    description=metadata['description'],
+                    invoice_month=metadata['invoice_month'],
+                    invoice_year=metadata['invoice_year']
                     )
             except Exception as e:
                 logger.error("Failed to charge invoice %s for user %s: %s", invoice_id, user_id, str(e))
