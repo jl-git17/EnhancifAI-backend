@@ -294,6 +294,8 @@ class SendGrid:
             status_color_map = {'paid': '#28a745', 'unpaid': '#dc3545'}
             status_color = status_color_map.get(status, '#000000')
             line_items = metadata.get('line_items', [])
+            if isinstance(line_items, str):
+                line_tems = json.loads(line_items)
             line_items_html = ""
             if line_items:
                 line_items_html = """
@@ -311,8 +313,6 @@ class SendGrid:
                     <tbody>
                 """
                 for i, item in enumerate(line_items):
-                    if isinstance(item, str):
-                        item = json.loads(item)
                     row_bg = "#f9f9f9" if i % 2 == 0 else "#fff"
                     item_date = datetime.fromisoformat(item['date'].replace('Z', '+00:00')).strftime('%B %d, %Y')
                     line_items_html += f"""
@@ -326,6 +326,8 @@ class SendGrid:
                     """
                 line_items_html += "</tbody></table>"
             pi_line_items = metadata.get('pi_line_items', [])
+            if isinstance(pi_line_items, str):
+                pi_line_items = json.loads(pi_line_items)
             pi_line_items_html = ""
             if pi_line_items:
                 pi_line_items_html = """
@@ -343,8 +345,6 @@ class SendGrid:
                     <tbody>
                 """
                 for i, item in enumerate(pi_line_items):
-                    if isinstance(item, str):
-                        item = json.loads(item)
                     row_bg = "#f9f9f9" if i % 2 == 0 else "#fff"
                     item_date = datetime.fromisoformat(item['date'].replace('Z', '+00:00')).strftime('%B %d, %Y')
                     pi_line_items_html += f"""
