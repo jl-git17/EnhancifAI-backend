@@ -24,7 +24,7 @@ PASSWORD_RESET_TEMPLATE = "d-75c53f9a77304ae480856b429ef8ff7c"
 
 BILLING_INVOICE_READY = "d-b8e31bce0613459188bb69813cd40be6"
 BILLING_INVOICE_PAYMENT_SUCCESS = "d-060257d7c1254441a301792ab484d445"
-BILLING_INVOICE_PAYMENT_FAILURE = ""
+BILLING_INVOICE_PAYMENT_FAILURE = "d-bdbf09f970184932b234310a33c22150"
 
 class SendGrid:
 
@@ -214,6 +214,7 @@ class SendGrid:
         
         # pass custom values for our HTML placeholders
         button_url = f'{settings.frontend_url}/billings'
+        upm_button_url = f'{settings.frontend_url}/me/payment-methods'
         logging.debug(f"Button URL: {button_url}")
 
         # disable tracking
