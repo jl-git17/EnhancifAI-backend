@@ -11,6 +11,7 @@ from sendgrid.helpers.mail import (
     Attachment
 )
 import logging  # Add logging import
+import json
 from weasyprint import HTML
 from datetime import datetime
 from fastapi import HTTPException, Response
@@ -310,6 +311,8 @@ class SendGrid:
                     <tbody>
                 """
                 for i, item in enumerate(line_items):
+                    if isinstance(item, str):
+                        item = json.loads(item)
                     row_bg = "#f9f9f9" if i % 2 == 0 else "#fff"
                     item_date = datetime.fromisoformat(item['date'].replace('Z', '+00:00')).strftime('%B %d, %Y')
                     line_items_html += f"""
@@ -340,6 +343,8 @@ class SendGrid:
                     <tbody>
                 """
                 for i, item in enumerate(pi_line_items):
+                    if isinstance(item, str):
+                        item = json.loads(item)
                     row_bg = "#f9f9f9" if i % 2 == 0 else "#fff"
                     item_date = datetime.fromisoformat(item['date'].replace('Z', '+00:00')).strftime('%B %d, %Y')
                     pi_line_items_html += f"""
