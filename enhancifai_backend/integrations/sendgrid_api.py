@@ -227,14 +227,15 @@ class SendGrid:
         
         message.dynamic_template_data = {
             'button_url': button_url,
+            'upm_button_url': upm_button_url,
             'user_name': user_name,
             'invoice_month': invoice_month,
             'invoice_year': invoice_year
         }
         logging.debug(f"Dynamic template data: {message.dynamic_template_data}")
         
-        message.template_id = BILLING_INVOICE_PAYMENT_SUCCESS
-        logging.debug(f"Template ID set to {BILLING_INVOICE_PAYMENT_SUCCESS}")
+        message.template_id = BILLING_INVOICE_PAYMENT_FAILURE
+        logging.debug(f"Template ID set to {BILLING_INVOICE_PAYMENT_FAILURE}")
         
         # Download the invoice PDF
         pdf_data = cls._download_invoice_pdf(user_id, invoice_id)
