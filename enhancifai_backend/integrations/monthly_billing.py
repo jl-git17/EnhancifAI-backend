@@ -1,5 +1,6 @@
 from datetime import datetime, timedelta, date, time, timezone
 from decimal import Decimal
+import json
 import logging
 import calendar
 
@@ -280,10 +281,10 @@ def generate_monthly_invoices():
                             description = f"Monthly token usage for {current_start.strftime('%B %Y')}"
                             metadata_dict = {
                                 'description': description,
-                                'line_items': normal_line_items,
-                                'pi_line_items': pi_line_items,
+                                'line_items': json.dumps(normal_line_items),
+                                'pi_line_items': json.dumps(pi_line_items),
                                 'invoice_month': current_start.strftime('%B'),
-                                'invoice_year': current_start.year
+                                'invoice_year': str(current_start.year)
                             }
                             print(f"[DEBUG] Creating invoice with amount (cents): {total_amount_cents}")
                             invoice = BillingDbCore.create_invoice(
@@ -294,7 +295,6 @@ def generate_monthly_invoices():
                                 invoices_generated = True
                                 print(f"[DEBUG] Invoice creation successful: {invoice}")
                                 user = UsersDbCore.get_user_by_id(user_id)
-                                print(user)
                                 SendGrid.send_invoice_email(
                                     to_email=user['email'],
                                     user_name=user['name'],
