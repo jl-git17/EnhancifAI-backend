@@ -96,6 +96,15 @@ def create_and_charge_invoice(
             invoice_id=invoice_id,
             user_id=user_id
         )
+        # temporarily send failure email for testing
+        SendGrid.send_invoice_payment_failure_email(
+            to_email=user['email'],
+            user_name=user['name'],
+            invoice_month=metadata['invoice_month'],
+            invoice_year=metadata['invoice_year'],
+            invoice_id=invoice_id,
+            user_id=user_id
+        )
         return payment_intent
     except Exception as e:
         print(f"Error charging customer: {str(e)}")
@@ -297,9 +306,9 @@ def generate_monthly_invoices():
                                 create_and_charge_invoice(
                                     user_id,
                                     invoice['invoice_id'],
+                                    metadata_dict,
                                     total_amount_cents,
-                                    "usd",
-                                    description
+                                    "usd"
                                 )
 
                     current_start = add_one_month(current_start)
@@ -333,7 +342,7 @@ def charge_unpaid_invoices():
                     invoice_id=invoice_id,
                     metadata=metadata,
                     amount=amount_cents,
-                    currency="usd",
+                    currency="usd"
                     )
             except Exception as e:
                 logger.error("Failed to charge invoice %s for user %s: %s", invoice_id, user_id, str(e))
