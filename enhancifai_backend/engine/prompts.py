@@ -6,6 +6,7 @@ from enhancifai_backend.config import settings
 from enhancifai_backend.server.models.execution import PromptObject
 
 GLOBAL_MAX_PROMPTS = settings.global_max_prompts
+# TODO: implement per user max prompts, subscribers are exempt from this limit
 
 # TODO: add check if env vars are set
 
