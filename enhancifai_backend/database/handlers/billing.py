@@ -686,3 +686,23 @@ class BillingDbCore:
         data = (invoice_id,)
         result = read_db.do('select_one', sql=sql, data=data)
         return result['user_id'] if result else None
+
+    @classmethod
+    def get_user_subscription_charge_date(cls, user_id):
+        """
+        Retrieve the subscription charge date for a user.
+        
+        Args:
+            user_id (int): Unique identifier for the user.
+        
+        Returns:
+            current_period_end (date or None): The subscription charge date if available.
+        """
+        sql = schemafy("""
+            SELECT current_period_end
+            FROM enhancifai.stripe_subscriptions
+            WHERE user_id = %s;
+        """)
+        data = (user_id,)
+        result = read_db.do('select_one', sql=sql, data=data)
+        return result['current_period_end'] if result and 'current_period_end' in result else None
