@@ -737,3 +737,24 @@ class BillingDbCore:
         sql = schemafy("UPDATE enhancifai.internal_invoices SET email_sent = TRUE WHERE invoice_id = %s;")
         data = (invoice_id,)
         write_db.do('execute', sql=sql, data=data)
+
+    @classmethod
+    def get_latest_subscription_payment_date(cls, user_id):
+        """
+        Retrieve the latest payment date from subscription_payments for the user's current subscription.
+        
+        Args:
+            user_id (int): Unique identifier for the user.
+        
+        Returns:
+            datetime or None: The most recent payment date if available; otherwise, None.
+        """
+        sql = schemafy("""
+            SELECT MAX(sp.created_at) AS latest_payment_date
+            FROM enhancifai.subscription_payments sp
+            JOIN enhancifai.stripe_subscriptions s ON sp.subscription_id = s.subscription_id
+            WHERE s.user_id = %s;
+        """)
+        data = (user_id,)
+        result = read_db.do('select_one', sql=sql, data=data)
+        return result['latest_payment_date'] if result and result['latest_payment_date'] else None
