@@ -304,15 +304,6 @@ def generate_monthly_invoices():
                                     invoice_id=invoice['invoice_id'],
                                     user_id=user_id
                                 )
-                                create_and_charge_invoice(
-                                    user_id=user_id,
-                                    invoice_id=invoice['invoice_id'],
-                                    amount=total_amount_cents,
-                                    currency="usd",
-                                    description=description,
-                                    invoice_month=current_start.strftime('%B'),
-                                    invoice_year=current_start.year
-                                )
 
                     current_start = add_one_month(current_start)
 
@@ -330,11 +321,19 @@ def charge_unpaid_invoices():
     """
     Loops through unpaid internal_invoices and attempts to charge them.
     """
-
     try:
         unpaid_invoices = BillingDbCore.list_unpaid_invoices()
         for invoice in unpaid_invoices:
             user_id = invoice['user_id']
+            # Retrieve the subscription charge date
+            subscription_charge_date = BillingDbCore.get_user_subscription_charge_date(user_id)
+            today = datetime.now(timezone.utc).date()
+            print(f"[DEBUG] Checking invoice for user {user_id} with charge date {subscription_charge_date}")
+            print(f"[DEBUG] Today's date: {today}")
+            # Check if today's date is the subscription charge date; skip if not.
+            if subscription_charge_date is None or subscription_charge_date != today:
+                continue
+
             invoice_id = invoice['invoice_id']
             metadata = invoice['metadata']
             # invoice['amount'] is in dollars; convert to cents for charging
@@ -348,7 +347,7 @@ def charge_unpaid_invoices():
                     description=metadata['description'],
                     invoice_month=metadata['invoice_month'],
                     invoice_year=metadata['invoice_year']
-                    )
+                )
             except Exception as e:
                 logger.error("Failed to charge invoice %s for user %s: %s", invoice_id, user_id, str(e))
     except Exception as e:
