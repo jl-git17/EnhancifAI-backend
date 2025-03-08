@@ -1,17 +1,14 @@
 from datetime import datetime, timedelta, date, time, timezone
 from decimal import Decimal
-import json
 import logging
 import calendar
 
 import stripe
 
 from enhancifai_backend.config import settings
-from enhancifai_backend.database.access import read_db
 from enhancifai_backend.database.handlers.billing import BillingDbCore
 from enhancifai_backend.database.handlers.stripe import StripeDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
-from enhancifai_backend.database.handlers.utils import schemafy
 from enhancifai_backend.integrations.sendgrid_api import SendGrid
 
 # Configure logging
