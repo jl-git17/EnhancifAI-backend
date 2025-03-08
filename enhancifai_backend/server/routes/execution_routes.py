@@ -307,6 +307,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
         prompts = PromptsProcessor.read_prompt_file(temp_prompt_file_path, file_format=prompt_format)
 
     # Proceed with existing logic after preparing the data file and prompt file
+    # TODO: lift limits for subscribers
     max_recs = MAX_RECORDS if max_records else GLOBAL_MAX_ROWS
 
     # Extract columns from data file
