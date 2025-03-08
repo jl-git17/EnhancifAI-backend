@@ -40,11 +40,17 @@ CREATE TABLE IF NOT EXISTS enhancifai.internal_invoices (
     amount FLOAT NOT NULL,
     status VARCHAR(50),
     created_at TIMESTAMP DEFAULT now(),
+    email_sent BOOLEAN DEFAULT false,
     billing_period_start DATE,
     billing_period_end DATE,
     metadata JSONB,
     paid_at TIMESTAMP
 );
+-- temp
+ALTER TABLE enhancifai.internal_invoices
+    ADD COLUMN
+    IF NOT EXISTS
+        email_sent BOOLEAN DEFAULT false;
 
 -- Create sequence if it does not exist
 CREATE SEQUENCE IF NOT EXISTS enhancifai.invoice_number_seq
