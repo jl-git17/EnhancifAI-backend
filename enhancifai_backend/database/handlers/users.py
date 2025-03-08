@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from enhancifai_backend.database.access import read_db, write_db
+from enhancifai_backend.database.handlers.stripe import StripeDbCore
 from enhancifai_backend.database.handlers.utils import schemafy
 
 class UsersDbCore:
@@ -196,11 +197,12 @@ class UsersDbCore:
             model (str): The model name.
             tokens (int): Number of tokens used.
         """
+        is_paid_usage = StripeDbCore.is_user_subscribed(user_id)
         sql = schemafy("""
-            INSERT INTO enhancifai.users_token_usage (user_id, run_id, model, tokens)
-            VALUES (%s, %s, %s, %s);
+            INSERT INTO enhancifai.users_token_usage (user_id, run_id, model, tokens, is_paid_usage)
+            VALUES (%s, %s, %s, %s, %s);
         """)
-        write_db.do('execute', sql=sql, data=(user_id, run_id, model, tokens,))
+        write_db.do('execute', sql=sql, data=(user_id, run_id, model, tokens, is_paid_usage,))
 
     @classmethod
     def add_user_token_usage_pi(cls, user_id, model, tokens):
@@ -212,11 +214,12 @@ class UsersDbCore:
             model (str): The model name.
             tokens (int): Number of tokens used.
         """
+        is_paid_usage = StripeDbCore.is_user_subscribed(user_id)
         sql = schemafy("""
-            INSERT INTO enhancifai.users_token_usage_pi (user_id, model, tokens)
-            VALUES (%s, %s, %s);
+            INSERT INTO enhancifai.users_token_usage_pi (user_id, model, tokens, is_paid_usage)
+            VALUES (%s, %s, %s, %s);
         """)
-        write_db.do('execute', sql=sql, data=(user_id, model, tokens,))
+        write_db.do('execute', sql=sql, data=(user_id, model, tokens, is_paid_usage,))
 
     @classmethod
     def create_session(cls, user_id, token, expires_at):
