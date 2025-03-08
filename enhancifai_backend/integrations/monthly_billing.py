@@ -330,6 +330,7 @@ def charge_unpaid_invoices():
             today = datetime.now(timezone.utc).date()
             print(f"[DEBUG] Checking invoice for user {user_id} with charge date {subscription_charge_date}")
             print(f"[DEBUG] Today's date: {today}")
+            print(f"[DEBUG] Today type: {type(today)},  charge date type: {type(subscription_charge_date)}")
             # Check if today's date is the subscription charge date; skip if not.
             if subscription_charge_date is None or subscription_charge_date != today:
                 continue
