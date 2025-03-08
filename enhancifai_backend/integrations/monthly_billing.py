@@ -354,5 +354,28 @@ def charge_unpaid_invoices():
     except Exception as e:
         logger.error("Failed to retrieve or charge unpaid invoices: %s", str(e))
 
+def send_invoice_emails():
+    try:
+        unpaid_invoices = BillingDbCore.list_unpaid_invoices()
+        for invoice in unpaid_invoices:
+            if invoice['email_sent']:
+                continue
+            user_id = invoice['user_id']
+            invoice_id = invoice['invoice_id']
+            metadata = invoice['metadata']
+            user = UsersDbCore.get_user_by_id(user_id)
+            SendGrid.send_invoice_email(
+                to_email=user['email'],
+                user_name=user['name'],
+                invoice_month=metadata['invoice_month'],
+                invoice_year=metadata['invoice_year'],
+                invoice_id=invoice_id,
+                user_id=user_id
+            )
+            BillingDbCore.mark_internal_invoice_email_sent(invoice_id)
+    except Exception as e:
+        logger.error("Failed to send invoice emails: %s", str(e))
+
+
 if __name__ == "__main__":
     generate_monthly_invoices()
