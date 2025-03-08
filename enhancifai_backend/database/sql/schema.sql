@@ -22,16 +22,22 @@ CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage (
     user_id INT REFERENCES enhancifai.users(user_id),
     model VARCHAR,
     tokens INT,
+    is_paid_usage BOOLEAN DEFAULT false,
     created_at TIMESTAMP DEFAULT now()
 );
+ALTER TABLE enhancifai.users_token_usage
+ADD COLUMN IF NOT EXISTS is_paid_usage BOOLEAN DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage_pi (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES enhancifai.users(user_id),
     model VARCHAR,
     tokens INT,
+    is_paid_usage BOOLEAN DEFAULT false,
     created_at TIMESTAMP DEFAULT now()
 );
+ALTER TABLE enhancifai.users_token_usage_pi
+ADD COLUMN IF NOT EXISTS is_paid_usage BOOLEAN DEFAULT false;
 
 CREATE TABLE IF NOT EXISTS enhancifai.internal_invoices (
     id SERIAL PRIMARY KEY,
