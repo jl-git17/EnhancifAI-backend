@@ -5,7 +5,7 @@ import re
 from typing import Optional
 from decimal import Decimal
 
-from titlecase import titlecase
+from titlecase import titlecase #pylint: disable=import-error
 from enhancifai_backend.database.access import read_db, write_db
 from enhancifai_backend.database.handlers.utils import schemafy
 
@@ -646,6 +646,7 @@ class BillingDbCore:
                 amount,
                 status,
                 created_at,
+                email_sent,
                 billing_period_start,
                 billing_period_end,
                 metadata
@@ -706,3 +707,33 @@ class BillingDbCore:
         data = (user_id,)
         result = read_db.do('select_one', sql=sql, data=data)
         return result['current_period_end'] if result and 'current_period_end' in result else None
+
+    @classmethod
+    def is_internal_invoice_email_sent(cls, invoice_id):
+        """
+        Check if an email has been sent for a given invoice_id.
+        
+        Args:
+            invoice_id (str): Unique identifier for the invoice.
+            
+        Returns:
+            bool: True if the email has been sent, False otherwise.
+        """
+        sql = schemafy("SELECT email_sent FROM enhancifai.internal_invoices WHERE invoice_id = %s;")
+        data = (invoice_id,)
+        result = read_db.do('select_one', sql=sql, data=data)
+        if result is None:
+            raise ValueError(f"Invoice {invoice_id} not found.")
+        return result["email_sent"]
+
+    @classmethod
+    def mark_internal_invoice_email_sent(cls, invoice_id):
+        """
+        Mark the internal invoice's email_sent field as True for the given invoice_id.
+        
+        Args:
+            invoice_id (str): Unique identifier for the invoice.
+        """
+        sql = schemafy("UPDATE enhancifai.internal_invoices SET email_sent = TRUE WHERE invoice_id = %s;")
+        data = (invoice_id,)
+        write_db.do('execute', sql=sql, data=data)
