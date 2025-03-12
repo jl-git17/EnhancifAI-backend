@@ -303,78 +303,6 @@ class UsersDbCore:
             return None
 
     @classmethod
-    def get_user_token_usage_per_model(cls, user_id: int, start_date: datetime, end_date: datetime) -> List[Dict]:
-        """
-        Retrieve token usage totals per model over a specified date range.
-
-        Args:
-            user_id (int): The user's ID.
-            start_date (datetime): Range start.
-            end_date (datetime): Range end.
-        
-        Returns:
-            List[Dict]: List of records with model and total tokens.
-        """
-        sql = schemafy("""
-            SELECT model, SUM(tokens) AS total_tokens
-            FROM (
-                SELECT model, tokens
-                FROM enhancifai.users_token_usage
-                WHERE user_id = %s
-                AND created_at >= %s
-                AND created_at < %s
-                UNION ALL
-                SELECT model, tokens
-                FROM enhancifai.users_token_usage_pi
-                WHERE user_id = %s
-                AND created_at >= %s
-                AND created_at < %s
-            ) AS combined_usage
-            GROUP BY model;
-        """)
-        data = (user_id, start_date, end_date, user_id, start_date, end_date)
-        result = read_db.do('select', sql=sql, data=data)
-        return result if result else []
-
-    @classmethod
-    def get_user_token_usage_per_model_per_day(cls, user_id: int, start_date: datetime, end_date: datetime) -> List[Dict]:
-        """
-        Retrieve daily token usage totals per model over a specified date range.
-
-        Args:
-            user_id (int): The user's ID.
-            start_date (datetime): Range start.
-            end_date (datetime): Range end.
-        
-        Returns:
-            List[Dict]: Records with usage_date, model, and total tokens.
-        """
-        sql = schemafy("""
-            SELECT
-                date_trunc('day', created_at) AS usage_date,
-                model,
-                SUM(tokens) AS total_tokens
-            FROM (
-                SELECT created_at, model, tokens
-                FROM enhancifai.users_token_usage
-                WHERE user_id = %s
-                AND created_at >= %s
-                AND created_at < %s
-                UNION ALL
-                SELECT created_at, model, tokens
-                FROM enhancifai.users_token_usage_pi
-                WHERE user_id = %s
-                AND created_at >= %s
-                AND created_at < %s
-            ) AS combined_usage
-            GROUP BY usage_date, model
-            ORDER BY usage_date, model;
-        """)
-        data = (user_id, start_date, end_date, user_id, start_date, end_date)
-        result = read_db.do('select', sql=sql, data=data)
-        return result if result else []
-
-    @classmethod
     def get_user_normal_token_usage_per_model_per_day(
         cls, user_id: int, start_date: datetime, end_date: datetime
     ) -> List[Dict]:
@@ -398,6 +326,7 @@ class UsersDbCore:
             WHERE user_id = %s
             AND created_at >= %s
             AND created_at < %s
+            AND is_paid_usage = true
             GROUP BY usage_date, model
             ORDER BY usage_date, model;
         """)
@@ -427,6 +356,7 @@ class UsersDbCore:
             WHERE user_id = %s
             AND created_at >= %s
             AND created_at < %s
+            AND is_paid_usage = true
             GROUP BY usage_date, model
             ORDER BY usage_date, model;
         """)
