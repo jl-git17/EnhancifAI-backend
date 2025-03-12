@@ -27,7 +27,6 @@ CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage (
 );
 ALTER TABLE enhancifai.users_token_usage
 ADD COLUMN IF NOT EXISTS is_paid_usage BOOLEAN DEFAULT false;
-UPDATE enhancifai.users_token_usage SET is_paid_usage = true;
 
 CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage_pi (
     id SERIAL PRIMARY KEY,
@@ -39,7 +38,6 @@ CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage_pi (
 );
 ALTER TABLE enhancifai.users_token_usage_pi
 ADD COLUMN IF NOT EXISTS is_paid_usage BOOLEAN DEFAULT false;
-UPDATE enhancifai.users_token_usage_pi SET is_paid_usage = true;
 
 CREATE TABLE IF NOT EXISTS enhancifai.internal_invoices (
     id SERIAL PRIMARY KEY,
