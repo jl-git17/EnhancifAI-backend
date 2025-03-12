@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 import stripe
 
 from enhancifai_backend.config import settings
+from enhancifai_backend.database.handlers.billing import BillingDbCore
 from enhancifai_backend.database.handlers.stripe import StripeDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 
@@ -52,6 +53,24 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         if subscription_id:
             # Update subscription status in the database
             StripeDbCore.update_subscription_status(subscription_id, "past_due")
+            # Implement subscription retry logic
+            from datetime import datetime, timedelta  # added local import
+            subscription = StripeDbCore.get_subscription(subscription_id)
+            current_retry = (subscription.get('payment_retry_attempt') if (subscription and subscription.get('payment_retry_attempt') is not None) else 0) + 1
+            now = datetime.now()
+            if current_retry == 1:
+                first_payment_retry_at = now + timedelta(days=1)
+                second_payment_retry_at = now + timedelta(days=2)
+                service_cutoff_at = now + timedelta(days=14)
+                BillingDbCore.update_stripe_subscription_retry_info(
+                    subscription_id,
+                    current_retry,
+                    first_payment_retry_at,
+                    second_payment_retry_at,
+                    service_cutoff_at
+                )
+            else:
+                BillingDbCore.add_stripe_subscription_retry_count(subscription_id)
             # TODO: send email to user
         else:
             StripeDbCore.update_invoice_status(invoice["id"], "failed")
