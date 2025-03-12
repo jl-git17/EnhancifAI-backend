@@ -143,7 +143,7 @@ def generate_monthly_invoices():
 
         for user_id in users:
             print(f"[DEBUG] Processing user_id={user_id}")
-            if not StripeDbCore.is_user_subscribed(user_id):
+            if not StripeDbCore.is_user_subscribed(user_id) and not StripeDbCore.is_user_subscribed_cancelled(user_id):
                 continue
             invoices_generated = False
             try:
@@ -219,7 +219,7 @@ def generate_monthly_invoices():
                         # Now process normal tokens and PI tokens separately
                         normal_line_items = []
                         pi_line_items = []
-                        total_amount_cents = 0
+                        total_amount_cents = Decimal(0)
 
                         print(f"[DEBUG] Normal usage records: {normal_tokens_per_model_per_day}")
                         print(f"[DEBUG] PI usage records: {pi_tokens_per_model_per_day}")
@@ -239,8 +239,8 @@ def generate_monthly_invoices():
                                     user_id
                                 )
                                 continue  # Skip this usage record only.
-                            amount_cents = (Decimal(tokens) * Decimal(rate) * 100).quantize(Decimal('1'))
-                            total_amount_cents += int(amount_cents)
+                            amount_cents = Decimal(tokens) * Decimal(rate) * 100
+                            total_amount_cents += float(amount_cents)
                             normal_line_items.append({
                                 'date': usage_date.strftime('%Y-%m-%d'),
                                 'model': model,
@@ -265,8 +265,8 @@ def generate_monthly_invoices():
                                     user_id
                                 )
                                 continue  # Skip this record only.
-                            amount_cents = (Decimal(tokens) * Decimal(rate) * 100).quantize(Decimal('1'))
-                            total_amount_cents += int(amount_cents)
+                            amount_cents = Decimal(tokens) * Decimal(rate) * 100
+                            total_amount_cents += amount_cents
                             pi_line_items.append({
                                 'date': usage_date.strftime('%Y-%m-%d'),
                                 'model': model,
@@ -274,8 +274,10 @@ def generate_monthly_invoices():
                                 'rate': float(rate),
                                 'amount': float(amount_cents) / 100.0
                             })
+                        
+                        _total_amount_cents = total_amount_cents.quantize(Decimal('1'))
 
-                        if total_amount_cents > 0:
+                        if _total_amount_cents > 0:
                             description = f"Monthly token usage for {current_start.strftime('%B %Y')}"
                             metadata_dict = {
                                 'description': description,
@@ -284,9 +286,9 @@ def generate_monthly_invoices():
                                 'invoice_month': current_start.strftime('%B'),
                                 'invoice_year': current_start.year
                             }
-                            print(f"[DEBUG] Creating invoice with amount (cents): {total_amount_cents}")
+                            print(f"[DEBUG] Creating invoice with amount (cents): {_total_amount_cents}")
                             invoice = BillingDbCore.create_invoice(
-                                user_id, total_amount_cents, description,
+                                user_id, _total_amount_cents, description,
                                 current_start.date(), current_end.date(), metadata=metadata_dict
                             )
                             if invoice:
