@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage (
 );
 ALTER TABLE enhancifai.users_token_usage
 ADD COLUMN IF NOT EXISTS is_paid_usage BOOLEAN DEFAULT false;
+UPDATE enhancifai.users_token_usage SET is_paid_usage = true;
 
 CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage_pi (
     id SERIAL PRIMARY KEY,
@@ -38,6 +39,7 @@ CREATE TABLE IF NOT EXISTS enhancifai.users_token_usage_pi (
 );
 ALTER TABLE enhancifai.users_token_usage_pi
 ADD COLUMN IF NOT EXISTS is_paid_usage BOOLEAN DEFAULT false;
+UPDATE enhancifai.users_token_usage_pi SET is_paid_usage = true;
 
 CREATE TABLE IF NOT EXISTS enhancifai.internal_invoices (
     id SERIAL PRIMARY KEY,
@@ -114,6 +116,13 @@ CREATE TABLE IF NOT EXISTS enhancifai.stripe_invoices (
     status VARCHAR(50),
     created_at TIMESTAMP DEFAULT now()
 );
+
+-- For failed invoice payments: add retry attempt count and scheduled retry/cutoff timestamps
+ALTER TABLE enhancifai.stripe_invoices
+    ADD COLUMN IF NOT EXISTS retry_attempt INT DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS first_retry_at TIMESTAMP,   -- scheduled 1 day after failure
+    ADD COLUMN IF NOT EXISTS second_retry_at TIMESTAMP,  -- scheduled 2 days after failure
+    ADD COLUMN IF NOT EXISTS service_cutoff_at TIMESTAMP; -- cutoff scheduled after 2 weeks
 
 CREATE TABLE IF NOT EXISTS enhancifai.google_sheets_credentials (
     user_id INT REFERENCES enhancifai.users(user_id) UNIQUE,
@@ -279,6 +288,13 @@ CREATE TABLE IF NOT EXISTS enhancifai.stripe_subscriptions (
     current_period_start TIMESTAMP,
     current_period_end TIMESTAMP
 );
+
+-- For failed subscription payments: add payment retry attempt count and scheduled retry/cutoff timestamps
+ALTER TABLE enhancifai.stripe_subscriptions
+    ADD COLUMN IF NOT EXISTS payment_retry_attempt INT DEFAULT 0,
+    ADD COLUMN IF NOT EXISTS first_payment_retry_at TIMESTAMP,  -- scheduled after 2 days
+    ADD COLUMN IF NOT EXISTS second_payment_retry_at TIMESTAMP, -- scheduled second retry within 2 weeks
+    ADD COLUMN IF NOT EXISTS service_cutoff_at TIMESTAMP;         -- cutoff after 2 weeks
 
 CREATE TABLE IF NOT EXISTS enhancifai.subscription_payments (
     payment_id VARCHAR(255) PRIMARY KEY,
