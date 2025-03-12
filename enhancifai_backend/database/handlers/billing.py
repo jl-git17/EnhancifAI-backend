@@ -758,3 +758,81 @@ class BillingDbCore:
         data = (user_id,)
         result = read_db.do('select_one', sql=sql, data=data)
         return result['latest_payment_date'] if result and result['latest_payment_date'] else None
+
+    @classmethod
+    def update_stripe_invoice_retry_info(cls, invoice_id, retry_attempt, first_retry_at=None, second_retry_at=None, service_cutoff_at=None):
+        """
+        Update the retry information for a given internal invoice in stripe_invoices.
+        
+        Args:
+            invoice_id (str): The invoice identifier.
+            retry_attempt (int): The current retry attempt count.
+            first_retry_at (datetime, optional): Timestamp for first retry.
+            second_retry_at (datetime, optional): Timestamp for second retry.
+            service_cutoff_at (datetime, optional): Timestamp for service cutoff.
+        """
+        sql = schemafy("""
+            UPDATE enhancifai.stripe_invoices
+            SET retry_attempt = %s,
+                first_retry_at = %s,
+                second_retry_at = %s,
+                service_cutoff_at = %s
+            WHERE invoice_id = %s;
+        """)
+        data = (retry_attempt, first_retry_at, second_retry_at, service_cutoff_at, invoice_id)
+        write_db.do('execute', sql=sql, data=data)
+    
+    @classmethod
+    def add_stripe_invoice_retry_count(cls, invoice_id):
+        """
+        Increment the retry count for a given internal invoice in stripe_invoices.
+        
+        Args:
+            invoice_id (str): The invoice identifier.
+        """
+        sql = schemafy("""
+            UPDATE enhancifai.stripe_invoices
+            SET retry_attempt = retry_attempt + 1
+            WHERE invoice_id = %s;
+        """)
+        data = (invoice_id,)
+        write_db.do('execute', sql=sql, data=data)
+
+    @classmethod
+    def update_stripe_subscription_retry_info(cls, subscription_id, payment_retry_attempt, first_payment_retry_at=None, second_payment_retry_at=None, service_cutoff_at=None):
+        """
+        Update the retry information for a given subscription in stripe_subscriptions.
+        
+        Args:
+            subscription_id (str): The subscription identifier.
+            payment_retry_attempt (int): The payment retry attempt count.
+            first_payment_retry_at (datetime, optional): Timestamp for first payment retry.
+            second_payment_retry_at (datetime, optional): Timestamp for second payment retry.
+            service_cutoff_at (datetime, optional): Timestamp for service cutoff.
+        """
+        sql = schemafy("""
+            UPDATE enhancifai.stripe_subscriptions
+            SET payment_retry_attempt = %s,
+                first_payment_retry_at = %s,
+                second_payment_retry_at = %s,
+                service_cutoff_at = %s
+            WHERE subscription_id = %s;
+        """)
+        data = (payment_retry_attempt, first_payment_retry_at, second_payment_retry_at, service_cutoff_at, subscription_id)
+        write_db.do('execute', sql=sql, data=data)
+    
+    @classmethod
+    def add_stripe_subscription_retry_count(cls, subscription_id):
+        """
+        Increment the retry count for a given subscription in stripe_subscriptions.
+        
+        Args:
+            subscription_id (str): The subscription identifier.
+        """
+        sql = schemafy("""
+            UPDATE enhancifai.stripe_subscriptions
+            SET payment_retry_attempt = payment_retry_attempt + 1
+            WHERE subscription_id = %s;
+        """)
+        data = (subscription_id,)
+        write_db.do('execute', sql=sql, data=data)
