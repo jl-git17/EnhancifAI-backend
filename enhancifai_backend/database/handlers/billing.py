@@ -687,6 +687,26 @@ class BillingDbCore:
         data = (invoice_id,)
         result = read_db.do('select_one', sql=sql, data=data)
         return result['user_id'] if result else None
+    
+    @classmethod
+    def get_user_active_subscription(cls, user_id):
+        """
+        Retrieve the active subscription for a user.
+        
+        Args:
+            user_id (int): Unique identifier for the user.
+            
+        Returns:
+            dict or None: Subscription details if found; otherwise, None.
+        """
+        sql = schemafy("""
+            SELECT *
+            FROM enhancifai.stripe_subscriptions
+            WHERE user_id = %s
+            AND status = 'active';
+        """)
+        data = (user_id,)
+        return read_db.do('select_one', sql=sql, data=data)
 
     @classmethod
     def get_user_subscription_charge_date(cls, user_id):

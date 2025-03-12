@@ -700,3 +700,30 @@ async def check_subscription_status(user_id: int = Depends(get_current_user_id),
         return JSONResponse(status_code=200, content={"subscribed": is_subscribed})
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
+
+@router.post("/billing/subscription/cancel", tags=["Billing"])
+async def cancel_subscription(
+    user_id: int = Depends(get_current_user_id),
+    _api_key: str = Depends(verify_secret_key)
+):
+    """
+    Cancel the current user's subscription.
+    """
+    try:
+        # Retrieve active subscription record for the user (assumed helper exists)
+        subscription = BillingDbCore.get_user_active_subscription(user_id)
+        if not subscription:
+            raise HTTPException(status_code=404, detail="No active subscription found.")
+            
+        subscription_id = subscription["subscription_id"]
+        # Cancel the subscription via Stripe API
+        stripe.Subscription.delete(subscription_id)
+        
+        # Update the subscription status in the database to "canceled"
+        StripeDbCore.update_subscription_status(subscription_id, "canceled")
+        return JSONResponse(status_code=200, content={"detail": "Subscription canceled successfully."})
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        print(e)
+        return JSONResponse(status_code=500, content={"detail": str(e)})
