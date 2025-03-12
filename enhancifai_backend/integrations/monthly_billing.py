@@ -240,7 +240,7 @@ def generate_monthly_invoices():
                                 )
                                 continue  # Skip this usage record only.
                             amount_cents = Decimal(tokens) * Decimal(rate) * 100
-                            total_amount_cents += float(amount_cents)
+                            total_amount_cents += amount_cents
                             normal_line_items.append({
                                 'date': usage_date.strftime('%Y-%m-%d'),
                                 'model': model,
