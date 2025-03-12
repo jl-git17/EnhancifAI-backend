@@ -337,17 +337,52 @@ def charge_unpaid_invoices():
             # invoice['amount'] is in dollars; convert to cents for charging
             amount_cents = int(round(invoice['amount'] * 100))
             try:
-                create_and_charge_invoice(
-                    user_id=user_id,
-                    invoice_id=invoice_id,
-                    amount=amount_cents,
-                    currency="usd",
-                    description=metadata['description'],
-                    invoice_month=metadata['invoice_month'],
-                    invoice_year=metadata['invoice_year']
-                )
+                current_retry = invoice.get('retry_attempt', 0)
+                first_retry_at = invoice.get('first_retry_at')
+                second_retry_at = invoice.get('second_retry_at')
+                now = datetime.now(timezone.utc)
+                should_charge = False
+                if current_retry == 0:
+                    should_charge = True
+                elif current_retry == 1 and first_retry_at and now >= first_retry_at:
+                    should_charge = True
+                elif current_retry == 2 and first_retry_at and now >= first_retry_at + timedelta(hours=4):
+                    should_charge = True
+                elif current_retry == 3 and second_retry_at and now >= second_retry_at:
+                    should_charge = True
+                elif current_retry == 4 and second_retry_at and now >= second_retry_at + timedelta(hours=4):
+                    should_charge = True
+
+                print(f"[DEBUG] current_retry={current_retry}, should_charge={should_charge}")
+
+                if should_charge:
+                    create_and_charge_invoice(
+                        user_id=user_id,
+                        invoice_id=invoice_id,
+                        amount=amount_cents,
+                        currency="usd",
+                        description=metadata['description'],
+                        invoice_month=metadata['invoice_month'],
+                        invoice_year=metadata['invoice_year']
+                    )
             except Exception as e:
                 logger.error("Failed to charge invoice %s for user %s: %s", invoice_id, user_id, str(e))
+                # Implement invoice retry logic
+                current_retry = invoice.get('retry_attempt', 0) + 1
+                now_retry = datetime.now(timezone.utc)
+                if current_retry == 1:
+                    first_retry_at = now_retry + timedelta(days=1)
+                    second_retry_at = now_retry + timedelta(days=2)
+                    service_cutoff_at = now_retry + timedelta(days=14)
+                    BillingDbCore.update_stripe_invoice_retry_info(
+                        invoice_id,
+                        current_retry,
+                        first_retry_at,
+                        second_retry_at,
+                        service_cutoff_at
+                    )
+                else:
+                    BillingDbCore.add_stripe_invoice_retry_count(invoice_id)
     except Exception as e:
         logger.error("Failed to retrieve or charge unpaid invoices: %s", str(e))
 
