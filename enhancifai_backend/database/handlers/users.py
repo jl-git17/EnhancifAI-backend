@@ -198,11 +198,13 @@ class UsersDbCore:
             tokens (int): Number of tokens used.
         """
         is_paid_usage = StripeDbCore.is_user_subscribed(user_id)
+        is_paid_usage_cancelled = StripeDbCore.is_user_subscribed_cancelled(user_id)
+        final_usage = is_paid_usage or is_paid_usage_cancelled
         sql = schemafy("""
             INSERT INTO enhancifai.users_token_usage (user_id, run_id, model, tokens, is_paid_usage)
             VALUES (%s, %s, %s, %s, %s);
         """)
-        write_db.do('execute', sql=sql, data=(user_id, run_id, model, tokens, is_paid_usage,))
+        write_db.do('execute', sql=sql, data=(user_id, run_id, model, tokens, final_usage,))
 
     @classmethod
     def add_user_token_usage_pi(cls, user_id, model, tokens):
@@ -215,11 +217,13 @@ class UsersDbCore:
             tokens (int): Number of tokens used.
         """
         is_paid_usage = StripeDbCore.is_user_subscribed(user_id)
+        is_paid_usage_cancelled = StripeDbCore.is_user_subscribed_cancelled(user_id)
+        final_usage = is_paid_usage or is_paid_usage_cancelled
         sql = schemafy("""
             INSERT INTO enhancifai.users_token_usage_pi (user_id, model, tokens, is_paid_usage)
             VALUES (%s, %s, %s, %s);
         """)
-        write_db.do('execute', sql=sql, data=(user_id, model, tokens, is_paid_usage,))
+        write_db.do('execute', sql=sql, data=(user_id, model, tokens, final_usage,))
 
     @classmethod
     def create_session(cls, user_id, token, expires_at):
