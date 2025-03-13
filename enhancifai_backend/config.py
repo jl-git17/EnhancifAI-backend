@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     stripe_secret_key: str = Field(..., env="STRIPE_SECRET_KEY")
     stripe_webhook_secret: str = Field(..., env="STRIPE_WEBHOOK_SECRET")
     stripe_subscription_price_id: str = Field(..., env="STRIPE_SUBSCRIPTION_PRICE_ID")
-    billing_start: Optional[str] = Field(None, env="BILLING_START")
+    billing_start: str = Field(..., env="BILLING_START")
     
     class Config:
         pass
