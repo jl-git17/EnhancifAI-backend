@@ -253,15 +253,15 @@ class StripeDbCore:
     @classmethod
     def is_user_subscribed_cancelled(cls, user_id: int) -> bool:
         """
-        Check if a user is currently subscribed and cancelled.
+        Check if a user is currently subscribed and canceled.
 
         Parameters:
             user_id (int): The unique identifier of the user.
 
         Returns:
-            bool: True if the user is subscribed and cancelled, otherwise False.
+            bool: True if the user is subscribed and canceled, otherwise False.
         """
-        sql = schemafy("SELECT 1 FROM enhancifai.stripe_subscriptions WHERE user_id = %s AND status = 'cancelled' AND current_period_end >= NOW() LIMIT 1;")
+        sql = schemafy("SELECT 1 FROM enhancifai.stripe_subscriptions WHERE user_id = %s AND status = 'canceled' AND current_period_end >= NOW() LIMIT 1;")
         result = read_db.do('select_one', sql=sql, data=(user_id,))
         return bool(result)
 
