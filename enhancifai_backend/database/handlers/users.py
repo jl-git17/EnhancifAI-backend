@@ -412,7 +412,7 @@ class UsersDbRegisterTokens:
             bool: True if token exists and is unredeemed, otherwise False.
         """
         sql = schemafy("SELECT * FROM enhancifai.user_register_tokens WHERE token = %s AND redeemed = FALSE")
-        return read_db.do('select_exists', sql=sql, data=(email, token,))
+        return read_db.do('select_exists', sql=sql, data=(token,))
     
     @classmethod
     def get_email_from_register_token(cls, token):
