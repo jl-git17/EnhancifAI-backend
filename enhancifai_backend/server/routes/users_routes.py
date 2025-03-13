@@ -239,9 +239,13 @@ async def validate_register_token(req_validate: ValidateRegister):
         exists = UsersDbRegisterTokens.check_user_register_token(req_validate.email, req_validate.token)
         if exists is False:
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token.")
-        UsersDbRegisterTokens.redeem_user_register_token(req_validate.email, req_validate.token)
-        UsersDbCore.verify_email(req_validate.email)
-        token, expiration = create_jwt_token({"email": req_validate.email})
+        _email = UsersDbRegisterTokens.get_email_from_register_token(req_validate.token)
+        if not _email:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Invalid token.")
+        email = _email['email']
+        UsersDbRegisterTokens.redeem_user_register_token(email, req_validate.token)
+        UsersDbCore.verify_email(email)
+        token, expiration = create_jwt_token({"email": email})
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
     except Exception as e:
