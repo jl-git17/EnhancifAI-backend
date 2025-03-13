@@ -139,6 +139,7 @@ class BillingDbCore:
                     created_at AS log_timestamp
                 FROM enhancifai.users_token_usage
                 WHERE user_id = %s {date_filter_rl}
+                AND is_paid_usage = TRUE
 
                 UNION ALL
 
@@ -148,6 +149,7 @@ class BillingDbCore:
                     created_at AS log_timestamp
                 FROM enhancifai.users_token_usage_pi
                 WHERE user_id = %s {date_filter_pil}
+                AND is_paid_usage = TRUE
             )
             SELECT 
                 cl.engine_model AS ai_model_name,
