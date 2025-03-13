@@ -120,7 +120,7 @@ class UsersDbCore:
         """
         sql = schemafy("SELECT ai_consent FROM enhancifai.users WHERE user_id = %s;")
         result = read_db.do('select_one', sql=sql, data=(user_id,))
-        return result['ai_consent'].isoformat() if result else False
+        return result['ai_consent'].isoformat() if result and result.get('ai_consent') is not None else False
 
     @classmethod
     def update_ai_consent(cls, user_id):
