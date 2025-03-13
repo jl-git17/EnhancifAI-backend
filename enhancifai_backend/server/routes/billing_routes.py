@@ -539,7 +539,7 @@ async def get_rate_card(
     """
     try:
         # Return blank array if the user is not subscribed
-        if not StripeDbCore.is_user_subscribed(_user_id) and not StripeDbCore.is_user_subscribed_cancelled(user_id):
+        if not StripeDbCore.is_user_subscribed(_user_id) and not StripeDbCore.is_user_subscribed_cancelled(_user_id):
             return JSONResponse(status_code=200, content={"rates": []})
         rates = BillingDbCore.get_rate_card(month, year)
         # Convert price_per_token to float with four decimal places
@@ -559,7 +559,7 @@ async def get_rate_card_history(
     Retrieve the historical rate card data, showing rates per month.
     """
     try:
-        if not StripeDbCore.is_user_subscribed(_user_id) and not StripeDbCore.is_user_subscribed_cancelled(user_id):
+        if not StripeDbCore.is_user_subscribed(_user_id) and not StripeDbCore.is_user_subscribed_cancelled(_user_id):
             return JSONResponse(status_code=200, content={"rate_history": []})
         rate_history = BillingDbCore.get_rate_card_history()
         # Process the rate_history to include price_per_1000_tokens
@@ -700,7 +700,7 @@ async def check_subscription_status(user_id: int = Depends(get_current_user_id),
     try:
         is_subscribed = StripeDbCore.is_user_subscribed(user_id)
         is_cancelled = StripeDbCore.is_user_subscribed_cancelled(user_id)
-        return JSONResponse(status_code=200, content={"subscribed": is_subscribed, "cancelled": is_cancelled})
+        return JSONResponse(status_code=200, content={"subscribed": is_subscribed, "canceled": is_cancelled})
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
 
