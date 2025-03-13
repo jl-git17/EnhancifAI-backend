@@ -132,10 +132,8 @@ def generate_monthly_invoices():
     try:
         today = datetime.now(timezone.utc)
         first_day_of_current_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-        # Temporarily allow invoicing for the current month
-        last_day_current = calendar.monthrange(first_day_of_current_month.year, first_day_of_current_month.month)[1]
-        last_day_of_current_month = first_day_of_current_month.replace(
-            day=last_day_current, hour=23, minute=59, second=59, microsecond=999999
+        last_day_of_previous_month = (first_day_of_current_month - timedelta(days=1)).replace(
+            hour=23, minute=59, second=59, microsecond=999999
         )
 
         users = UsersDbCore.get_all_user_ids()
@@ -156,54 +154,31 @@ def generate_monthly_invoices():
                     if current_start.tzinfo is None:
                         current_start = current_start.replace(tzinfo=timezone.utc)
                 else:
-                    billing_start_str = settings.billing_start
+                    # Use billing start from settings with a fixed year 2025.
+                    billing_start_str = str(settings.billing_start)
                     if billing_start_str:
-                        billing_start_str = str(billing_start_str)
                         try:
                             billing_start_month, billing_start_day = map(int, billing_start_str.split('-'))
                         except Exception as e:
                             logger.error(
-                                "Invalid BILLING_START format: %s. "
-                                "Expected 'MM-DD'. Error: %s",
+                                "Invalid BILLING_START format: %s. Expected 'MM-DD'. Error: %s",
                                 billing_start_str, str(e)
-                                )
+                            )
                             continue
                     else:
-                        billing_start_month, billing_start_day = 1, 1  # default to Jan 1 if not set
+                        billing_start_month, billing_start_day = 1, 1
+                    current_start = datetime(2025, billing_start_month, billing_start_day, 0, 0, 0, tzinfo=timezone.utc)
 
-                    date_joined = UsersDbCore.get_date_joined(user_id)
-                    if not date_joined:
-                        logger.error("Could not retrieve date of joining for user %s. Skipping.", user_id)
-                        continue
-                    if date_joined.tzinfo is None:
-                        date_joined = date_joined.replace(tzinfo=timezone.utc)
-                    # Determine the candidate billing start based on the join year.
-                    candidate = datetime(
-                        date_joined.year, billing_start_month, billing_start_day,
-                        0, 0, 0, tzinfo=timezone.utc
-                    )
-                    if date_joined > candidate:
-                        candidate = datetime(
-                            date_joined.year + 1, billing_start_month,
-                            billing_start_day, 0, 0, 0, tzinfo=timezone.utc
-                        )
-                    current_start = candidate
-                    if isinstance(date_joined, date) and not isinstance(date_joined, datetime):
-                        date_joined = datetime.combine(date_joined, time.min, tzinfo=timezone.utc)
-                    current_start = date_joined.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
-                    if current_start.tzinfo is None:
-                        current_start = current_start.replace(tzinfo=timezone.utc)
-
-                print(f"[DEBUG] Current start: {current_start}, last day of current month: {last_day_of_current_month}")
-                if current_start > last_day_of_current_month:
+                print(f"[DEBUG] Current start: {current_start}, last day of previous month: {last_day_of_previous_month}")
+                if current_start > last_day_of_previous_month:
                     continue
 
-                while current_start <= last_day_of_current_month:
+                while current_start <= last_day_of_previous_month:
                     last_day = calendar.monthrange(current_start.year, current_start.month)[1]
                     current_end = current_start.replace(day=last_day, hour=23, minute=59, second=59, microsecond=999999)
 
-                    if current_end > last_day_of_current_month:
-                        current_end = last_day_of_current_month
+                    if current_end > last_day_of_previous_month:
+                        current_end = last_day_of_previous_month
 
                     print(f"[DEBUG] Checking invoices for range {current_start} to {current_end}")
                     invoice_exists = BillingDbCore.invoice_exists(user_id, current_start, current_end)
