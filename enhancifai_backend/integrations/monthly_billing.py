@@ -140,9 +140,9 @@ def generate_monthly_invoices():
         print(f"[DEBUG] Retrieved all users: {len(users)} total")
 
         for user_id in users:
-            print(f"[DEBUG] Processing user_id={user_id}")
             if not StripeDbCore.is_user_subscribed(user_id) and not StripeDbCore.is_user_subscribed_cancelled(user_id):
                 continue
+            print(f"[DEBUG] Processing user_id={user_id}")
             invoices_generated = False
             try:
                 last_invoice_end_date = BillingDbCore.get_last_invoice_end_date(user_id)
