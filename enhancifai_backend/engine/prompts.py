@@ -89,7 +89,7 @@ class PromptsProcessor:
                     # 'temperature': temperature,
                     # 'top_p': top_p
                 })
-                if len(valid_prompts) > max_prompts:
+                if max_prompts > 0 and len(valid_prompts) > max_prompts:
                     errors.append(
                         f"A maximum of {max_prompts} prompts is allowed."
                     )
@@ -105,7 +105,7 @@ class PromptsProcessor:
         return valid_prompts
 
     @classmethod
-    def read_prompt_objects(cls, prompts: List[PromptObject]):
+    def read_prompt_objects(cls, prompts: List[PromptObject], max_prompts: int):
         """
         Reads and validates prompts from a list of PromptObject instances.
         """
@@ -161,12 +161,11 @@ class PromptsProcessor:
                     # 'temperature': temperature,
                     # 'top_p': top_p
                 })
-                if GLOBAL_MAX_PROMPTS != 0:
-                    if len(valid_prompts) > GLOBAL_MAX_PROMPTS:
-                        errors.append(
-                            f"A maximum of {GLOBAL_MAX_PROMPTS} prompts is allowed."
-                        )
-                        break
+                if max_prompts > 0 and len(valid_prompts) > max_prompts:
+                    errors.append(
+                        f"A maximum of {max_prompts} prompts is allowed."
+                    )
+                    break
                 i += 1
             except Exception as e:
                 errors.append(f"Error processing prompt {i}: {e}")
