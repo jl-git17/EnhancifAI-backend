@@ -235,7 +235,7 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
 
 @router.post("/execution/upload", tags=["Execution"])
 async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFile = File(...),
-                       json_data: str = Body(None), user_max_records: bool = Form(False),
+                       json_data: str = Body(None), max_records: bool = Form(False),
                        _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
     """
     Upload a CSV/Excel file or provide JSON data, and a prompt file (CSV or Excel).
@@ -250,7 +250,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
     is_subscribed = StripeDbCore.is_user_subscribed(user_id)
     is_cancelled_active = StripeDbCore.is_user_subscribed_cancelled(user_id)
     uncapped = is_subscribed or is_cancelled_active
-    if user_max_records:
+    if max_records:
         max_recs = TEST_MAX_RECORDS
     else:
         if uncapped:
@@ -311,6 +311,10 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
         raise HTTPException(status_code=400, detail="Either data file or JSON data must be provided.")
 
     # Handle Prompt File
+    if uncapped:
+        max_prompts = 0
+    else:
+        max_prompts = GLOBAL_MAX_PROMPTS
     with NamedTemporaryFile(delete=False, dir='/tmp', suffix=prompt_file_suffix) as temp_prompt_file:
         temp_prompt_file_path = temp_prompt_file.name
         prompt_contents = await prompt_file.read()
@@ -324,7 +328,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
     is_subscribed = StripeDbCore.is_user_subscribed(user_id)
     is_cancelled_active = StripeDbCore.is_user_subscribed_cancelled(user_id)
     uncapped = is_subscribed or is_cancelled_active
-    if user_max_records:
+    if max_records:
         max_recs = TEST_MAX_RECORDS
     else:
         if uncapped:
@@ -419,6 +423,17 @@ async def upload_direct_prompt(
             detail="User has not consented for AI usage."
         )
 
+    is_subscribed = StripeDbCore.is_user_subscribed(user_id)
+    is_cancelled_active = StripeDbCore.is_user_subscribed_cancelled(user_id)
+    uncapped = is_subscribed or is_cancelled_active
+    if max_records:
+        max_recs = TEST_MAX_RECORDS
+    else:
+        if uncapped:
+            max_recs = 0
+        else:
+            max_recs = GLOBAL_MAX_ROWS
+
     temp_data_file_path = None
     data_file_suffix = None
     file_name = None
@@ -509,6 +524,10 @@ async def upload_direct_prompt(
         raise HTTPException(status_code=500, detail="Failed to process prompt file.") from e
 
     # Handle Prompts from 'prompts' Form Field
+    if uncapped:
+        max_prompts = 0
+    else:
+        max_prompts = GLOBAL_MAX_PROMPTS
     try:
         logging.debug("Parsing prompts payload: %s", prompts)
         prompt_list = json.loads(prompts)
@@ -519,14 +538,14 @@ async def upload_direct_prompt(
 
     try:
         read_prompts = PromptsProcessor.read_prompt_objects(
-            [PromptObject(**prompt) for prompt in prompt_list]
+            [PromptObject(**prompt) for prompt in prompt_list],
+            max_prompts
         )
         logging.info("Read %s prompts successfully", len(read_prompts))
     except Exception as e:
         logging.exception("Error reading prompt objects")
         raise HTTPException(status_code=400, detail="Invalid prompts format.") from e
 
-    max_recs = MAX_RECORDS if max_records else GLOBAL_MAX_ROWS
     logging.debug("Max records set to: %s", max_recs)
 
     # Extract columns from data file
@@ -624,6 +643,10 @@ async def upload_prompts(prompt_file: UploadFile = File(...), _: str = Depends(v
             raise HTTPException(status_code=400, detail="Invalid prompt file type")
 
         # Handle Prompt File
+        if uncapped:
+            max_prompts = 0
+        else:
+            max_prompts = GLOBAL_MAX_PROMPTS
         with NamedTemporaryFile(delete=False, dir='/tmp', suffix=prompt_file_suffix) as temp_prompt_file:
             temp_prompt_file_path = temp_prompt_file.name
             prompt_contents = await prompt_file.read()
