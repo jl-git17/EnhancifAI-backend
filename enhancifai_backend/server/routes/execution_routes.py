@@ -527,8 +527,10 @@ async def upload_direct_prompt(
 
     # Handle Prompts from 'prompts' Form Field
     if uncapped:
+        logging.debug("User is uncapped, setting max prompts to 0")
         max_prompts = 0
     else:
+        logging.debug("User is capped, setting max prompts to %s", GLOBAL_MAX_PROMPTS)
         max_prompts = GLOBAL_MAX_PROMPTS
     try:
         logging.debug("Parsing prompts payload: %s", prompts)
