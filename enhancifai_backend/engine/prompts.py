@@ -6,14 +6,11 @@ from enhancifai_backend.config import settings
 from enhancifai_backend.server.models.execution import PromptObject
 
 GLOBAL_MAX_PROMPTS = settings.global_max_prompts
-# TODO: implement per user max prompts, subscribers are exempt from this limit
-
-# TODO: add check if env vars are set
 
 class PromptsProcessor:
 
     @classmethod
-    def read_prompt_file(cls, prompt_file_path: str, file_format: str = 'csv'):
+    def read_prompt_file(cls, prompt_file_path: str, max_prompts: int, file_format: str = 'csv'):
         """
         Reads and validates prompts from a CSV or Excel file.
         """
@@ -92,12 +89,11 @@ class PromptsProcessor:
                     # 'temperature': temperature,
                     # 'top_p': top_p
                 })
-                if GLOBAL_MAX_PROMPTS != 0:
-                    if len(valid_prompts) > GLOBAL_MAX_PROMPTS:
-                        errors.append(
-                            f"A maximum of {GLOBAL_MAX_PROMPTS} prompts is allowed."
-                        )
-                        break
+                if len(valid_prompts) > max_prompts:
+                    errors.append(
+                        f"A maximum of {max_prompts} prompts is allowed."
+                    )
+                    break
                 i += 1
             except KeyError as e:
                 errors.append(f"Row {i} >> Missing required column: {e}")
