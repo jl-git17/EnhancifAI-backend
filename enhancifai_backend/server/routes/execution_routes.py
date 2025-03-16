@@ -16,7 +16,9 @@ import openpyxl
 import pandas as pd
 
 from enhancifai_backend.config import settings
+from enhancifai_backend.database.handlers.billing import BillingDbCore
 from enhancifai_backend.database.handlers.runs import RunsDbCore
+from enhancifai_backend.database.handlers.stripe import StripeDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.prompts import PromptsProcessor
 from enhancifai_backend.engine.runs_progress import runs_progress
@@ -28,7 +30,7 @@ from enhancifai_backend.server.routes.files_routes import save_to_cache
 from enhancifai_backend.server.utils import (
     STATIC_FILES_DIRECTORY, get_current_user_id, verify_secret_key)
 
-MAX_RECORDS = 10
+TEST_MAX_RECORDS = 10
 GLOBAL_MAX_ROWS = settings.global_max_rows
 GLOBAL_MAX_PROMPTS = settings.global_max_prompts
 EXCEL_MIME_TYPES = ['application/vnd.ms-excel',
@@ -233,7 +235,7 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
 
 @router.post("/execution/upload", tags=["Execution"])
 async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFile = File(...),
-                       json_data: str = Body(None), max_records: bool = Form(False),
+                       json_data: str = Body(None), user_max_records: bool = Form(False),
                        _: str = Depends(verify_secret_key), user_id: int = Depends(get_current_user_id)):
     """
     Upload a CSV/Excel file or provide JSON data, and a prompt file (CSV or Excel).
@@ -244,6 +246,17 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
             status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
             detail="User has not consented for AI usage."
         )
+    
+    is_subscribed = StripeDbCore.is_user_subscribed(user_id)
+    is_cancelled_active = StripeDbCore.is_user_subscribed_cancelled(user_id)
+    uncapped = is_subscribed or is_cancelled_active
+    if user_max_records:
+        max_recs = TEST_MAX_RECORDS
+    else:
+        if uncapped:
+            max_recs = 0
+        else:
+            max_recs = GLOBAL_MAX_ROWS
 
     temp_data_file_path = None
     temp_prompt_file_path = None
@@ -304,11 +317,20 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
         temp_prompt_file.write(prompt_contents)
         temp_prompt_file.flush()
         prompt_format = 'csv' if prompt_file_suffix == '.csv' else 'excel'
-        prompts = PromptsProcessor.read_prompt_file(temp_prompt_file_path, file_format=prompt_format)
+        prompts = PromptsProcessor.read_prompt_file(temp_prompt_file_path, max_prompts, file_format=prompt_format)
 
     # Proceed with existing logic after preparing the data file and prompt file
     # TODO: lift limits for subscribers
-    max_recs = MAX_RECORDS if max_records else GLOBAL_MAX_ROWS
+    is_subscribed = StripeDbCore.is_user_subscribed(user_id)
+    is_cancelled_active = StripeDbCore.is_user_subscribed_cancelled(user_id)
+    uncapped = is_subscribed or is_cancelled_active
+    if user_max_records:
+        max_recs = TEST_MAX_RECORDS
+    else:
+        if uncapped:
+            max_recs = 0
+        else:
+            max_recs = GLOBAL_MAX_ROWS
 
     # Extract columns from data file
     extracted_columns = extract_columns_from_file(temp_data_file_path)
@@ -586,6 +608,10 @@ async def upload_prompts(prompt_file: UploadFile = File(...), _: str = Depends(v
                 status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
                 detail="User has not consented for AI usage."
             )
+        is_subscribed = StripeDbCore.is_user_subscribed(user_id)
+        is_cancelled_active = StripeDbCore.is_user_subscribed_cancelled(user_id)
+        uncapped = is_subscribed or is_cancelled_active
+        max_prompts = GLOBAL_MAX_PROMPTS if not uncapped else None
         # Determine the suffix for the file based on its content type
         file_suffix_map = {
             'text/csv': '.csv',
@@ -604,7 +630,7 @@ async def upload_prompts(prompt_file: UploadFile = File(...), _: str = Depends(v
             temp_prompt_file.write(prompt_contents)
             temp_prompt_file.flush()
             prompt_format = 'csv' if prompt_file_suffix == '.csv' else 'excel'
-            prompts = PromptsProcessor.read_prompt_file(temp_prompt_file_path, file_format=prompt_format)
+            prompts = PromptsProcessor.read_prompt_file(temp_prompt_file_path, max_prompts, file_format=prompt_format)
 
         # Process the prompts to the required format
         processed_prompts = [
