@@ -435,8 +435,10 @@ async def upload_direct_prompt(
         max_recs = TEST_MAX_RECORDS
     else:
         if uncapped:
+            print("User is uncapped, setting max records to 0")
             max_recs = 0
         else:
+            print(f"User is capped, setting max records to {GLOBAL_MAX_ROWS}")
             max_recs = GLOBAL_MAX_ROWS
 
     temp_data_file_path = None
