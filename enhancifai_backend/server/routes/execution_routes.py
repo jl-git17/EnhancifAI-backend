@@ -329,7 +329,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
     is_subscribed = StripeDbCore.is_user_subscribed(user_id)
     is_cancelled_active = StripeDbCore.is_user_subscribed_cancelled(user_id)
     uncapped = is_subscribed or is_cancelled_active
-    print("User %s is uncapped: %s", user_id, uncapped)
+    print(f"User {user_id} is uncapped: {uncapped}", user_id, uncapped)
     if max_records:
         max_recs = TEST_MAX_RECORDS
     else:
@@ -428,7 +428,7 @@ async def upload_direct_prompt(
     is_subscribed = StripeDbCore.is_user_subscribed(user_id)
     is_cancelled_active = StripeDbCore.is_user_subscribed_cancelled(user_id)
     uncapped = is_subscribed or is_cancelled_active
-    print("User %s is uncapped: %s", user_id, uncapped)
+    print(f"User {user_id} is uncapped: {uncapped}")
     if max_records:
         max_recs = TEST_MAX_RECORDS
     else:
@@ -531,7 +531,7 @@ async def upload_direct_prompt(
         print("User is uncapped, setting max prompts to 0")
         max_prompts = 0
     else:
-        print("User is capped, setting max prompts to %s", GLOBAL_MAX_PROMPTS)
+        print(f"User is capped, setting max prompts to {GLOBAL_MAX_PROMPTS}")
         max_prompts = GLOBAL_MAX_PROMPTS
     try:
         logging.debug("Parsing prompts payload: %s", prompts)
