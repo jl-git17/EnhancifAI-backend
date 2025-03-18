@@ -314,7 +314,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
         raise HTTPException(status_code=400, detail="Either data file or JSON data must be provided.")
 
     # Added check: validate that the data file does not exceed max_recs when max_recs > 0.
-    if max_recs > 0:
+    if max_recs > 0 and not max_records:
         if data_file_suffix == '.csv':
             df = pd.read_csv(temp_data_file_path)
         else:
@@ -529,7 +529,7 @@ async def upload_direct_prompt(
         raise HTTPException(status_code=400, detail="Either data file or JSON data must be provided.")
 
     # Check if data file exceeds max_recs when max_recs > 0
-    if max_recs > 0:
+    if max_recs > 0 and not max_records:
         if data_file_suffix == '.csv':
             df = pd.read_csv(temp_data_file_path)
         else:
