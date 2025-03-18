@@ -569,6 +569,9 @@ async def upload_direct_prompt(
             max_prompts
         )
         logging.info("Read %s prompts successfully", len(read_prompts))
+    except HTTPException as e:
+        logging.exception(f"Error reading prompt objects: {e}")
+        raise e
     except Exception as e:
         logging.exception("Error reading prompt objects")
         raise HTTPException(status_code=400, detail="Invalid prompts format.") from e
@@ -701,7 +704,7 @@ async def upload_prompts(prompt_file: UploadFile = File(...), _: str = Depends(v
         })
 
     except HTTPException as e:
-        return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+        raise e
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
 
