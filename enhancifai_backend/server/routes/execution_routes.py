@@ -320,7 +320,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
         else:
             df = pd.read_excel(temp_data_file_path)
         if df.shape[0] > max_recs:
-            raise HTTPException(status_code=400, detail=f"Data exceeds maximum allowed records: {max_recs}")
+            raise HTTPException(status_code=400, detail="Trial User maximum exceeded - Maximum 20 rows per file allowed")
 
     # Handle Prompt File
     if uncapped:
@@ -535,7 +535,7 @@ async def upload_direct_prompt(
         else:
             df = pd.read_excel(temp_data_file_path)
         if df.shape[0] > max_recs:
-            raise HTTPException(status_code=400, detail=f"Data exceeds maximum allowed records: {max_recs}")
+            raise HTTPException(status_code=400, detail="Trial User maximum exceeded - Maximum 20 rows per file allowed")
 
     # Handle Prompts
     try:

@@ -91,7 +91,7 @@ class PromptsProcessor:
                 })
                 if max_prompts > 0 and len(valid_prompts) > max_prompts:
                     errors.append(
-                        f"A maximum of {max_prompts} prompts is allowed."
+                        f"Trial user maximum exceeded - maximum {max_prompts} prompts per file allowed."
                     )
                     break
                 i += 1
@@ -163,7 +163,7 @@ class PromptsProcessor:
                 })
                 if max_prompts > 0 and len(valid_prompts) > max_prompts:
                     errors.append(
-                        f"A maximum of {max_prompts} prompts is allowed."
+                        f"Trial user maximum exceeded - maximum {max_prompts} prompts per file allowed."
                     )
                     break
                 i += 1
