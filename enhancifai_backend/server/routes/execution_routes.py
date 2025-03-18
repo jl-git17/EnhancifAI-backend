@@ -66,7 +66,7 @@ def read_prompt_file(prompt_file_path: str):
                 columns = columns.replace(" ", "").upper()
                 if (columns != '*' and not all(c.isalpha() and
                             len(c) == 1 for c in columns.split('+'))):
-                    if '+' not in columns:
+                    if ('+' not in columns):
                         errors.append(
                             "'Columns being Referenced' must be separated "
                             "by a '+' (plus) character."
@@ -313,6 +313,15 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
     else:
         raise HTTPException(status_code=400, detail="Either data file or JSON data must be provided.")
 
+    # Added check: validate that the data file does not exceed max_recs when max_recs > 0.
+    if max_recs > 0:
+        if data_file_suffix == '.csv':
+            df = pd.read_csv(temp_data_file_path)
+        else:
+            df = pd.read_excel(temp_data_file_path)
+        if df.shape[0] > max_recs:
+            raise HTTPException(status_code=400, detail=f"Data exceeds maximum allowed records: {max_recs}")
+
     # Handle Prompt File
     if uncapped:
         max_prompts = 0
@@ -518,6 +527,15 @@ async def upload_direct_prompt(
     else:
         logging.error("Neither data_file nor json_data provided")
         raise HTTPException(status_code=400, detail="Either data file or JSON data must be provided.")
+
+    # Check if data file exceeds max_recs when max_recs > 0
+    if max_recs > 0:
+        if data_file_suffix == '.csv':
+            df = pd.read_csv(temp_data_file_path)
+        else:
+            df = pd.read_excel(temp_data_file_path)
+        if df.shape[0] > max_recs:
+            raise HTTPException(status_code=400, detail=f"Data exceeds maximum allowed records: {max_recs}")
 
     # Handle Prompts
     try:
