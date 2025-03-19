@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 from fastapi import APIRouter, Request, HTTPException, Header
 from fastapi.responses import JSONResponse
 import stripe
@@ -54,9 +55,12 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
             # Update subscription status in the database
             StripeDbCore.update_subscription_status(subscription_id, "past_due")
             # Implement subscription retry logic
-            from datetime import datetime, timedelta  # added local import
             subscription = StripeDbCore.get_subscription(subscription_id)
-            current_retry = (subscription.get('payment_retry_attempt') if (subscription and subscription.get('payment_retry_attempt') is not None) else 0) + 1
+            if subscription and subscription.get('payment_retry_attempt') is not None:
+                retry_attempt = subscription.get('payment_retry_attempt')
+            else:
+                retry_attempt = 0
+            current_retry = retry_attempt + 1
             now = datetime.now()
             if current_retry == 1:
                 first_payment_retry_at = now + timedelta(days=1)
