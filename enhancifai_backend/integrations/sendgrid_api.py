@@ -1,22 +1,20 @@
 import base64
+from datetime import datetime
+import logging
+
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import (
     Mail,
-    Asm,
-    IpPoolName,
     TrackingSettings,
     ClickTracking,
     OpenTracking,
     SubscriptionTracking,
     Attachment
 )
-import logging  # Add logging import
-import json
-from weasyprint import HTML
-from datetime import datetime
-from fastapi import HTTPException, Response
-from enhancifai_backend.database.handlers.billing import BillingDbCore
 
+from weasyprint import HTML
+from fastapi import HTTPException
+from enhancifai_backend.database.handlers.billing import BillingDbCore
 from enhancifai_backend.config import settings
 
 REGISTRATION_CONFIRMATION_TEMPLATE = "d-c037b53618264a6caf6d64b653675819"
@@ -37,7 +35,7 @@ class SendGrid:
             to_emails=[to_email])
         # pass custom values for our HTML placeholders
         activation_url = f'{settings.frontend_url}/auth?email={to_email}&token={token}'
-        
+
         # disable tracking
         tracking_settings = TrackingSettings()
         tracking_settings.click_tracking = ClickTracking(enable=False)
@@ -90,16 +88,16 @@ class SendGrid:
 
     @classmethod
     def send_invoice_email(cls, to_email, user_name, invoice_month, invoice_year, invoice_id, user_id):
-        logging.debug(f"Preparing to send invoice email to {to_email}")
+        logging.debug("Preparing to send invoice email to %s", to_email)
         # create Mail object and populate
         message = Mail(
             from_email="info@enhancifai.com",
             to_emails=[to_email])
         logging.debug("Mail object created")
-        
+
         # pass custom values for our HTML placeholders
         button_url = f'{settings.frontend_url}/billings'
-        logging.debug(f"Button URL: {button_url}")
+        logging.debug("Button URL: %s", button_url)
 
         # disable tracking
         tracking_settings = TrackingSettings()
@@ -107,18 +105,18 @@ class SendGrid:
         tracking_settings.open_tracking = OpenTracking(enable=False)
         tracking_settings.subscription_tracking = SubscriptionTracking(enable=True)
         message.tracking_settings = tracking_settings
-        
+
         message.dynamic_template_data = {
             'button_url': button_url,
             'user_name': user_name,
             'invoice_month': invoice_month,
             'invoice_year': invoice_year
         }
-        logging.debug(f"Dynamic template data: {message.dynamic_template_data}")
-        
+        logging.debug("Dynamic template data: %s", message.dynamic_template_data)
+
         message.template_id = BILLING_INVOICE_READY
-        logging.debug(f"Template ID set to {BILLING_INVOICE_READY}")
-        
+        logging.debug("Template ID set to %s", BILLING_INVOICE_READY)
+
         # Download the invoice PDF
         pdf_data = cls._download_invoice_pdf(user_id, invoice_id)
         logging.debug("Invoice PDF downloaded")
@@ -133,19 +131,19 @@ class SendGrid:
         )
         message.attachment = attachment
         logging.debug("PDF attached to the email")
-        
+
         # create our sendgrid client object, pass it our key, then send and return our response objects
         try:
             sg = SendGridAPIClient(settings.sendgrid_api_key)
             logging.debug("SendGridAPIClient created")
             response = sg.send(message)
             _code, _body, _headers = response.status_code, response.body, response.headers
-            logging.debug(f"Email sent with status code: {_code}")
-            logging.debug(f"Response body: {_body}")
-            logging.debug(f"Response headers: {_headers}")
-            print("Dynamic Messages Sent!")
+            logging.debug("Email sent with status code: %s", _code)
+            logging.debug("Response body: %s", _body)
+            logging.debug("Response headers: %s", _headers)
+            logging.info("Dynamic Messages Sent!")
         except Exception as e:
-            logging.error(f"Error sending email: {e}")
+            logging.error("Error sending email: %s", e)
 
     @classmethod
     def send_invoice_payment_success_email(cls, to_email, user_name, invoice_month, invoice_year, invoice_id, user_id):
@@ -154,10 +152,10 @@ class SendGrid:
             from_email="info@enhancifai.com",
             to_emails=[to_email])
         logging.debug("Mail object created")
-        
+
         # pass custom values for our HTML placeholders
         button_url = f'{settings.frontend_url}/billings'
-        logging.debug(f"Button URL: {button_url}")
+        logging.debug("Button URL: %s", button_url)
 
         # disable tracking
         tracking_settings = TrackingSettings()
@@ -165,18 +163,18 @@ class SendGrid:
         tracking_settings.open_tracking = OpenTracking(enable=False)
         tracking_settings.subscription_tracking = SubscriptionTracking(enable=True)
         message.tracking_settings = tracking_settings
-        
+
         message.dynamic_template_data = {
             'button_url': button_url,
             'user_name': user_name,
             'invoice_month': invoice_month,
             'invoice_year': invoice_year
         }
-        logging.debug(f"Dynamic template data: {message.dynamic_template_data}")
-        
+        logging.debug("Dynamic template data: %s", message.dynamic_template_data)
+
         message.template_id = BILLING_INVOICE_PAYMENT_SUCCESS
-        logging.debug(f"Template ID set to {BILLING_INVOICE_PAYMENT_SUCCESS}")
-        
+        logging.debug("Template ID set to %s", BILLING_INVOICE_PAYMENT_SUCCESS)
+
         # Download the invoice PDF
         pdf_data = cls._download_invoice_pdf(user_id, invoice_id)
         logging.debug("Invoice PDF downloaded")
@@ -191,19 +189,19 @@ class SendGrid:
         )
         message.attachment = attachment
         logging.debug("PDF attached to the email")
-        
+
         # create our sendgrid client object, pass it our key, then send and return our response objects
         try:
             sg = SendGridAPIClient(settings.sendgrid_api_key)
             logging.debug("SendGridAPIClient created")
             response = sg.send(message)
             _code, _body, _headers = response.status_code, response.body, response.headers
-            logging.debug(f"Email sent with status code: {_code}")
-            logging.debug(f"Response body: {_body}")
-            logging.debug(f"Response headers: {_headers}")
+            logging.debug("Email sent with status code: %s", _code)
+            logging.debug("Response body: %s", _body)
+            logging.debug("Response headers: %s", _headers)
             print("Dynamic Messages Sent!")
         except Exception as e:
-            logging.error(f"Error sending email: {e}")
+            logging.error("Error sending email: %s", e)
 
     @classmethod
     def send_invoice_payment_failure_email(cls, to_email, user_name, invoice_month, invoice_year, invoice_id, user_id):
@@ -212,11 +210,11 @@ class SendGrid:
             from_email="info@enhancifai.com",
             to_emails=[to_email])
         logging.debug("Mail object created")
-        
+
         # pass custom values for our HTML placeholders
         button_url = f'{settings.frontend_url}/billings'
         upm_button_url = f'{settings.frontend_url}/me/payment-methods'
-        logging.debug(f"Button URL: {button_url}")
+        logging.debug("Button URL: %s", button_url)
 
         # disable tracking
         tracking_settings = TrackingSettings()
@@ -224,7 +222,7 @@ class SendGrid:
         tracking_settings.open_tracking = OpenTracking(enable=False)
         tracking_settings.subscription_tracking = SubscriptionTracking(enable=True)
         message.tracking_settings = tracking_settings
-        
+
         message.dynamic_template_data = {
             'button_url': button_url,
             'upm_button_url': upm_button_url,
@@ -232,11 +230,11 @@ class SendGrid:
             'invoice_month': invoice_month,
             'invoice_year': invoice_year
         }
-        logging.debug(f"Dynamic template data: {message.dynamic_template_data}")
-        
+        logging.debug("Dynamic template data: %s", message.dynamic_template_data)
+
         message.template_id = BILLING_INVOICE_PAYMENT_FAILURE
-        logging.debug(f"Template ID set to {BILLING_INVOICE_PAYMENT_FAILURE}")
-        
+        logging.debug("Template ID set to %s", BILLING_INVOICE_PAYMENT_FAILURE)
+
         # Download the invoice PDF
         pdf_data = cls._download_invoice_pdf(user_id, invoice_id)
         logging.debug("Invoice PDF downloaded")
@@ -251,19 +249,19 @@ class SendGrid:
         )
         message.attachment = attachment
         logging.debug("PDF attached to the email")
-        
+
         # create our sendgrid client object, pass it our key, then send and return our response objects
         try:
             sg = SendGridAPIClient(settings.sendgrid_api_key)
             logging.debug("SendGridAPIClient created")
             response = sg.send(message)
             _code, _body, _headers = response.status_code, response.body, response.headers
-            logging.debug(f"Email sent with status code: {_code}")
-            logging.debug(f"Response body: {_body}")
-            logging.debug(f"Response headers: {_headers}")
-            print("Dynamic Messages Sent!")
+            logging.debug("Email sent with status code: %s", _code)
+            logging.debug("Response body: %s", _body)
+            logging.debug("Response headers: %s", _headers)
+            logging.info("Dynamic Messages Sent!")
         except Exception as e:
-            logging.error(f"Error sending email: {e}")
+            logging.error("Error sending email: %s", e)
 
     @classmethod
     def send_subscription_start_email(cls, to_email):
@@ -285,11 +283,23 @@ class SendGrid:
             amount = invoice['invoice_amount']
             status = invoice['payment_status']
             payment_date_raw = invoice.get('payment_date')
-            payment_date = datetime.fromisoformat(payment_date_raw.replace('Z', '+00:00')).strftime('%B %d, %Y') if payment_date_raw else ""
+            if payment_date_raw:
+                payment_date = datetime.fromisoformat(
+                    payment_date_raw.replace('Z', '+00:00')
+                ).strftime("%B %d, %Y")
+            else:
+                payment_date = ""
             billing_period_start_raw = invoice.get('billing_period_start')
             billing_period_end_raw = invoice.get('billing_period_end')
-            billing_period_start = datetime.fromisoformat(billing_period_start_raw).strftime('%B %d, %Y') if billing_period_start_raw else ""
-            billing_period_end = datetime.fromisoformat(billing_period_end_raw).strftime('%B %d, %Y') if billing_period_end_raw else ""
+            if billing_period_start_raw:
+                billing_period_start = datetime.fromisoformat(billing_period_start_raw)\
+                    .strftime('%B %d, %Y')
+            else:
+                billing_period_start = ""
+            if billing_period_end_raw:
+                billing_period_end = datetime.fromisoformat(billing_period_end_raw).strftime('%B %d, %Y')
+            else:
+                billing_period_end = ""
             metadata = invoice.get('metadata', {})
             description = metadata.get('description', 'N/A')
             status_color_map = {'paid': '#28a745', 'unpaid': '#dc3545'}
