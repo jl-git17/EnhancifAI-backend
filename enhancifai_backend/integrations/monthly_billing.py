@@ -158,7 +158,10 @@ def generate_monthly_invoices():
                     billing_start_str = str(settings.billing_start)
                     if billing_start_str:
                         try:
-                            billing_start_year, billing_start_month, billing_start_day = map(int, billing_start_str.split('-'))
+                            billing_start_values = billing_start_str.split('-')
+                            billing_start_year = int(billing_start_values[0])
+                            billing_start_month = int(billing_start_values[1])
+                            billing_start_day = int(billing_start_values[2])
                         except Exception as e:
                             logger.error(
                                 "Invalid BILLING_START format: %s. Expected 'MM-DD'. Error: %s",
@@ -167,7 +170,10 @@ def generate_monthly_invoices():
                             continue
                     else:
                         billing_start_year, billing_start_month, billing_start_day = 2025, 3, 1
-                    current_start = datetime(billing_start_year, billing_start_month, billing_start_day, 0, 0, 0, tzinfo=timezone.utc)
+                    current_start = datetime(
+                        billing_start_year, billing_start_month, billing_start_day,
+                        0, 0, 0, tzinfo=timezone.utc
+                    )
 
                 print(f"[DEBUG] Current start: {current_start}, last day of previous month: {last_day_of_previous_month}")
                 if current_start > last_day_of_previous_month:
@@ -249,7 +255,7 @@ def generate_monthly_invoices():
                                 'rate': float(rate),
                                 'amount': float(amount_cents) / 100.0
                             })
-                        
+
                         _total_amount_cents = total_amount_cents.quantize(Decimal('1'))
 
                         if _total_amount_cents > 0:
