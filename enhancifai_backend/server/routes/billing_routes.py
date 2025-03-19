@@ -127,7 +127,7 @@ async def get_usage_by_model_endpoint(
     # Return blank array if user is not subscribed.
     if not StripeDbCore.is_user_subscribed(user_id) and not StripeDbCore.is_user_subscribed_cancelled(user_id):
         return JSONResponse(status_code=200, content={"usage_by_model": []})
-    
+
     try:
         # Call the modified get_usage_by_model function with month and year
         usage_by_model = BillingDbCore.get_usage_by_model(user_id, month=month, year=year)
@@ -717,11 +717,11 @@ async def cancel_subscription(
         subscription = BillingDbCore.get_user_active_subscription(user_id)
         if not subscription:
             raise HTTPException(status_code=404, detail="No active subscription found.")
-            
+
         subscription_id = subscription["subscription_id"]
         # Cancel the subscription via Stripe API
         stripe.Subscription.delete(subscription_id)
-        
+
         # Update the subscription status in the database to "canceled"
         StripeDbCore.update_subscription_status(subscription_id, "canceled")
         return JSONResponse(status_code=200, content={"detail": "Subscription canceled successfully."})
