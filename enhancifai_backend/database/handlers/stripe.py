@@ -249,7 +249,7 @@ class StripeDbCore:
         sql = schemafy("SELECT 1 FROM enhancifai.stripe_subscriptions WHERE user_id = %s AND status = 'active' LIMIT 1;")
         result = read_db.do('select_one', sql=sql, data=(user_id,))
         return bool(result)
-    
+
     @classmethod
     def is_user_subscribed_cancelled(cls, user_id: int) -> bool:
         """
@@ -261,7 +261,10 @@ class StripeDbCore:
         Returns:
             bool: True if the user is subscribed and canceled, otherwise False.
         """
-        sql = schemafy("SELECT 1 FROM enhancifai.stripe_subscriptions WHERE user_id = %s AND status = 'canceled' AND current_period_end >= NOW() LIMIT 1;")
+        sql = schemafy(
+            "SELECT 1 FROM enhancifai.stripe_subscriptions WHERE user_id = %s "
+            "AND status = 'canceled' AND current_period_end >= NOW() LIMIT 1;"
+        )
         result = read_db.do('select_one', sql=sql, data=(user_id,))
         return bool(result)
 
