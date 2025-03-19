@@ -1,6 +1,5 @@
 from pydantic import Field
 from pydantic_settings import BaseSettings
-from typing import Optional
 
 class Settings(BaseSettings):
     # Database configuration
@@ -9,21 +8,21 @@ class Settings(BaseSettings):
     db_username: str = Field(..., env="DB_USERNAME")
     db_password: str = Field(..., env="DB_PASSWORD")
     db_schema: str = Field(..., env="DB_SCHEMA")
-    
+
     # Server configuration
     server_host: str = Field("127.0.0.1", env="SERVER_HOST")
     server_port: int = Field(8000, env="SERVER_PORT")
-    
+
     # AI and integration settings
     openai_api_key: str = Field(..., env="OPENAI_API_KEY")
     jwt_secret_key: str = Field(..., env="JWT_SECRET_KEY")
-    
+
     # Admin settings
     admin_user_id: int = Field(..., env="ADMIN_USER_ID")
-    
+
     # Application settings
     app_version: str = Field("1.0.0", env="APP_VERSION")
-    
+
     # Additional configuration
     backend_url: str = Field(..., env="BACKEND_URL")
     api_key: str = Field(..., env="API_KEY")
@@ -40,7 +39,7 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = Field(..., env="STRIPE_WEBHOOK_SECRET")
     stripe_subscription_price_id: str = Field(..., env="STRIPE_SUBSCRIPTION_PRICE_ID")
     billing_start: str = Field(..., env="BILLING_START")
-    
+
     class Config:
         pass
 
