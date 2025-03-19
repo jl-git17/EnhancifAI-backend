@@ -58,11 +58,11 @@ async def admin_billing(credentials: HTTPBasicCredentials = Depends(security)):
         )
 
 @router.post("/admin/ai-settings", tags=["Admin"])
-async def set_admin_settings_ai(settings:AdminAISettings, _: str = Depends(verify_secret_key),
+async def set_admin_settings_ai(settings_admin_ai:AdminAISettings, _: str = Depends(verify_secret_key),
                                 __: int = Depends(get_current_user_id)):
     """Set the Admin settings for AI."""
     # TODO: check if user is an admin
-    AdminSettings.set_ai_settings(engine=settings.ai_engine.value, api_key=settings.api_key)
+    AdminSettings.set_ai_settings(engine=settings_admin_ai.ai_engine.value, api_key=settings_admin_ai.api_key)
     return JSONResponse(status_code=200, content={"message": "Success."})
 
 @router.get("/admin/prompt-improver", tags=["Admin"])
