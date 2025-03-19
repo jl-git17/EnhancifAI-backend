@@ -16,7 +16,6 @@ import openpyxl
 import pandas as pd
 
 from enhancifai_backend.config import settings
-from enhancifai_backend.database.handlers.billing import BillingDbCore
 from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.stripe import StripeDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
@@ -66,7 +65,7 @@ def read_prompt_file(prompt_file_path: str):
                 columns = columns.replace(" ", "").upper()
                 if (columns != '*' and not all(c.isalpha() and
                             len(c) == 1 for c in columns.split('+'))):
-                    if ('+' not in columns):
+                    if '+' not in columns:
                         errors.append(
                             "'Columns being Referenced' must be separated "
                             "by a '+' (plus) character."
@@ -246,7 +245,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
             status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
             detail="User has not consented for AI usage."
         )
-    
+
     is_subscribed = StripeDbCore.is_user_subscribed(user_id)
     is_cancelled_active = StripeDbCore.is_user_subscribed_cancelled(user_id)
     uncapped = is_subscribed or is_cancelled_active
@@ -570,7 +569,7 @@ async def upload_direct_prompt(
         )
         logging.info("Read %s prompts successfully", len(read_prompts))
     except HTTPException as e:
-        logging.exception(f"Error reading prompt objects: {e}")
+        logging.exception("Error reading prompt objects: %s", e)
         raise e
     except Exception as e:
         logging.exception("Error reading prompt objects")
