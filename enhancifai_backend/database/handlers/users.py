@@ -400,7 +400,7 @@ class UsersDbRegisterTokens:
     """
 
     @classmethod
-    def check_user_register_token(cls, email, token):
+    def check_user_register_token(cls, _email, token):
         """
         Verify the existence of an unredeemed registration token for the given email.
 
@@ -413,7 +413,7 @@ class UsersDbRegisterTokens:
         """
         sql = schemafy("SELECT * FROM enhancifai.user_register_tokens WHERE token = %s AND redeemed = FALSE")
         return read_db.do('select_exists', sql=sql, data=(token,))
-    
+
     @classmethod
     def get_email_from_register_token(cls, token):
         """
