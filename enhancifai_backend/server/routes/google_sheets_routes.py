@@ -59,14 +59,17 @@ async def login_sheets(user_id: int = Depends(get_current_user_id)):
     # Check AI consent
     ai_consent = UsersDbCore.check_ai_consent(user_id)
     if ai_consent is False:
-        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
-    
+        raise HTTPException(
+            status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+            detail="User has not consented for AI usage."
+        )
+
     flow = get_flow()
     authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
-    
+
     # Store state in the database
     SheetsDbCore.store_oauth_state(user_id, state)
-    
+
     return JSONResponse(status_code=200, content={"status": "success", "url": authorization_url})
 
 
@@ -75,11 +78,11 @@ async def oauth2callback(request: Request):
     state = request.query_params.get("state")
     if not state:
         raise HTTPException(status_code=400, detail="Missing state parameter")
-    
+
     user_id = SheetsDbCore.get_oauth_state(state)
     if not user_id:
         raise HTTPException(status_code=400, detail="Invalid state parameter")
-    
+
     _url = str(request.url).replace("http://", "https://")
     flow = get_flow(state)
     try:
@@ -88,16 +91,19 @@ async def oauth2callback(request: Request):
         raise HTTPException(status_code=400, detail=f"Token fetch failed: {str(e)}")
 
     creds = flow.credentials
-    
+
     SheetsDbCore.update_user_google_credentials(user_id, creds)
     SheetsDbCore.delete_oauth_state(state)
-    
+
     #return RedirectResponse(url="/")
     return "Authentication successful. You can close this window."
 
 @router.post("/sheets/export", tags=["Google Sheets"], operation_id="export_to_sheets_operation")
-async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: int = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
-    
+async def export_to_sheets(
+    req_sheets: ExportSheetsRequest,
+    user_id: int = Depends(get_current_user_id),
+    _: str = Depends(verify_secret_key)
+):
     """
     Export run data to a Google Sheets document.
 
@@ -106,7 +112,8 @@ async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: int = Depen
     - **req_sheets**: The request body containing the `run_id` of the data to be exported.
     - **user_id**: The ID of the authenticated user. This is fetched automatically by dependency injection (`token`).
 
-    Returns a JSON response containing the status of the export operation and the URL of the created Google Sheets document if successful.
+    Returns a JSON response containing the status of the export operation
+        and the URL of the created Google Sheets document if successful.
 
     - **200**: Successfully processed request.
       - **content**: `{"status": "success", "url": "<Google Sheets URL>"}`
@@ -121,11 +128,14 @@ async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: int = Depen
     - **500**: Internal server error.
       - **detail**: Error message detailing what went wrong.
     """
-    
+
     # Check AI consent
     ai_consent = UsersDbCore.check_ai_consent(user_id)
     if ai_consent is False:
-        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
+        raise HTTPException(
+            status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+            detail="User has not consented for AI usage."
+        )
 
     file_path = RunsDbCore.get_run_file_url(req_sheets.run_id)
     source_filename = RunsDbCore.get_source_filename(req_sheets.run_id)
@@ -138,13 +148,25 @@ async def export_to_sheets(req_sheets: ExportSheetsRequest, user_id: int = Depen
             sheet_url = f"https://docs.google.com/spreadsheets/d/{result['spreadsheetId']}"
             return JSONResponse(status_code=200, content={"status": "success", "url": sheet_url})
         elif isinstance(result, HTTPException):
-            return JSONResponse(status_code=200, content={"status": "failed", "status_code": result.status_code, "error": result.detail})
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "status": "failed",
+                    "status_code": result.status_code,
+                    "error": result.detail
+                }
+            )
     except Exception as e:
         print(e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 @router.get("/sheets/list", tags=["Google Sheets"], operation_id="list_sheets_operation")
-async def list_sheets(search_name: Optional[str] = "", page: Optional[int] = 1, user_id: int = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
+async def list_sheets(
+    search_name: Optional[str] = "",
+    page: Optional[int] = 1,
+    user_id: int = Depends(get_current_user_id),
+    _: str = Depends(verify_secret_key)
+):
     """
     List and search Google Sheets for the authenticated user with pagination.
 
@@ -158,12 +180,23 @@ async def list_sheets(search_name: Optional[str] = "", page: Optional[int] = 1, 
     Returns a JSON response containing the list of sheets with their names, IDs, and nextPageToken.
 
     - **200**: Successfully retrieved list of sheets.
-      - **content**: `{"sheets": [{"spreadsheet_id": "<ID>", "sheet_name": "<Name>", "worksheets": ["<worksheet1>", "<worksheet2>"]}], "nextPageToken": "<Token>"}`
+      - **content**:
+        ```
+            {
+                "sheets": [{"spreadsheet_id": "<ID>",
+                "sheet_name": "<Name>",
+                "worksheets": ["<worksheet1>", "<worksheet2>"]}],
+                "nextPageToken": "<Token>"
+            }
+        ```
     """
     # Check AI consent
     ai_consent = UsersDbCore.check_ai_consent(user_id)
     if ai_consent is False:
-        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
+        raise HTTPException(
+            status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+            detail="User has not consented for AI usage."
+        )
 
     handler = GoogleSheetsHandler(user_id)
     page_token = None if page == 1 else page
@@ -171,7 +204,11 @@ async def list_sheets(search_name: Optional[str] = "", page: Optional[int] = 1, 
     return JSONResponse(status_code=200, content=result)
 
 @router.get("/sheets/data", tags=["Google Sheets"], operation_id="get_data_sheets_operation")
-async def get_sheet_data(sheet_id: str, worksheet_name: str = None, user_id: int = Depends(get_current_user_id), _: str = Depends(verify_secret_key)):
+async def get_sheet_data(
+    sheet_id: str, worksheet_name: str = None,
+    user_id: int = Depends(get_current_user_id),
+    _: str = Depends(verify_secret_key)
+):
     """
     Retrieve the data contained in the specified Google Sheet for the authenticated user.
 
@@ -188,8 +225,11 @@ async def get_sheet_data(sheet_id: str, worksheet_name: str = None, user_id: int
     # Check AI consent
     ai_consent = UsersDbCore.check_ai_consent(user_id)
     if ai_consent is False:
-        raise HTTPException(status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS, detail="User has not consented for AI usage.")
-    
+        raise HTTPException(
+            status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
+            detail="User has not consented for AI usage."
+        )
+
     handler = GoogleSheetsHandler(user_id)
     try:
         result = handler.get_sheet_as_dataframe(sheet_id, worksheet_name)
@@ -202,4 +242,5 @@ async def get_sheet_data(sheet_id: str, worksheet_name: str = None, user_id: int
     except HTTPException as e:
         raise e
     except Exception as e:
+        print(e)
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
