@@ -689,7 +689,7 @@ class BillingDbCore:
         data = (invoice_id,)
         result = read_db.do('select_one', sql=sql, data=data)
         return result['user_id'] if result else None
-    
+
     @classmethod
     def get_user_active_subscription(cls, user_id):
         """
@@ -782,7 +782,10 @@ class BillingDbCore:
         return result['latest_payment_date'] if result and result['latest_payment_date'] else None
 
     @classmethod
-    def update_stripe_invoice_retry_info(cls, invoice_id, retry_attempt, first_retry_at=None, second_retry_at=None, service_cutoff_at=None):
+    def update_stripe_invoice_retry_info(
+        cls, invoice_id, retry_attempt, first_retry_at=None,
+        second_retry_at=None, service_cutoff_at=None
+    ):
         """
         Update the retry information for a given internal invoice in stripe_invoices.
         
@@ -803,7 +806,7 @@ class BillingDbCore:
         """)
         data = (retry_attempt, first_retry_at, second_retry_at, service_cutoff_at, invoice_id)
         write_db.do('execute', sql=sql, data=data)
-    
+
     @classmethod
     def add_stripe_invoice_retry_count(cls, invoice_id):
         """
@@ -821,7 +824,11 @@ class BillingDbCore:
         write_db.do('execute', sql=sql, data=data)
 
     @classmethod
-    def update_stripe_subscription_retry_info(cls, subscription_id, payment_retry_attempt, first_payment_retry_at=None, second_payment_retry_at=None, service_cutoff_at=None):
+    def update_stripe_subscription_retry_info(
+        cls, subscription_id, payment_retry_attempt,
+        first_payment_retry_at=None, second_payment_retry_at=None,
+        service_cutoff_at=None
+    ):
         """
         Update the retry information for a given subscription in stripe_subscriptions.
         
@@ -840,9 +847,12 @@ class BillingDbCore:
                 service_cutoff_at = %s
             WHERE subscription_id = %s;
         """)
-        data = (payment_retry_attempt, first_payment_retry_at, second_payment_retry_at, service_cutoff_at, subscription_id)
+        data = (
+            payment_retry_attempt, first_payment_retry_at,
+            second_payment_retry_at, service_cutoff_at, subscription_id
+        )
         write_db.do('execute', sql=sql, data=data)
-    
+
     @classmethod
     def add_stripe_subscription_retry_count(cls, subscription_id):
         """
