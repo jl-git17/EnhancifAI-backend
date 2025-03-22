@@ -214,15 +214,15 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
             else:
                 raise HTTPException(status_code=400, detail=f"Run ID '{req_run.run_id}' not found.")
         except HTTPException as e:
+            logging.error(e)
             if attempt < retries - 1:
                 await asyncio.sleep(0.5)  # wait for 2 seconds before retrying
                 continue
             else:
-                print(e)
                 return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
         except Exception as e:
             # Catch-all for unexpected errors
-            print(e)
+            logging.error(e)
             return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
     # If we get here, it means all retries have failed
     return JSONResponse(
