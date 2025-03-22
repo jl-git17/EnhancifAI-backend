@@ -298,11 +298,12 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
         if not prompt_file_suffix:
             raise HTTPException(status_code=400, detail="Invalid prompt file type")
 
-        # Handling Data File
+        # Handling Data File with empty content check
         with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
             temp_data_file_path = temp_data_file.name
             data_contents = await data_file.read()
-
+            if not data_contents:
+                raise HTTPException(status_code=400, detail="Data file is empty.")
             temp_data_file.write(data_contents)
             temp_data_file.flush()
 
@@ -321,7 +322,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
         if df.shape[0] > max_recs:
             raise HTTPException(status_code=400, detail="Trial User maximum exceeded - Maximum 20 rows per file allowed")
 
-    # Handle Prompt File
+    # Handle Prompt File with empty content check
     if uncapped:
         max_prompts = 0
     else:
@@ -329,6 +330,8 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
     with NamedTemporaryFile(delete=False, dir='/tmp', suffix=prompt_file_suffix) as temp_prompt_file:
         temp_prompt_file_path = temp_prompt_file.name
         prompt_contents = await prompt_file.read()
+        if not prompt_contents:
+            raise HTTPException(status_code=400, detail="Prompt file is empty.")
         temp_prompt_file.write(prompt_contents)
         temp_prompt_file.flush()
         prompt_format = 'csv' if prompt_file_suffix == '.csv' else 'excel'
@@ -504,12 +507,14 @@ async def upload_direct_prompt(
             logging.error("Invalid prompt file type for content type: %s", data_file.content_type)
             raise HTTPException(status_code=400, detail="Invalid prompt file type")
 
-        # Handling Data File
+        # Handling Data File with empty content check
         try:
             with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
                 temp_data_file_path = temp_data_file.name
                 logging.debug("Created temporary data file at %s", temp_data_file_path)
                 data_contents = await data_file.read()
+                if not data_contents:
+                    raise HTTPException(status_code=400, detail="Data file is empty.")
                 logging.debug("Read %s bytes from data file", len(data_contents))
                 temp_data_file.write(data_contents)
                 temp_data_file.flush()
@@ -671,7 +676,7 @@ async def upload_prompts(prompt_file: UploadFile = File(...), _: str = Depends(v
         if not prompt_file_suffix:
             raise HTTPException(status_code=400, detail="Invalid prompt file type")
 
-        # Handle Prompt File
+        # Handle Prompt File with empty content check
         if uncapped:
             max_prompts = 0
         else:
@@ -679,6 +684,8 @@ async def upload_prompts(prompt_file: UploadFile = File(...), _: str = Depends(v
         with NamedTemporaryFile(delete=False, dir='/tmp', suffix=prompt_file_suffix) as temp_prompt_file:
             temp_prompt_file_path = temp_prompt_file.name
             prompt_contents = await prompt_file.read()
+            if not prompt_contents:
+                raise HTTPException(status_code=400, detail="Prompt file is empty.")
             temp_prompt_file.write(prompt_contents)
             temp_prompt_file.flush()
             prompt_format = 'csv' if prompt_file_suffix == '.csv' else 'excel'
