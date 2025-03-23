@@ -197,7 +197,6 @@ class OpenAIConnector:
                     }
                 )
 
-                print(f"MODEL: {self.engine}")
 
                 completion = self.client.chat.completions.create(
                     model=self.engine,
@@ -285,7 +284,7 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            'Process each DATA entry based on the query. Return results as a JSON object ({"results": ["answer","answer"]}). '
+                            'Process each DATA entry based on the query. Return results as a JSON array (["answer","answer"]). '
                             "Each `results` array item should be a concise answer to the query in plain text unless the query instructs otherwise."
                         )
                     },
@@ -300,6 +299,7 @@ class OpenAIConnector:
                     }
                 ]
 
+                print(f"MODEL: {self.engine}")
 
                 completion = self.client.chat.completions.create(
                     model=self.engine,
