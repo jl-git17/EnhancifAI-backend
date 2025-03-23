@@ -285,7 +285,7 @@ class OpenAIConnector:
                         "role": "system",
                         "content": (
                             'Process each DATA entry based on the query. Return results as a JSON array (["answer string","answer string"]). '
-                            "Each `results` array item should be a concise answer to the query in plain text unless the query explicitly instructs otherwise."
+                            "One concise answer for each DATA entry, in plain text format unless the query explicitly instructs otherwise."
                         )
                     },
                     {
