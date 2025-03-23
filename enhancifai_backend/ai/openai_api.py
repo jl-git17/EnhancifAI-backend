@@ -337,8 +337,14 @@ class OpenAIConnector:
                     # Build the output. Each row gets a dict with the concatenated answers
                     results = []
                     for line in _results:
+                        if isinstance(line, list):
+                            # If the line is a list, we need to join it into a single string
+                            line = ' '.join(line)
+                        elif not isinstance(line, str):
+                            # If it's not a string, we need to convert it to a string
+                            line = str(line)
                         results.append({
-                            "content": line,
+                            "content": line.strip('["').strip('"]'),
                             "input_tokens": input_tokens,
                             "output_tokens": output_tokens,
                             "engine_used": self.engine
