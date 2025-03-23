@@ -283,17 +283,17 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            f"Query: {query}\n"
-                            "---\n"
-                            "DATA:\n"
-                            f"{json.dumps(rows)}"
+                            "For each provided data entry, process the query. Return the results "
+                            "in a JSON array. One string for each entry containing the full answer to the user's query only."
                         )
                     },
                     {
                         "role": "user",
                         "content": (
-                            "For each data entry, process the query. Return the results "
-                            "in a JSON array. One string for each entry containing the full answer to the user's query only."
+                            f"Query: {query}\n"
+                            "---\n"
+                            "DATA:\n"
+                            f"{json.dumps(rows)}"
                         )
                     }
                 ]
