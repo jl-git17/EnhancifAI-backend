@@ -305,7 +305,7 @@ class OpenAIConnector:
                     model=self.engine,
                     messages=messages,
                     #response_format={"type": "json_object"}
-                    #temperature=0.5
+                    temperature=0.5
                 )
 
                 raw_data = completion.choices[0].message.content
