@@ -284,7 +284,8 @@ class OpenAIConnector:
                         "role": "system",
                         "content": (
                             "For each provided data entry, process the query. Return the results "
-                            "in a JSON array. One string for each entry containing the full answer to the user's query only."
+                            "in a JSON array. One string for each entry containing the full answer to the user's query, "
+                            "in plaint text (unless query instructs otherwise)."
                         )
                     },
                     {
