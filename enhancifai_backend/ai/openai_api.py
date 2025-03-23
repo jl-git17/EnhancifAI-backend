@@ -283,8 +283,8 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            "Process each DATA entry based on the query. Return results as a JSON array. "
-                            "Each array item should be a concise answer to the query in plain text unless the query instructs otherwise."
+                            'Process each DATA entry based on the query. Return results as a JSON object ({"results": ["answer","answer"]}). '
+                            "Each `results` array item should be a concise answer to the query in plain text unless the query instructs otherwise."
                         )
                     },
                     {
@@ -301,7 +301,8 @@ class OpenAIConnector:
 
                 completion = self.client.chat.completions.create(
                     model=self.engine,
-                    messages=messages
+                    messages=messages,
+                    response_format="json_object",
                     #temperature=0.5
                 )
 
@@ -328,12 +329,12 @@ class OpenAIConnector:
                         raw_data = raw_data[3:-3].strip('```').strip('\n')
 
                     _results = json.loads(raw_data)
-                    if not isinstance(_results, list):
+                    if not isinstance(_results, dict):
                         print("Unexpected JSON structure:", type(_results))
-                        os._exit(1)
+                        return
                     # Build the output. Each row gets a dict with the concatenated answers
                     results = []
-                    for line in _results:
+                    for line in _results['results']:
                         results.append({
                             "content": line,
                             "input_tokens": input_tokens,
