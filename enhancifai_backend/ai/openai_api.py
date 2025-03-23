@@ -283,9 +283,8 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            "For each provided data entry, process the query. Return the results "
-                            "in a JSON array. One string for each entry containing the full answer to the user's query, "
-                            "in plaint text (unless query instructs otherwise)."
+                            "Process each DATA entry based on the query. Return results as a JSON array. "
+                            "Each array item should be a concise answer to the query in plain text unless the query instructs otherwise."
                         )
                     },
                     {
