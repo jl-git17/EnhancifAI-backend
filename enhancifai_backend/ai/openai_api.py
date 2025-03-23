@@ -197,6 +197,8 @@ class OpenAIConnector:
                     }
                 )
 
+                print(f"MODEL: {self.engine}")
+
                 completion = self.client.chat.completions.create(
                     model=self.engine,
                     messages=messages,
