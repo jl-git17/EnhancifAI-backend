@@ -331,12 +331,12 @@ class OpenAIConnector:
                         raw_data = raw_data[3:-3].strip('```').strip('\n')
 
                     _results = json.loads(raw_data)
-                    if not isinstance(_results, dict):
+                    if not isinstance(_results, list):
                         print("Unexpected JSON structure:", type(_results))
                         return
                     # Build the output. Each row gets a dict with the concatenated answers
                     results = []
-                    for line in _results['results']:
+                    for line in _results:
                         results.append({
                             "content": line,
                             "input_tokens": input_tokens,
