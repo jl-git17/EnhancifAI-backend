@@ -52,11 +52,6 @@ CREATE TABLE IF NOT EXISTS enhancifai.internal_invoices (
     metadata JSONB,
     paid_at TIMESTAMP
 );
--- temp
-ALTER TABLE enhancifai.internal_invoices
-    ADD COLUMN
-    IF NOT EXISTS
-        email_sent BOOLEAN DEFAULT false;
 
 -- Create sequence if it does not exist
 CREATE SEQUENCE IF NOT EXISTS enhancifai.invoice_number_seq
@@ -256,9 +251,6 @@ CREATE TABLE IF NOT EXISTS enhancifai.users_additional_credits (
     credits INT NOT NULL,
     created_at TIMESTAMP DEFAULT now() NOT NULL
 );
-
-DROP TABLE IF EXISTS enhancifai.model_prices CASCADE;
-DROP TABLE IF EXISTS enhancifai.model_price_history CASCADE;
 
 CREATE TABLE IF NOT EXISTS enhancifai.model_pricing (
     model_name VARCHAR(100) NOT NULL,
