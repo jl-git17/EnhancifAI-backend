@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 from typing import Dict, List, Optional
 
 from enhancifai_backend.database.access import read_db, write_db
@@ -303,7 +304,7 @@ class UsersDbCore:
             result = read_db.do('select_one', sql=sql, data=data)
             return result['created_at'] if result else None
         except Exception as e:
-            print(f"Error fetching date of joining for user {user_id}: {str(e)}",)
+            logging.error(f"Error fetching date of joining for user {user_id}: {str(e)}",)
             return None
 
     @classmethod

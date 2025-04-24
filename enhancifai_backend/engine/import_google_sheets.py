@@ -1,3 +1,4 @@
+import logging
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
 from google.auth.exceptions import RefreshError
@@ -26,14 +27,15 @@ class GoogleSheetsHandler:
                     # Update the refreshed credentials in the database
                     SheetsDbCore.update_user_google_credentials(self.user_id, creds)
                 except RefreshError:
+                    logging.error(f"Failed to refresh Google credentials for user {self.user_id}")
                     SheetsDbCore.delete_user_google_credentials(self.user_id)
                     raise HTTPException(
                         status_code=403,
                         detail="Google credentials are invalid or expired, re-authentication required."
                     )
             else:
+                logging.error(f"Google credentials for user {self.user_id} are invalid or expired")
                 raise HTTPException(status_code=403, detail="Google credentials are invalid or expired")
-        print(f"Found creds: {creds}")
         return creds
 
     def list_google_sheets(self, page_size=10, page_token=None):

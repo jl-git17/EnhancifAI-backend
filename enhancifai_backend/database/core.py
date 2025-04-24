@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import time
@@ -41,10 +42,10 @@ class DbSession:
 
         except psycopg2.OperationalError as e:
             if self.config['db_name'] in e.args[0] and "does not exist" in e.args[0]:
-                print(f"No database found. Please create a '{self.config['db_name']}' database in PostgreSQL.")
+                logging.error(f"No database found. Please create a '{self.config['db_name']}' database in PostgreSQL.")
                 os._exit(1)
             else:
-                print(e)
+                logging.error(e)
                 os._exit(1)
 
     def _process(self, query_type, sql='', data=None):
@@ -71,17 +72,17 @@ class DbSession:
             except psycopg2.InterfaceError as err:
                 if "connection" in err.args[0]:
                     attempt += 1
-                    print(f"Connection lost. Attempting to reconnect... (Attempt {attempt}/{RETRY_LIMIT})")
+                    logging.error(f"Connection lost. Attempting to reconnect... (Attempt {attempt}/{RETRY_LIMIT})")
                     time.sleep(RETRY_DELAY)  # Delay before retrying
                     self.new_conn()
                 else:
-                    print(f"An unexpected database error occurred: {err}")
+                    logging.error(f"An unexpected database error occurred: {err}")
                     raise
             except Exception as e:
-                print(f"Error in SQL: {sql} | Data: {data}")
-                print(f"An unexpected error occurred: {e}")
+                logging.error(f"Error in SQL: {sql} | Data: {data}")
+                logging.error(f"An unexpected error occurred: {e}")
                 raise
-        print("Reached the maximum number of retries for reconnection. Exiting.")
+        logging.error("Reached the maximum number of retries for reconnection. Exiting.")
         os._exit(1)
 
     def _select(self, sql, data):

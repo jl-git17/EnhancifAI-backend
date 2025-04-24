@@ -1,4 +1,5 @@
 import json
+import logging
 import string
 import time
 import threading
@@ -55,11 +56,11 @@ class ExcelHandler:
         try:
             self.data = pd.read_excel(self.file_path).to_dict(orient='records')
             if not self.data:
-                print("Excel file is empty.")
+                logging.debug("Excel file is empty.")
                 return False
             return True
         except Exception as e:
-            print(f"Error loading Excel file: {e}")
+            logging.error(f"Error loading Excel file: {e}")
             return False
 
     def process_excel(self, prompts: list, max_records=0):
@@ -298,7 +299,7 @@ class ExcelHandler:
 
     def save_excel(self):
         if not self.data:
-            print("No data to save.")
+            logging.error("No data to save.")
             return
         df = pd.DataFrame(self.data)
         df.to_excel(self.output_file, index=False)

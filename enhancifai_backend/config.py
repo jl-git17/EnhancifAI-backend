@@ -2,6 +2,8 @@ from pydantic import Field
 from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
+    # Production settings
+    production: bool = Field(False, env="PRODUCTION")
     # Database configuration
     db_host: str = Field(..., env="DB_HOST")
     db_name: str = Field(..., env="DB_NAME")

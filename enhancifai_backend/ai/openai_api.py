@@ -82,11 +82,11 @@ def extract_and_parse_json(raw_data):
 
     if match:
         json_str = match.group(1).strip()
-        print("Extracted JSON from code block.")
+        logging.debug("Extracted JSON from code block.")
     else:
         # If no code block is found, assume the entire raw_data is JSON
         json_str = raw_data.strip()
-        print("No code block detected. Using entire raw_data as JSON.")
+        logging.debug("No code block detected. Using entire raw_data as JSON.")
 
     try:
         # Parse the JSON string
@@ -115,7 +115,7 @@ class PromptImproverSettings:
                 self._prompt = from_db['prompt']
                 self._ai_engine = from_db['ai_engine']
         except Exception as e:
-            print(e)
+            logging.error(e)
 
     # Getter for prompt
     @property
@@ -174,7 +174,7 @@ class OpenAIConnector:
 
         # Check rate limit manager
         self.engine = rate_limit_manager.can_make_api_call(model=self.engine,run_id=run_id)
-        #print(f"Got engine from rlm: {self.engine}")
+        #logging.debug(f"Got engine from rlm: {self.engine}")
 
         for attempt in range(max_attempts):
             try:
@@ -229,7 +229,7 @@ class OpenAIConnector:
                 }
 
             except Exception as e:
-                print(e)
+                logging.error(e)
                 if getattr(e, 'status_code', None) == 429:
                     try:
                         # Use the compiled pattern to search the string
@@ -243,10 +243,10 @@ class OpenAIConnector:
                         delay = 5  # Default to 5 seconds if parsing fails
 
                     sleep_time = delay * BUFFER_MULTIPLIER  # Add a buffer time
-                    print(f"Rate limit exceeded. Waiting for {sleep_time} seconds before retrying...")
+                    logging.debug(f"Rate limit exceeded. Waiting for {sleep_time} seconds before retrying...")
                     time.sleep(sleep_time)
                 else:
-                    print(f"OpenAI API error on attempt {attempt + 1}: {e}")
+                    logging.error(f"OpenAI API error on attempt {attempt + 1}: {e}")
                     _err = e
                     if attempt < max_attempts - 1:
                         # Exponential backoff with a base delay of 1 second
@@ -256,7 +256,7 @@ class OpenAIConnector:
         if _err is None:
             raise RuntimeError("Failed to get answer from OpenAI API after 3 attempts.")
         else:
-            print("Failed to get answer from OpenAI API after 3 attempts.")
+            logging.error("Failed to get answer from OpenAI API after 3 attempts.")
             return {'content': _err, 'tokens': 0}
 
     def process_csv_rows(
@@ -299,7 +299,7 @@ class OpenAIConnector:
                     }
                 ]
 
-                print(f"MODEL: {self.engine}")
+                logging.debug(f"MODEL: {self.engine}")
 
                 completion = self.client.chat.completions.create(
                     model=self.engine,
@@ -310,7 +310,7 @@ class OpenAIConnector:
 
                 raw_data = completion.choices[0].message.content
 
-                print(f"Raw data: {raw_data}")
+                logging.debug(f"Raw data: {raw_data}")
 
                 tokens_used = completion.usage.total_tokens
                 input_tokens = completion.usage.prompt_tokens
@@ -332,7 +332,7 @@ class OpenAIConnector:
 
                     _results = json.loads(raw_data)
                     if not isinstance(_results, list):
-                        print("Unexpected JSON structure:", type(_results))
+                        logging.error("Unexpected JSON structure:", type(_results))
                         return
                     # Build the output. Each row gets a dict with the concatenated answers
                     results = []
@@ -353,11 +353,11 @@ class OpenAIConnector:
 
                 except json.JSONDecodeError:
                     # The AI returned something that's not valid JSON. We'll treat that as an error
-                    print(f"Failed to parse JSON array from AI: {raw_data}. Type: {type(raw_data)}")
+                    logging.error(f"Failed to parse JSON array from AI: {raw_data}. Type: {type(raw_data)}")
                     raise RuntimeError("AI did not return valid JSON array")
 
             except Exception as e:
-                print(f"Attempt {attempt + 1} failed with error: {e}")
+                logging.error(f"Attempt {attempt + 1} failed with error: {e}")
                 if hasattr(e, 'status_code'):
                     if e.status_code == 429:
                         # Rate-limiting
@@ -367,20 +367,20 @@ class OpenAIConnector:
                         else:
                             delay = 5
                         sleep_time = delay * BUFFER_MULTIPLIER
-                        print(f"Rate limit reached. Waiting {sleep_time} seconds before retrying...")
+                        logging.debug(f"Rate limit reached. Waiting {sleep_time} seconds before retrying...")
                         time.sleep(sleep_time)
                 else:
                     _err = e
                     if attempt < max_attempts - 1:
                         backoff_time = 2 ** attempt
-                        print(f"Error encountered. Retrying in {backoff_time} seconds...")
+                        logging.error(f"Error encountered. Retrying in {backoff_time} seconds...")
                         time.sleep(backoff_time)
 
         # If we got here, attempts all failed
         if _err is None:
             raise RuntimeError("Failed to get answer from OpenAI API after 3 attempts.")
         else:
-            print("Failed to get answer from OpenAI API after 3 attempts.")
+            logging.error("Failed to get answer from OpenAI API after 3 attempts.")
             return [{'content': str(_err), 'tokens': 0, 'engine_used': self.engine}]
 
 
@@ -437,7 +437,7 @@ class OpenAIConnector:
                 # Handle the case where the response is not a valid JSON string
                 raise HTTPException(status_code=500, detail="Failed to parse JSON from assistant response.")
             except Exception as e:
-                print(e)
+                logging.error(e)
                 if getattr(e, 'status_code', None) == 429: # pylint: disable:no-member
                     try:
                         # Use the compiled pattern to search the string
@@ -452,10 +452,10 @@ class OpenAIConnector:
                         delay = 5  # Default to 5 seconds if parsing fails
 
                     sleep_time = delay * BUFFER_MULTIPLIER  # Add a buffer time
-                    print(f"Rate limit exceeded. Waiting for {sleep_time} seconds before retrying...")
+                    logging.debug(f"Rate limit exceeded. Waiting for {sleep_time} seconds before retrying...")
                     time.sleep(sleep_time)
                 else:
-                    print(f"OpenAI API error on attempt {attempt + 1}: {e}")
+                    logging.error(f"OpenAI API error on attempt {attempt + 1}: {e}")
                     _err = e
                     if attempt < 2:
                         # Exponential backoff with a base delay of 1 second
@@ -464,6 +464,6 @@ class OpenAIConnector:
         if _err is None:
             raise RuntimeError("Failed to get answer from OpenAI API after 3 attempts.")
         else:
-            print("Failed to get answer from OpenAI API after 3 attempts.")
-            print(_err)
+            logging.error("Failed to get answer from OpenAI API after 3 attempts.")
+            logging.error(_err)
             raise HTTPException(status_code=500, detail="Failed to get answer from OpenAI API after 3 attempts.")

@@ -9,8 +9,13 @@ from enhancifai_backend.database.core import DbSession
 from enhancifai_backend.database.handlers.utils import schemafy
 from enhancifai_backend.server.serve import run_server
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
+
+# Configure logging to stdout with a specific format
+production = settings.production
+logging.basicConfig(
+    level=logging.ERROR if production else logging.DEBUG,
+    handlers=[logging.StreamHandler(sys.stdout)]  # Ensure logs go to stdout
+)
 
 SOURCE_DIR = os.path.join(os.path.dirname(__file__), "database", "sql")
 
@@ -22,14 +27,14 @@ def process_sql_file(db: DbSession, filename: str) -> None:
             sql = schemafy(file.read())
             db.do('execute', sql)
     except IOError as e:
-        print(f"Error reading file {filename}: {e}")
+        logging.error(f"Error reading file {filename}: {e}")
         sys.exit(1)
 
 def prepare_database(db: DbSession) -> None:
     """Prepares the database by creating a schema and processing SQL files."""
     schema_name = settings.db_schema
     if not schema_name:
-        print("Environment variable 'DB_SCHEMA' not set.")
+        logging.error("Environment variable 'DB_SCHEMA' not set.")
         sys.exit(1)
 
     db.do('execute', f"CREATE SCHEMA IF NOT EXISTS {schema_name};")

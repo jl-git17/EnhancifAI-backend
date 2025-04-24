@@ -557,7 +557,7 @@ class BillingDbCore:
             return result is not None  # If result is not None, user has at least one invoice
 
         except Exception as e:
-            print(f"Error checking if user {user_id} has any invoices: {str(e)}")
+            logging.error(f"Error checking if user {user_id} has any invoices: {str(e)}")
             raise RuntimeError(f"Error checking if user {user_id} has any invoices: {str(e)}")
 
     @classmethod

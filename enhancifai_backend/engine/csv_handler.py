@@ -1,6 +1,7 @@
 import csv
 from datetime import datetime, timezone
 import json
+import logging
 import string
 import time
 import threading
@@ -59,16 +60,16 @@ class CSVHandler:
                     csv_reader = csv.DictReader(file)
                     self.data = [row for row in csv_reader]
                     if not self.data:
-                        print("CSV is empty.")
+                        logging.debug("CSV is empty.")
                         return False
                     return True
             except UnicodeDecodeError as e:
-                print(f"Error with encoding {encoding}: {e}")
+                logging.error(f"Error with encoding {encoding}: {e}")
             except Exception as e:
                 errors.append(str(e))
-                print(f"Error loading CSV: {e}")
+                logging.error(f"Error loading CSV: {e}")
                 return '\n'.join(errors)
-        print("Failed to read CSV with all attempted encodings.")
+        logging.error("Failed to read CSV with all attempted encodings.")
         return False
 
     def process_csv(self, prompts: list, max_records=0):
@@ -296,7 +297,7 @@ class CSVHandler:
 
     def save_csv(self):
         if not self.data:
-            print("No data to save.")
+            logging.error("No data to save.")
             return
         with open(self.output_file, 'w', newline='', encoding='utf-8') as file:
             writer = csv.DictWriter(file, fieldnames=self.data[0].keys())
