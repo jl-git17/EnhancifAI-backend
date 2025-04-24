@@ -12,7 +12,6 @@ from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.integrations.sendgrid_api import SendGrid
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def add_one_month(dt):
@@ -44,8 +43,8 @@ def create_and_charge_invoice(
     """
     Automatically create and charge a Stripe invoice when an internal invoice is created.
     """
-    print(
-        f"[DEBUG] create_and_charge_invoice called with user_id={user_id}, "
+    logger.debug(
+        f"create_and_charge_invoice called with user_id={user_id}, "
         f"amount={amount}, currency={currency}"
     )
     try:
@@ -66,7 +65,7 @@ def create_and_charge_invoice(
             )
             if payment_methods.data:
                 default_pm = payment_methods.data[0].id
-                print(f"[DEBUG] Fallback: Using attached payment method {default_pm}")
+                logger.debug(f"Fallback: Using attached payment method {default_pm}")
             else:
                 raise ValueError(f"User {user_id} does not have any saved payment methods.")
 
@@ -79,7 +78,7 @@ def create_and_charge_invoice(
             off_session=True,  # Charges the customer without their confirmation
             description=description
         )
-        print(f"[DEBUG] Successfully charged user {user_id}, PaymentIntent ID: {payment_intent['id']}")
+        logger.debug(f"Successfully charged user {user_id}, PaymentIntent ID: {payment_intent['id']}")
 
         # Record the payment (status updated to "charged")
         StripeDbCore.store_invoice_record(user_id, invoice_id, amount, "charged")
@@ -106,7 +105,7 @@ def create_and_charge_invoice(
         )
         return payment_intent
     except Exception as e:
-        print(f"Error charging customer: {str(e)}")
+        logger.error(f"Error charging customer: {str(e)}")
         SendGrid.send_invoice_payment_failure_email(
             to_email=user['email'],
             user_name=user['name'],
@@ -128,7 +127,7 @@ def generate_monthly_invoices():
     Raises:
         Logs errors and continues processing on individual user failures.
     """
-    print("[DEBUG] Starting generate_monthly_invoices")
+    logger.debug("Starting generate_monthly_invoices")
     try:
         today = datetime.now(timezone.utc)
         first_day_of_current_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -137,16 +136,16 @@ def generate_monthly_invoices():
         )
 
         users = UsersDbCore.get_all_user_ids()
-        print(f"[DEBUG] Retrieved all users: {len(users)} total")
+        logger.debug(f"Retrieved all users: {len(users)} total")
 
         for user_id in users:
             if not StripeDbCore.is_user_subscribed(user_id) and not StripeDbCore.is_user_subscribed_cancelled(user_id):
                 continue
-            print(f"[DEBUG] Processing user_id={user_id}")
+            logger.debug(f"Processing user_id={user_id}")
             invoices_generated = False
             try:
                 last_invoice_end_date = BillingDbCore.get_last_invoice_end_date(user_id)
-                print(f"[DEBUG] Last invoice end date: {last_invoice_end_date}")
+                logger.debug(f"Last invoice end date: {last_invoice_end_date}")
                 if last_invoice_end_date:
                     current_start = last_invoice_end_date + timedelta(days=1)
                     if isinstance(current_start, date) and not isinstance(current_start, datetime):
@@ -175,7 +174,7 @@ def generate_monthly_invoices():
                         0, 0, 0, tzinfo=timezone.utc
                     )
 
-                print(f"[DEBUG] Current start: {current_start}, last day of previous month: {last_day_of_previous_month}")
+                logger.debug(f"Current start: {current_start}, last day of previous month: {last_day_of_previous_month}")
                 if current_start > last_day_of_previous_month:
                     continue
 
@@ -186,7 +185,7 @@ def generate_monthly_invoices():
                     if current_end > last_day_of_previous_month:
                         current_end = last_day_of_previous_month
 
-                    print(f"[DEBUG] Checking invoices for range {current_start} to {current_end}")
+                    logger.debug(f"Checking invoices for range {current_start} to {current_end}")
                     invoice_exists = BillingDbCore.invoice_exists(user_id, current_start, current_end)
                     if not invoice_exists:
                         normal_tokens_per_model_per_day = UsersDbCore.get_user_normal_token_usage_per_model_per_day(
@@ -202,8 +201,8 @@ def generate_monthly_invoices():
                         pi_line_items = []
                         total_amount_cents = Decimal(0)
 
-                        print(f"[DEBUG] Normal usage records: {normal_tokens_per_model_per_day}")
-                        print(f"[DEBUG] PI usage records: {pi_tokens_per_model_per_day}")
+                        logger.debug(f"Normal usage records: {normal_tokens_per_model_per_day}")
+                        logger.debug(f"PI usage records: {pi_tokens_per_model_per_day}")
                         for usage in normal_tokens_per_model_per_day:
                             usage_date = usage['usage_date']
                             model = usage['model']
@@ -267,14 +266,14 @@ def generate_monthly_invoices():
                                 'invoice_month': current_start.strftime('%B'),
                                 'invoice_year': current_start.year
                             }
-                            print(f"[DEBUG] Creating invoice with amount (cents): {_total_amount_cents}")
+                            logger.debug(f"Creating invoice with amount (cents): {_total_amount_cents}")
                             invoice = BillingDbCore.create_invoice(
                                 user_id, _total_amount_cents, description,
                                 current_start.date(), current_end.date(), metadata=metadata_dict
                             )
                             if invoice:
                                 invoices_generated = True
-                                print(f"[DEBUG] Invoice creation successful: {invoice}")
+                                logger.debug(f"Invoice creation successful: {invoice}")
                                 user = UsersDbCore.get_user_by_id(user_id)
                                 SendGrid.send_invoice_email(
                                     to_email=user['email'],
@@ -295,7 +294,7 @@ def generate_monthly_invoices():
                 logger.error("Failed to create invoice for user %s: %s", user_id, str(e), exc_info=True)
     except Exception as e:
         logger.critical("Failed to generate monthly invoices: %s", str(e), exc_info=True)
-    print("[DEBUG] Finished generate_monthly_invoices")
+    logger.debug("Finished generate_monthly_invoices")
 
 def charge_unpaid_invoices():
     """
@@ -308,9 +307,9 @@ def charge_unpaid_invoices():
             # Retrieve the subscription charge date
             subscription_charge_date = BillingDbCore.get_user_subscription_charge_date(user_id)
             today = datetime.now(timezone.utc).date()
-            print(f"[DEBUG] Checking invoice for user {user_id} with charge date {subscription_charge_date}")
-            print(f"[DEBUG] Today's date: {today}")
-            print(f"[DEBUG] Today type: {type(today)},  charge date type: {type(subscription_charge_date)}")
+            logger.debug(f"Checking invoice for user {user_id} with charge date {subscription_charge_date}")
+            logger.debug(f"Today's date: {today}")
+            logger.debug(f"Today type: {type(today)},  charge date type: {type(subscription_charge_date)}")
             # Check if today's date is the subscription charge date; skip if not.
             if subscription_charge_date is None or subscription_charge_date != today:
                 continue
@@ -336,7 +335,7 @@ def charge_unpaid_invoices():
                 elif current_retry == 4 and second_retry_at and now >= second_retry_at + timedelta(hours=4):
                     should_charge = True
 
-                print(f"[DEBUG] current_retry={current_retry}, should_charge={should_charge}")
+                logger.debug(f"current_retry={current_retry}, should_charge={should_charge}")
 
                 if should_charge:
                     create_and_charge_invoice(

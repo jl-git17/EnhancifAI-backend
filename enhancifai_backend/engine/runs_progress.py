@@ -52,7 +52,7 @@ class RunsProgress:
 
         if _run_details is not None:
             run_details = _run_details['run_details']
-            #print(run_details)
+            #logging.debug(run_details)
             if RunsDbCore.is_run_cancelled(run_id):
                 return {'status': 'cancelled'}
             if run_details['status'] == 'completed':
