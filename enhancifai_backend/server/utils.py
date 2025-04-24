@@ -19,7 +19,7 @@ JWT_EXPIRATION = 2  # in days
 STATIC_FILES_DIRECTORY = os.path.join(os.path.dirname(os.path.realpath(__file__)), "files")
 STATIC_PAGES_DIRECTORY = os.path.join(os.path.dirname(os.path.realpath(__file__)), "pages")
 
-VALID_ENGINES = ["gpt-4-turbo", "gpt-3.5-turbo", "gemini", "gpt-4o", "gpt-4o-mini"]
+VALID_ENGINES = ["gpt-4-turbo", "gpt-3.5-turbo", "gemini", "gpt-4o", "gpt-4.1-mini"]
 
 FILE_AGE_LIMIT = 86400  # seconds (1 day)
 
@@ -28,7 +28,7 @@ class AdminSettings:
     """Class to manage AI settings for the application."""
     settings = {
         'ai_api_key': settings.openai_api_key,
-        'ai_engine': 'gpt-4o-mini'
+        'ai_engine': 'gpt-4.1-mini'
     }
 
     @classmethod

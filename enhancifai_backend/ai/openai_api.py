@@ -23,7 +23,7 @@ PI_DEFAULT_PROMPT = (
     "Make sure the prompt takes the role of an expert in the relevant field. "
     "Feel free to enhance the wording, structure, and tone as needed."
 )
-PI_DEFAULT_AI_ENGINE = "gpt-4o-mini"
+PI_DEFAULT_AI_ENGINE = "gpt-4.1-mini"
 ADMIN_USER_ID = settings.admin_user_id
 
 DEFAULT_PROMPT = (

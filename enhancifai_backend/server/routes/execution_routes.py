@@ -37,7 +37,7 @@ EXCEL_MIME_TYPES = ['application/vnd.ms-excel',
 
 class EngineType(str, Enum):
     gpt_4_o = "gpt-4o"
-    gpt_4_o_mini = "gpt-4o-mini"
+    gpt_4_o_mini = "gpt-4.1-mini"
     gpt_3_5_turbo = "gpt-3.5-turbo"
 
 router = APIRouter()
@@ -840,7 +840,7 @@ async def ai_prompt_improver(
         logging.info("new_prompt: %s", new_prompt)
         PromptImproverRunLogsDbCore.insert_log(
             user_id=user_id,
-            engine_model="gpt-4o-mini",
+            engine_model="gpt-4.1-mini",
             log_timestamp=datetime.now(tz=timezone.utc),
             time_elapsed=end_time - start_time,
             num_prompts=1,
