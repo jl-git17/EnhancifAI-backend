@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 
@@ -26,6 +27,5 @@ def delete_old_files():
             # Check if the file is older than the specified age limit
             if current_time - file_mtime > FILE_AGE_LIMIT:
                 os.remove(file_path)
-                print(f"Deleted old file: {file_path}")
         except Exception as e:
-            print(f"Error deleting file {file_path}: {e}")
+            logging.error(f"Error deleting file {file_path}: {e}")

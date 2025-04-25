@@ -41,7 +41,6 @@ class GoogleAuthenticator:
             return data
         else:
             logging.error("Failed to fetch user info: %s, %s", response.status_code, response.text)
-            print(f"Failed to fetch user info: {response.status_code}, {response.text}")
             return None
 
 

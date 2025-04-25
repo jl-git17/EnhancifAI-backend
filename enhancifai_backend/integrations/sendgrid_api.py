@@ -53,9 +53,8 @@ class SendGrid:
             sg = SendGridAPIClient(settings.sendgrid_api_key)
             response = sg.send(message)
             _code, _body, _headers = response.status_code, response.body, response.headers
-            print("Dynamic Messages Sent!")
         except Exception as e:
-            print(f"Error: {e}")
+            logging.error(f"Error: {e}")
 
     @classmethod
     def send_password_reset_email(cls, to_email, token):
@@ -82,9 +81,8 @@ class SendGrid:
             sg = SendGridAPIClient(settings.sendgrid_api_key)
             response = sg.send(message)
             _code, _body, _headers = response.status_code, response.body, response.headers
-            print("Dynamic Messages Sent!")
         except Exception as e:
-            print(f"Error: {e}")
+            logging.error(f"Error: {e}")
 
     @classmethod
     def send_invoice_email(cls, to_email, user_name, invoice_month, invoice_year, invoice_id, user_id):
@@ -199,7 +197,6 @@ class SendGrid:
             logging.debug("Email sent with status code: %s", _code)
             logging.debug("Response body: %s", _body)
             logging.debug("Response headers: %s", _headers)
-            print("Dynamic Messages Sent!")
         except Exception as e:
             logging.error("Error sending email: %s", e)
 
