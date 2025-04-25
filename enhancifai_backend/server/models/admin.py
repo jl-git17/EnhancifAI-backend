@@ -10,6 +10,7 @@ from pydantic import BaseModel, Field
 
 class Engine(str, Enum):
     """Enumeration of available AI engines."""
+    GPT4_1_NANO = "gpt-4.1-nano"
     GPT4_O = "gpt-4o"
     GPT4_O_MINI = "gpt-4o-mini"
     GPT3_5_TURBO = "gpt-3.5-turbo"
