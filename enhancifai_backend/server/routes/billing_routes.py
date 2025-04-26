@@ -3,6 +3,7 @@ import csv
 from datetime import datetime
 from decimal import Decimal
 import io
+import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Header, Query, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -55,7 +56,7 @@ async def get_usage_history(
         # Note: total_tokens is computed as the sum of input_tokens and output_tokens.
         return JSONResponse(status_code=200, content={"usage_history": usage_history})
     except Exception as e:
-        print(e)
+        logging.error(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.get("/billing/usage/download", tags=["Billing"])
@@ -95,7 +96,7 @@ async def download_usage_history(
                 status_code=400, detail="Invalid file format. Choose 'csv' or 'pdf'."
             )
     except Exception as e:
-        print(e)
+        logging.error(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.get("/billing/monthly-balance", tags=["Billing"])
@@ -111,7 +112,7 @@ async def get_monthly_balance(
         monthly_balance = BillingDbCore.get_monthly_balance(user_id)
         return JSONResponse(status_code=200, content={"monthly_balance": monthly_balance})
     except Exception as e:
-        print(e)
+        logging.error(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.get("/billing/usage-by-model", tags=["Billing"])
@@ -134,10 +135,10 @@ async def get_usage_by_model_endpoint(
         return JSONResponse(status_code=200, content={"usage_by_model": usage_by_model})
     except ValueError as ve:
         # Handle validation errors from BillingDbCore
-        print('Validation error in get_usage_by_model: ' + str(ve))
+        logging.error('Validation error in get_usage_by_model: ' + str(ve))
         raise HTTPException(status_code=400, detail=str(ve))
     except Exception as e:
-        print(e)
+        logging.error(e)
         return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
 
@@ -153,7 +154,7 @@ async def get_invoice_history(
         invoice_history = BillingDbCore.get_invoice_history(user_id)
         return JSONResponse(status_code=200, content={"invoice_history": invoice_history})
     except Exception as e:
-        print(e)
+        logging.error(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.get("/billing/invoice/download/{invoice_id}", tags=["Billing"])
@@ -167,7 +168,6 @@ async def download_invoice(
     """
     try:
         invoice = BillingDbCore.get_invoice_by_id(user_id, invoice_id)
-        print(invoice)
         if not invoice:
             raise HTTPException(status_code=404, detail="Invoice not found.")
 
@@ -403,7 +403,7 @@ async def download_invoice(
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
     except Exception as e:
-        print(e)
+        logging.error(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.post("/billing/invoice/pay/{invoice_id}", tags=["Billing"])
@@ -463,7 +463,7 @@ async def pay_invoice(
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
     except Exception as e:
-        print("Error in pay_invoice: %s", str(e), exc_info=True)
+        logging.error("Error in pay_invoice: %s", str(e), exc_info=True)
         return JSONResponse(status_code=500, content={"detail": "Internal server error."})
 
 @router.post("/stripe/webhook", tags=["Stripe"])
@@ -494,7 +494,7 @@ async def stripe_webhook(
     # Handle the event
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
-        print(session.get("metadata"))
+        logging.debug(session.get("metadata"))
         invoice_id = session["metadata"].get("invoice_id")
         invoice_month = session["metadata"].get("invoice_month")
         invoice_year = session["metadata"].get("invoice_year")
@@ -547,7 +547,7 @@ async def get_rate_card(
             rate['price_per_1000_tokens'] = float(Decimal(rate['price_per_token'])) * 1000
         return JSONResponse(status_code=200, content={"rates": rates})
     except Exception as e:
-        print(e)
+        logging.error(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.get("/billing/rate-card/history", tags=["Billing"])
@@ -567,7 +567,7 @@ async def get_rate_card_history(
             rate['price_per_1000_tokens'] = float(Decimal(rate['price_per_token'])) * 1000
         return JSONResponse(status_code=200, content={"rate_history": rate_history})
     except Exception as e:
-        print(e)
+        logging.error(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
 
 @router.get("/billing/logs/{month}/{year}", tags=["Billing"])
@@ -686,7 +686,7 @@ async def start_subscription(
     except HTTPException as e:
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
     except Exception as e:
-        print("Error in start_subscription: %s", str(e), exc_info=True)
+        logging.error("Error in start_subscription: %s", str(e), exc_info=True)
         return JSONResponse(status_code=500, content={"detail": "Internal server error."})
 
 @router.get("/billing/subscription/status", tags=["Billing"])
@@ -728,5 +728,5 @@ async def cancel_subscription(
     except HTTPException as e:
         raise e
     except Exception as e:
-        print(e)
+        logging.error(e)
         return JSONResponse(status_code=500, content={"detail": str(e)})
