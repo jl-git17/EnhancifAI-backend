@@ -36,9 +36,10 @@ DEFAULT_PROMPT = (
     "respond appropriately.\n"
     "- Avoid referring to yourself as AI.\n"
     "- Example of a good response: 'OFEV 100mg is commonly prescribed for treating idiopathic "
-    "pulmonary fibrosis.'"
+    "pulmonary fibrosis.'\n"
     "- Another example of a good response: 'Unfortunately, I do not have enough information "
-    "about the symptoms for which the drug Lyrica Caps 50mg 90s is prescribed.'"
+    "about the symptoms for which the drug Lyrica Caps 50mg 90s is prescribed.'\n"
+    'Respond in JSON: {"response": "<your answer here>"}'
 )
 
 DEFAULT_PROMPT_BATCHED = json.dumps({
@@ -201,12 +202,13 @@ class OpenAIConnector:
                 completion = self.client.chat.completions.create(
                     model=self.engine,
                     messages=messages,
-                    temperature=0.5,
+                    #temperature=0.5,
+                    response_format={"type": "json_object"}
                     #temperature=self.temperature,
                     #top_p=self.top_p
                 )
 
-                data = completion.choices[0].message.content
+                raw_data = completion.choices[0].message.content
                 tokens_used = completion.usage.total_tokens
                 input_tokens = completion.usage.prompt_tokens
                 output_tokens = tokens_used - input_tokens
@@ -214,15 +216,23 @@ class OpenAIConnector:
                 # Update rate limit manager
                 rate_limit_manager.update_make_api_call(self.engine, tokens_used=tokens_used)
 
-                if 'SYS:NONE' in data:
-                    data = data.replace('SYS:NONE', '').strip()
+                # Extract JSON from the response
+                data = json.loads(raw_data)
+                response = data.get('response', None)
+                if response is None:
+                    raise RuntimeError("AI did not return valid JSON array")
+                if not isinstance(response, list):
+                    raise RuntimeError("AI did not return valid JSON array")
+                
+                #if 'SYS:NONE' in data:
+                    #data = data.replace('SYS:NONE', '').strip()
 
                 # Save token usage entry
                 user_id = RunsDbCore.get_user_id(run_id)
                 UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
 
                 return {
-                    "content": data.strip(),
+                    "content": response,
                     "input_tokens": input_tokens,
                     "output_tokens": output_tokens,
                     "engine_used": self.engine
@@ -284,7 +294,7 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            'Process each DATA entry based on the query. Return results as a JSON array (["answer string","answer string"]). '
+                            'Process each DATA entry based on the query. Return results as JSON ({"response": ["answer string","answer string"]}). '
                             "One concise string for each DATA entry's full answer, in plain text format unless the query explicitly instructs otherwise."
                         )
                     },
@@ -304,13 +314,18 @@ class OpenAIConnector:
                 completion = self.client.chat.completions.create(
                     model=self.engine,
                     messages=messages,
-                    #response_format={"type": "json_object"}
-                    temperature=0.2
+                    #temperature=0.2,
+                    response_format={"type": "json_object"}
                 )
 
                 raw_data = completion.choices[0].message.content
 
-                logging.debug(f"Raw data: {raw_data}")
+                data = json.loads(raw_data)
+                response = data.get('response', None)
+                if response is None:
+                    raise RuntimeError("AI did not return valid JSON array")
+                if not isinstance(response, list):
+                    raise RuntimeError("AI did not return valid JSON array")
 
                 tokens_used = completion.usage.total_tokens
                 input_tokens = completion.usage.prompt_tokens
@@ -323,28 +338,12 @@ class OpenAIConnector:
                 UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
 
                 try:
-                    # strip the code block markers if they exist
-                    raw_data = raw_data.strip()
-                    if raw_data.startswith("```json") and raw_data.endswith("```"):
-                        raw_data = raw_data[7:-3].strip('```json').strip('```').strip('\n')
-                    elif raw_data.startswith("```") and raw_data.endswith("```"):
-                        raw_data = raw_data[3:-3].strip('```').strip('\n')
-
-                    _results = json.loads(raw_data)
-                    if not isinstance(_results, list):
-                        logging.error("Unexpected JSON structure:", type(_results))
-                        return
                     # Build the output. Each row gets a dict with the concatenated answers
                     results = []
-                    for line in _results:
-                        if isinstance(line, list):
-                            # If the line is a list, we need to join it into a single string
-                            line = ' '.join(line)
-                        elif not isinstance(line, str):
-                            # If it's not a string, we need to convert it to a string
-                            line = str(line)
+                    for line in response:
+                        
                         results.append({
-                            "content": line.strip('["').strip('"]'),
+                            "content": line,
                             "input_tokens": input_tokens,
                             "output_tokens": output_tokens,
                             "engine_used": self.engine
