@@ -161,7 +161,7 @@ class OpenAIConnector:
         self.client = OpenAI(api_key=settings.openai_api_key)
         self.rate_limit = False
 
-    def process_csv_row(self, columns: list, rows: dict, query: str, run_id: int, response_format: BaseModel) -> dict:
+    def process_csv_row(self, columns: list, rows: dict, query: str, run_id: int) -> dict:
         """
         Process a CSV row with specified columns and query using OpenAI API.
 
