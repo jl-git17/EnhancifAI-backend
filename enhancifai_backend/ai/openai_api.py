@@ -211,7 +211,7 @@ class OpenAIConnector:
                     response_format=OpenAIResponseFormat
                 )
 
-                raw_data = completion.choices[0].message.content
+                data = completion.choices[0].message.parsed
                 tokens_used = completion.usage.total_tokens
                 input_tokens = completion.usage.prompt_tokens
                 output_tokens = tokens_used - input_tokens
@@ -219,13 +219,11 @@ class OpenAIConnector:
                 # Update rate limit manager
                 rate_limit_manager.update_make_api_call(self.engine, tokens_used=tokens_used)
 
-                # Extract JSON from the response
-                data = json.loads(raw_data)
                 response = data.get('response', None)
                 if response is None:
-                    raise RuntimeError("AI did not return valid JSON array")
-                if not isinstance(response, list):
-                    raise RuntimeError("AI did not return valid JSON array")
+                    raise RuntimeError("AI did not return valid JSON")
+                if not isinstance(response, str):
+                    raise RuntimeError("AI did not return valid JSON string")
                 
                 #if 'SYS:NONE' in data:
                     #data = data.replace('SYS:NONE', '').strip()
@@ -320,12 +318,11 @@ class OpenAIConnector:
                     response_format=OpenAIResponseFormatBatched
                 )
 
-                raw_data = completion.choices[0].message.content
+                data = completion.choices[0].message.parsed
 
-                data = json.loads(raw_data)
                 response = data.get('response', None)
                 if response is None:
-                    raise RuntimeError("AI did not return valid JSON array")
+                    raise RuntimeError("AI did not return valid JSON")
                 if not isinstance(response, list):
                     raise RuntimeError("AI did not return valid JSON array")
 
