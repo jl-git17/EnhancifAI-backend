@@ -14,7 +14,7 @@ class RateLimitManager:
             'gpt-4-turbo': {'token_limit': 600000, 'rpm': 5000},
             'gpt-4o': {'token_limit': 800000, 'rpm': 5000},
             'gpt-4o-mini': {'token_limit': 160000, 'rpm': 5000},
-            'gpt-4.1-mini': {'token_limit': 160000, 'rpm': 5000},
+            'gpt-4.1-nano': {'token_limit': 160000, 'rpm': 5000},
             'text-embedding-3-small': {'token_limit': 5000000, 'rpm': 5000}
         }
         self.request_logs = {model: deque() for model in self.limits}

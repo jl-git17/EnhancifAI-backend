@@ -12,7 +12,7 @@ from enhancifai_backend.engine.csv_handler import CSVHandler
 from enhancifai_backend.engine.excel_handler import ExcelHandler
 from enhancifai_backend.server.utils import AdminSettings
 
-pi_ai_connection = OpenAIConnector("gpt-4.1-mini")  # TODO env var
+pi_ai_connection = OpenAIConnector("gpt-4.1-nano")  # TODO env var
 
 def get_ai_connection():
     engine = AdminSettings.get_ai_engine()
