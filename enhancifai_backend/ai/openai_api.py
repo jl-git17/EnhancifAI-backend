@@ -7,6 +7,7 @@ from typing import Dict, List
 
 from fastapi import HTTPException
 from openai import OpenAI
+from pydantic import BaseModel
 
 from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.runs import RunsDbCore
@@ -142,6 +143,12 @@ class PromptImproverSettings:
 
 pi_settings = PromptImproverSettings(prompt=PI_DEFAULT_PROMPT, ai_engine=PI_DEFAULT_AI_ENGINE)
 
+class OpenAIResponseFormat(BaseModel):
+    response: str
+
+class OpenAIResponseFormatBatched(BaseModel):
+    """{"response": ["answer string","answer string"]}"""
+    response: List[str]
 
 class OpenAIConnector:
     """Class to manage connections and requests to OpenAI API."""
@@ -154,7 +161,7 @@ class OpenAIConnector:
         self.client = OpenAI(api_key=settings.openai_api_key)
         self.rate_limit = False
 
-    def process_csv_row(self, columns: list, rows: dict, query: str, run_id: int) -> dict:
+    def process_csv_row(self, columns: list, rows: dict, query: str, run_id: int, response_format: BaseModel) -> dict:
         """
         Process a CSV row with specified columns and query using OpenAI API.
 
@@ -198,14 +205,10 @@ class OpenAIConnector:
                     }
                 )
 
-
-                completion = self.client.chat.completions.create(
+                completion = self.client.beta.chat.completions.parse(
                     model=self.engine,
                     messages=messages,
-                    #temperature=0.5,
-                    response_format={"type": "json_object"}
-                    #temperature=self.temperature,
-                    #top_p=self.top_p
+                    response_format=OpenAIResponseFormat
                 )
 
                 raw_data = completion.choices[0].message.content
@@ -311,11 +314,10 @@ class OpenAIConnector:
 
                 logging.debug(f"MODEL: {self.engine}")
 
-                completion = self.client.chat.completions.create(
+                completion = self.client.beta.chat.completions.parse(
                     model=self.engine,
                     messages=messages,
-                    #temperature=0.2,
-                    response_format={"type": "json_object"}
+                    response_format=OpenAIResponseFormatBatched
                 )
 
                 raw_data = completion.choices[0].message.content
