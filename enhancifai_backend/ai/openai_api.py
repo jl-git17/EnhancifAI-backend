@@ -336,23 +336,17 @@ class OpenAIConnector:
                 user_id = RunsDbCore.get_user_id(run_id)
                 UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
 
-                try:
-                    # Build the output. Each row gets a dict with the concatenated answers
-                    results = []
-                    for line in response:
-                        
-                        results.append({
-                            "content": line,
-                            "input_tokens": input_tokens,
-                            "output_tokens": output_tokens,
-                            "engine_used": self.engine
-                        })
-                    return results
-
-                except json.JSONDecodeError:
-                    # The AI returned something that's not valid JSON. We'll treat that as an error
-                    logging.error(f"Failed to parse JSON array from AI: {raw_data}. Type: {type(raw_data)}")
-                    raise RuntimeError("AI did not return valid JSON array")
+                # Build the output. Each row gets a dict with the concatenated answers
+                results = []
+                for line in response:
+                    
+                    results.append({
+                        "content": line,
+                        "input_tokens": input_tokens,
+                        "output_tokens": output_tokens,
+                        "engine_used": self.engine
+                    })
+                return results
 
             except Exception as e:
                 logging.error(f"Attempt {attempt + 1} failed with error: {e}")
