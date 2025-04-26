@@ -219,7 +219,7 @@ class OpenAIConnector:
                 # Update rate limit manager
                 rate_limit_manager.update_make_api_call(self.engine, tokens_used=tokens_used)
 
-                response = data.get('response', None)
+                response = data.response
                 if response is None:
                     raise RuntimeError("AI did not return valid JSON")
                 if not isinstance(response, str):
@@ -268,7 +268,7 @@ class OpenAIConnector:
             raise RuntimeError("Failed to get answer from OpenAI API after 3 attempts.")
         else:
             logging.error("Failed to get answer from OpenAI API after 3 attempts.")
-            return {'content': _err, 'tokens': 0}
+            return {'content': _err, 'tokens': 0, 'engine_used': self.engine}
 
     def process_csv_rows(
         self,
@@ -320,7 +320,7 @@ class OpenAIConnector:
 
                 data = completion.choices[0].message.parsed
 
-                response = data.get('response', None)
+                response = data.response
                 if response is None:
                     raise RuntimeError("AI did not return valid JSON")
                 if not isinstance(response, list):
