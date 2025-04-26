@@ -175,7 +175,7 @@ class OpenAIConnector:
 
         # Check rate limit manager
         self.engine = rate_limit_manager.can_make_api_call(model=self.engine,run_id=run_id)
-        #logging.debug(f"Got engine from rlm: {self.engine}")
+        logging.debug(f"Got engine from rlm: {self.engine}")
 
         for attempt in range(max_attempts):
             try:
