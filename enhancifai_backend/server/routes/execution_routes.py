@@ -89,8 +89,8 @@ def read_prompt_file(prompt_file_path: str):
                 )
                 i += 1
             except KeyError as e:
-                print(e)
-                print("CSV file format is incorrect.")
+                logging.error(e)
+                logging.error("CSV file format is incorrect.")
                 errors.append(f"CSV is missing a column: {e}")
                 break
     errors = list(set(errors))
@@ -252,15 +252,15 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
     is_subscribed = StripeDbCore.is_user_subscribed(user_id)
     is_cancelled_active = StripeDbCore.is_user_subscribed_cancelled(user_id)
     uncapped = is_subscribed or is_cancelled_active
-    print("User is uncapped: %s", uncapped)
+    logging.debug("User is uncapped: %s", uncapped)
     if max_records:
         max_recs = TEST_MAX_RECORDS
     else:
         if uncapped:
-            print("User is uncapped, setting max records to 0")
+            logging.debug("User is uncapped, setting max records to 0")
             max_recs = 0
         else:
-            print(f"User is capped, setting max records to {GLOBAL_MAX_ROWS}")
+            logging.debug(f"User is capped, setting max records to {GLOBAL_MAX_ROWS}")
             max_recs = GLOBAL_MAX_ROWS
 
     temp_data_file_path = None
@@ -283,7 +283,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
             file_name = f"{sheet_name}.xlsx"
             data_file_suffix = '.xlsx'
         except Exception as err:
-            print(err)
+            logging.error(err)
             raise HTTPException(status_code=400, detail="Invalid JSON data.") from err
     elif data_file:
         file_suffix_map = {
@@ -312,7 +312,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
 
             # Debugging: Verify the temporary file creation
             if not os.path.exists(temp_data_file_path):
-                print(f"Failed to create temp file at {temp_data_file_path}")
+                logging.error(f"Failed to create temp file at {temp_data_file_path}")
     else:
         raise HTTPException(status_code=400, detail="Either data file or JSON data must be provided.")
 
@@ -345,7 +345,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
     is_subscribed = StripeDbCore.is_user_subscribed(user_id)
     is_cancelled_active = StripeDbCore.is_user_subscribed_cancelled(user_id)
     uncapped = is_subscribed or is_cancelled_active
-    print(f"User {user_id} is uncapped: {uncapped}", user_id, uncapped)
+    logging.debug(f"User {user_id} is uncapped: {uncapped}", user_id, uncapped)
     if max_records:
         max_recs = TEST_MAX_RECORDS
     else:
@@ -379,7 +379,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
             )
         ).start()
     except Exception as e:
-        print(f"Error starting async run: {str(e)}")
+        logging.error(f"Error starting async run: {str(e)}")
         time.sleep(1)
         cleanup_temp_files(temp_prompt_file_path, temp_data_file_path)
         raise HTTPException(status_code=500, detail="Failed to start the asynchronous process.") from e
@@ -444,7 +444,7 @@ async def upload_direct_prompt(
     is_subscribed = StripeDbCore.is_user_subscribed(user_id)
     is_cancelled_active = StripeDbCore.is_user_subscribed_cancelled(user_id)
     uncapped = is_subscribed or is_cancelled_active
-    print(f"User {user_id} is uncapped: {uncapped}")
+    logging.debug(f"User {user_id} is uncapped: {uncapped}")
     if max_records:
         max_recs = TEST_MAX_RECORDS
     else:
