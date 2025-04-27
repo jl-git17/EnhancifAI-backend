@@ -202,13 +202,15 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
                     _status["progress"] = "1"
                     _status["remark"] = "1% completed."
                 elif _status.get("status") == "completed":
+                    # Only return completed if results are present
+                    if "results" not in _status or not _status["results"]:
+                        # If results are not yet available, keep status as pending
+                        return JSONResponse(status_code=status.HTTP_200_OK, content={
+                            "status": "pending",
+                            "progress": "100",
+                            "remark": "Finalizing results..."
+                        })
                     logging.info("Status: %s", _status)
-                    attempts = 0
-                    while 'results' not in _status:
-                        time.sleep(1)
-                        attempts += 1
-                        if attempts >= 10:
-                            break
                     input_tokens = _status.get("results", {}).get("input_tokens_sum", 0)
                     output_tokens = _status.get("results", {}).get("output_tokens_sum", 0)
                     total_tokens_sum = input_tokens + output_tokens
@@ -219,7 +221,7 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
         except HTTPException as e:
             logging.error(e)
             if attempt < retries - 1:
-                await asyncio.sleep(0.5)  # wait for 2 seconds before retrying
+                await asyncio.sleep(0.5)  # wait for 0.5 seconds before retrying
                 continue
             else:
                 return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
