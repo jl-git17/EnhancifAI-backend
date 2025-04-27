@@ -14,7 +14,7 @@ class RateLimitManager:
             'gpt-4-turbo': {'token_limit': 600000, 'rpm': 5000},
             'gpt-4o': {'token_limit': 800000, 'rpm': 5000},
             'gpt-4o-mini': {'token_limit': 160000, 'rpm': 5000},
-            'gpt-4.1-nano': {'token_limit': 160000, 'rpm': 5000},
+            'gpt-4.1-nano': {'token_limit': 1600000, 'rpm': 5000},
             'text-embedding-3-small': {'token_limit': 5000000, 'rpm': 5000}
         }
         self.request_logs = {model: deque() for model in self.limits}
@@ -88,6 +88,30 @@ class RateLimitManager:
             self.request_logs[model].append(time.time())
         return True, "API call successful"
 
+    def _weighted_round_robin_fallback(self, model):
+        """
+        Original fallback method kept for future reference.
+        """
+        with self.queue_lock:
+            for _ in range(self.weights[self.current_priority]):  # Process based on weight
+                if self.queue[self.current_priority]:
+                    if self._is_request_allowed(model):
+                        current_id = self.queue[self.current_priority].popleft()
+                        if self._are_tokens_available(model):
+                            with self.awarded_lock:
+                                self.awarded[current_id] = model
+                            break
+                        else:
+                            if self._are_tokens_available('gpt-3.5-turbo'):
+                                with self.awarded_lock:
+                                    self.awarded[current_id] = 'gpt-3.5-turbo'
+                                break
+                            elif self._are_tokens_available('gpt-4o'):
+                                with self.awarded_lock:
+                                    self.awarded[current_id] = 'gpt-4o'
+                                break
+        self.current_priority = (self.current_priority + 1) % len(self.weights)
+
     def can_make_api_call(self, model, run_id, priority=0):
         if model not in self.limits:
             raise ValueError("Model not recognized")
@@ -104,28 +128,19 @@ class RateLimitManager:
                     awarded_model = self.awarded.pop(unique_id)
                     return awarded_model
 
-            # Weighted round robin processing
+            # Time delay based processing using original model only
             with self.queue_lock:
                 for _ in range(self.weights[self.current_priority]):  # Process based on weight
                     if self.queue[self.current_priority]:
-                        if self._is_request_allowed(model):
+                        if self._is_request_allowed(model) and self._are_tokens_available(model):
                             current_id = self.queue[self.current_priority].popleft()
-                            if self._are_tokens_available(model):
-                                with self.awarded_lock:
-                                    self.awarded[current_id] = model
-                                break
-                            else:
-                                if self._are_tokens_available('gpt-3.5-turbo'):
-                                    with self.awarded_lock:
-                                        self.awarded[current_id] = 'gpt-3.5-turbo'
-                                    break
-                                elif self._are_tokens_available('gpt-4o'):
-                                    with self.awarded_lock:
-                                        self.awarded[current_id] = 'gpt-4o'
-                                    break
+                            with self.awarded_lock:
+                                self.awarded[current_id] = model
+                            break
 
-                # Update current priority for round robin
-                self.current_priority = (self.current_priority + 1) % len(self.weights)
-
+            self.current_priority = (self.current_priority + 1) % len(self.weights)
+            time.sleep(GLOBAL_RATE_LIMIT_DELAY)
+            print(f"RLM:: Waiting for {GLOBAL_RATE_LIMIT_DELAY} seconds before retrying...")
+            
 # Example usage:
 rate_limit_manager = RateLimitManager()
