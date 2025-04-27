@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+import logging
 from fastapi import APIRouter, Request, HTTPException, Header
 from fastapi.responses import JSONResponse
 import stripe
@@ -47,7 +48,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
             # One-time invoice
             StripeDbCore.update_invoice_status(invoice["id"], "paid")
             StripeDbCore.update_invoice_record(invoice["id"], "paid")
-            print(f"Invoice {invoice['id']} paid successfully.")
+            logging.info(f"Invoice {invoice['id']} paid successfully.")
     elif event["type"] == "invoice.payment_failed":
         invoice = event["data"]["object"]
         subscription_id = invoice.get("subscription")
@@ -79,7 +80,7 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         else:
             StripeDbCore.update_invoice_status(invoice["id"], "failed")
             StripeDbCore.update_invoice_record(invoice["id"], "failed")
-            print(f"Invoice {invoice['id']} failed to charge.")
+            logging.error(f"Invoice {invoice['id']} failed to charge.")
     elif event["type"] == "customer.subscription.deleted":
         subscription = event["data"]["object"]
         # Update subscription status in the database
@@ -102,6 +103,6 @@ async def stripe_webhook(request: Request, stripe_signature: str = Header(None, 
         # TODO: send email to user
     else:
         # Log unsupported webhook events in detail
-        print(str(event))
-
+        logging.debug(f"Unhandled event type: {event['type']}")
+        logging.debug(f"Event data: {event['data']}")
     return JSONResponse(status_code=200, content={"detail": "Webhook received"})
