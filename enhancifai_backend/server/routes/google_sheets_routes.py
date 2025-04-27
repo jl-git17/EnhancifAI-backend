@@ -1,4 +1,5 @@
 import json
+import logging
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
@@ -157,7 +158,7 @@ async def export_to_sheets(
                 }
             )
     except Exception as e:
-        print(e)
+        logging.error(f"Error exporting to Google Sheets: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 @router.get("/sheets/list", tags=["Google Sheets"], operation_id="list_sheets_operation")
@@ -242,5 +243,5 @@ async def get_sheet_data(
     except HTTPException as e:
         raise e
     except Exception as e:
-        print(e)
+        logging.error(f"Error retrieving Google Sheet data: {str(e)}")
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
