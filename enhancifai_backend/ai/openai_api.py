@@ -320,7 +320,7 @@ class OpenAIConnector:
                     )
 
                     parsed = completion.choices[0].message.parsed
-                    response = parsed.get("response")
+                    response = parsed.response
 
                     if not isinstance(response, str):
                         raise RuntimeError(f"Invalid response format for row {idx}: {response}")
