@@ -277,104 +277,96 @@ class OpenAIConnector:
         query: str,
         run_id: int
     ) -> List[Dict[str, object]]:
-
         if RunsDbCore.is_run_cancelled(run_id):
             raise RuntimeError("Job cancelled.")
 
         max_attempts = 3
         _err = None
+        results = []
 
-        logging.info("Query: %s  \nRows: %s  \nColumns: %s", query, rows, columns)
+        logging.info("Processing query: %s with %d rows", query, len(rows))
 
-        # Use the same logic your single-row method uses:
-        self.engine = rate_limit_manager.can_make_api_call(model=self.engine, run_id=run_id)
+        for idx, row in enumerate(rows):
+            self.engine = rate_limit_manager.can_make_api_call(model=self.engine, run_id=run_id)
 
-        for attempt in range(max_attempts):
-            try:
-                messages = [
-                    {
-                        "role": "system",
-                        "content": (
-                            'Process each DATA entry based on the query. Return results as JSON ({"response": ["answer string","answer string"]}). '
-                            "One concise string for each DATA entry's full answer, in plain text format unless the query explicitly instructs otherwise."
-                        )
-                    },
-                    {
-                        "role": "user",
-                        "content": (
-                            f"Query: {query}\n"
-                            "---\n"
-                            "DATA:\n"
-                            f"{json.dumps(rows)}"
-                        )
-                    }
-                ]
+            for attempt in range(max_attempts):
+                try:
+                    messages = [
+                        {
+                            "role": "system",
+                            "content": (
+                                'Process the provided DATA based on the QUERY. Return a JSON: {"response": "answer string"}. '
+                                "Answer concisely in plain text unless instructed otherwise."
+                            )
+                        },
+                        {
+                            "role": "user",
+                            "content": (
+                                f"QUERY:\n{query}\n"
+                                "---\n"
+                                "DATA:\n"
+                                f"{json.dumps(row)}"
+                            )
+                        }
+                    ]
 
-                logging.debug(f"MODEL: {self.engine}")
+                    logging.debug(f"Row {idx + 1}/{len(rows)} - Model: {self.engine}")
 
-                completion = self.client.beta.chat.completions.parse(
-                    model=self.engine,
-                    messages=messages,
-                    response_format=OpenAIResponseFormatBatched,
-                    temperature=0.4
-                )
+                    completion = self.client.beta.chat.completions.parse(
+                        model=self.engine,
+                        messages=messages,
+                        response_format=OpenAIResponseFormatBatched,
+                        temperature=0.4
+                    )
 
-                data = completion.choices[0].message.parsed
+                    parsed = completion.choices[0].message.parsed
+                    response = parsed.get("response")
 
-                response = data.response
-                if response is None:
-                    raise RuntimeError("AI did not return valid JSON")
-                if not isinstance(response, list):
-                    raise RuntimeError("AI did not return valid JSON array")
+                    if not isinstance(response, str):
+                        raise RuntimeError(f"Invalid response format for row {idx}: {response}")
 
-                tokens_used = completion.usage.total_tokens
-                input_tokens = completion.usage.prompt_tokens
-                output_tokens = tokens_used - input_tokens
+                    tokens_used = completion.usage.total_tokens
+                    input_tokens = completion.usage.prompt_tokens
+                    output_tokens = tokens_used - input_tokens
 
-                # Rate limit manager housekeeping
-                rate_limit_manager.update_make_api_call(self.engine, tokens_used=tokens_used)
+                    # Housekeeping
+                    rate_limit_manager.update_make_api_call(self.engine, tokens_used=tokens_used)
+                    user_id = RunsDbCore.get_user_id(run_id)
+                    UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
 
-                user_id = RunsDbCore.get_user_id(run_id)
-                UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
-
-                # Build the output. Each row gets a dict with the concatenated answers
-                results = []
-                for line in response:
-                    
                     results.append({
-                        "content": line,
+                        "content": response,
                         "input_tokens": input_tokens,
                         "output_tokens": output_tokens,
                         "engine_used": self.engine
                     })
-                return results
+                    break  # success, move to next row
 
-            except Exception as e:
-                logging.error(f"Attempt {attempt + 1} failed with error: {e}")
-                if hasattr(e, 'status_code'):
-                    if e.status_code == 429:
-                        # Rate-limiting
+                except Exception as e:
+                    logging.error(f"Row {idx} - Attempt {attempt + 1} failed: {e}")
+                    if hasattr(e, 'status_code') and e.status_code == 429:
+                        # Rate limit error
                         match = RATE_LIMIT_PATTERN.search(e.body['message']) if hasattr(e, 'body') else None
-                        if match:
-                            delay = float(match.group(1))
-                        else:
-                            delay = 5
+                        delay = float(match.group(1)) if match else 5
                         sleep_time = delay * BUFFER_MULTIPLIER
-                        logging.debug(f"Rate limit reached. Waiting {sleep_time} seconds before retrying...")
+                        logging.debug(f"Rate limit hit. Sleeping {sleep_time} seconds before retry...")
                         time.sleep(sleep_time)
-                else:
-                    _err = e
-                    if attempt < max_attempts - 1:
-                        backoff_time = 2 ** attempt
-                        logging.error(f"Error encountered. Retrying in {backoff_time} seconds...")
-                        time.sleep(backoff_time)
+                    else:
+                        _err = e
+                        if attempt < max_attempts - 1:
+                            backoff = 2 ** attempt
+                            logging.debug(f"Retrying row {idx} in {backoff} seconds...")
+                            time.sleep(backoff)
+                        else:
+                            # Failed after retries, still record error for this row
+                            results.append({
+                                "content": f"Error: {str(e)}",
+                                "input_tokens": 0,
+                                "output_tokens": 0,
+                                "engine_used": self.engine
+                            })
 
-        # If we got here, attempts all failed
-        if _err is None:
-            raise RuntimeError("Failed to get answer from OpenAI API after 3 attempts.")
-        else:
-            logging.error("Failed to get answer from OpenAI API after 3 attempts.")
-            return [{'content': str(_err), 'tokens': 0, 'engine_used': self.engine}]
+        return results
 
 
     def improve_prompt(self, prompt: str, user_id: int):
