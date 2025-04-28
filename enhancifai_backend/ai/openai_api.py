@@ -311,6 +311,7 @@ class OpenAIConnector:
                     ]
 
                     logging.debug(f"Row {idx + 1}/{len(rows)} - Model: {self.engine}")
+                    logging.debug(f"Messages: {messages}")
 
                     completion = self.client.beta.chat.completions.parse(
                         model=self.engine,
@@ -321,9 +322,6 @@ class OpenAIConnector:
 
                     parsed = completion.choices[0].message.parsed
                     response = parsed.response
-
-                    if not isinstance(response, str):
-                        raise RuntimeError(f"Invalid response format for row {idx}: {response}")
 
                     tokens_used = completion.usage.total_tokens
                     input_tokens = completion.usage.prompt_tokens
