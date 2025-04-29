@@ -234,6 +234,7 @@ class CSVHandler:
             query=prompt_config['prompt'],
             run_id=self.run_id
         )
+        logging.debug(f"Batch data: {batch_data}")
         # 'batch_data' should be a list of dicts, one per row in 'to_send'
 
         output_heading = prompt_config['output_heading']

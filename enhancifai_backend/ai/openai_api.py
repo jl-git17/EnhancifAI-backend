@@ -332,6 +332,8 @@ class OpenAIConnector:
                     raise RuntimeError("AI did not return valid JSON")
                 if not isinstance(response, list):
                     raise RuntimeError("AI did not return valid JSON array")
+                if len(response) != len(rows):
+                    raise RuntimeError("AI did not return the same number of rows as input")
 
                 tokens_used = completion.usage.total_tokens
                 input_tokens = completion.usage.prompt_tokens
