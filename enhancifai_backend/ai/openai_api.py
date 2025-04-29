@@ -296,7 +296,7 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            'Process the provided DATA based on the QUERY. Return a JSON ({"response": ["result","result"]}). '
+                            'Process the provided DATA based on the QUERY. Return a JSON ({"response": ["answer_entry_1","answer_entry_2",...]}). '
                             'Answer concisely in plain text unless instructed otherwise.'
                         )
                     },
