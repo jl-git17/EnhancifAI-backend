@@ -212,7 +212,7 @@ class OpenAIConnector:
                 )
 
                 data = completion.choices[0].message.parsed
-                logging.debug(f"Raw data: {data}")
+                logging.debug(f"ROW >> Raw data: {data}")
                 tokens_used = completion.usage.total_tokens
                 input_tokens = completion.usage.prompt_tokens
                 output_tokens = tokens_used - input_tokens
