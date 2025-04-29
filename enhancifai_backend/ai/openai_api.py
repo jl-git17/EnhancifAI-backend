@@ -296,10 +296,11 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            'Process each provided row in `rows` based on the `query`. Return a JSON ({"response": ["answer_entry_1","answer_entry_2",...]}). '
-                            'Answer concisely in plain text unless instructed otherwise. '
-                            "Each row's answer should be a separate string in the JSON array. "
-                            "Answers should be in the same order as the `rows`. "
+                            "You are a data analysis assistant. "
+                            "Given a query and a JSON payload with 'columns' and 'rows', "
+                            "process each row according to the query and return a JSON array of answers, "
+                            "one per row, in the same order. "
+                            "Be concise, avoid introductions, and output only the JSON array."
                         )
                     },
                     {
