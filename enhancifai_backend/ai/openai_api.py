@@ -320,6 +320,7 @@ class OpenAIConnector:
                 )
 
                 data = completion.choices[0].message.parsed
+                logging.debug(f"Raw data: {data}")
 
                 response = data.response
                 if response is None:
