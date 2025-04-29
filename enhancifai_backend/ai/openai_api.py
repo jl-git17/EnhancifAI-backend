@@ -296,20 +296,21 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": (
-                            'Process the provided DATA based on the QUERY. Return a JSON ({"response": ["answer_entry_1","answer_entry_2",...]}). '
+                            'Process each provided row in `rows` based on the `query`. Return a JSON ({"response": ["answer_entry_1","answer_entry_2",...]}). '
                             'Answer concisely in plain text unless instructed otherwise. '
-                            "Each data entry's answer should be a separate string in the JSON array. "
-                            "Answers should be in the same order as the data entries. "
+                            "Each row's answer should be a separate string in the JSON array. "
+                            "Answers should be in the same order as the `rows`. "
                         )
                     },
                     {
                         "role": "user",
-                        "content": (
-                            f"Query: {query}\n"
-                            "---\n"
-                            "DATA:\n"
-                            f"{json.dumps(rows)}"
-                        )
+                        "content": json.dumps({
+                            "query": query,
+                            "payload": {
+                                "columns": columns,
+                                "rows": rows
+                            }
+                        })
                     }
                 ]
 
