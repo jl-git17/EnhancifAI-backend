@@ -297,7 +297,9 @@ class OpenAIConnector:
                         "role": "system",
                         "content": (
                             'Process the provided DATA based on the QUERY. Return a JSON ({"response": ["answer_entry_1","answer_entry_2",...]}). '
-                            'Answer concisely in plain text unless instructed otherwise.'
+                            'Answer concisely in plain text unless instructed otherwise. '
+                            "Each data entry's answer should be a separate string in the JSON array. "
+                            "Answers should be in the same order as the data entries. "
                         )
                     },
                     {
