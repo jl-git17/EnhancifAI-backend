@@ -301,7 +301,6 @@ class OpenAIConnector:
                             "answer the query for each row. "
                             "Return ONLY a JSON array of strings, one per row, in order. "
                             "No explanations, intros, or extra text. "
-                            "If data is missing for a row, return 'Incomplete data' for that row. "
                             "Example output: [\"answer1\", \"answer2\", ...]."
                         )
                     },
