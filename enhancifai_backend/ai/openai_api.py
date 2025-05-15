@@ -298,9 +298,11 @@ class OpenAIConnector:
                         "content": (
                             "You are a data analysis assistant. "
                             "Given a query and a JSON payload with 'columns' and 'rows', "
-                            "process each row according to the query and return a JSON array of answers, "
-                            "one per row, in the same order. "
-                            "Be concise, avoid introductions, and output only the JSON array."
+                            "process each row according to the query and return ONLY a valid JSON array of strings, "
+                            "with one answer per row, in the same order as the input rows. "
+                            "Do NOT return a single string with all answers concatenated. "
+                            "Do NOT include any explanations, intros, or extra text. "
+                            "Your output must be a JSON array of strings, e.g. [\"answer1\", \"answer2\", ...]."
                         )
                     },
                     {
@@ -328,12 +330,13 @@ class OpenAIConnector:
                 logging.debug(f"Raw data: {data}")
 
                 response = data.response
+                # Validate: must be a list of strings, not a single string
                 if response is None:
                     logging.error(f"AI did not return valid JSON. data: {data}")
                     raise RuntimeError("AI did not return valid JSON")
-                if not isinstance(response, list):
-                    logging.error(f"AI did not return a list. Got type: {type(response)}. Value: {response}")
-                    raise RuntimeError("AI did not return valid JSON array")
+                if not isinstance(response, list) or not all(isinstance(x, str) for x in response):
+                    logging.error(f"AI did not return a list of strings. Got: {response}")
+                    raise RuntimeError("AI did not return a JSON array of strings")
                 if len(response) != len(rows):
                     logging.error(
                         f"AI returned {len(response)} items, but expected {len(rows)}. "
@@ -351,10 +354,9 @@ class OpenAIConnector:
                 user_id = RunsDbCore.get_user_id(run_id)
                 UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
 
-                # Build the output. Each row gets a dict with the concatenated answers
+                # Build the output. Each row gets a dict with the answer string
                 results = []
                 for line in response:
-                    
                     results.append({
                         "content": line,
                         "input_tokens": input_tokens,
