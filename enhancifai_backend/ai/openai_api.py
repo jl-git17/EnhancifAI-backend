@@ -287,7 +287,6 @@ class OpenAIConnector:
 
         logging.info("Query: %s  \nRows: %s  \nColumns: %s", query, rows, columns)
 
-        # Use the same logic your single-row method uses:
         self.engine = rate_limit_manager.can_make_api_call(model=self.engine, run_id=run_id)
 
         for attempt in range(max_attempts):
@@ -301,19 +300,28 @@ class OpenAIConnector:
                             "process each row according to the query and return ONLY a valid JSON array of strings, "
                             "with one answer per row, in the same order as the input rows. "
                             "Do NOT return a single string with all answers concatenated. "
+                            "Do NOT return a string with newlines or bullet points. "
                             "Do NOT include any explanations, intros, or extra text. "
-                            "Your output must be a JSON array of strings, e.g. [\"answer1\", \"answer2\", ...]."
+                            "Your output must be a JSON array of strings, e.g. [\"answer1\", \"answer2\", ...]. "
+                            "If you return a single string or anything other than a JSON array of strings, it will be considered an error."
                         )
                     },
                     {
                         "role": "user",
-                        "content": json.dumps({
-                            "query": query,
-                            "payload": {
-                                "columns": columns,
-                                "rows": rows
-                            }
-                        })
+                        "content": (
+                            "For example, if there are 3 rows and the query is 'Summarize progress', "
+                            "your response should be:\n"
+                            "[\"Child 1 made progress in X.\", \"Child 2 improved Y.\", \"Child 3 needs help with Z.\"]\n"
+                            "Do NOT return a single string with all answers combined. "
+                            "Now, here is the actual query and data:\n"
+                            + json.dumps({
+                                "query": query,
+                                "payload": {
+                                    "columns": columns,
+                                    "rows": rows
+                                }
+                            })
+                        )
                     }
                 ]
 
@@ -348,13 +356,11 @@ class OpenAIConnector:
                 input_tokens = completion.usage.prompt_tokens
                 output_tokens = tokens_used - input_tokens
 
-                # Rate limit manager housekeeping
                 rate_limit_manager.update_make_api_call(self.engine, tokens_used=tokens_used)
 
                 user_id = RunsDbCore.get_user_id(run_id)
                 UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
 
-                # Build the output. Each row gets a dict with the answer string
                 results = []
                 for line in response:
                     results.append({
@@ -369,7 +375,6 @@ class OpenAIConnector:
                 logging.error(f"Attempt {attempt + 1} failed with error: {e}")
                 if hasattr(e, 'status_code'):
                     if e.status_code == 429:
-                        # Rate-limiting
                         match = RATE_LIMIT_PATTERN.search(e.body['message']) if hasattr(e, 'body') else None
                         if match:
                             delay = float(match.group(1))
@@ -385,7 +390,6 @@ class OpenAIConnector:
                         logging.error(f"Error encountered. Retrying in {backoff_time} seconds...")
                         time.sleep(backoff_time)
 
-        # If we got here, attempts all failed
         if _err is None:
             raise RuntimeError("Failed to get answer from OpenAI API after 3 attempts.")
         else:
