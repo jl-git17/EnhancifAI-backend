@@ -43,25 +43,38 @@ DEFAULT_PROMPT = (
     'Respond in JSON: {"response": "<your answer here>"}'
 )
 
-DEFAULT_PROMPT_BATCHED = json.dumps({
-  "input_format":{"query":"string","payload":{"columns":"object","rows":"array"}},
-  "instructions":{
-    "task":"Generate concise text per row using the query. Return a valid JSON array with one item per row.",
-    "handling_incomplete_data":{"rule":"If data missing, return 'Incomplete data'."},
-    "rules":["Include all rows.","Be concise.","No intros or repeats.","Output only JSON array."]
-  },
-  "example":{
-    "input":{
-      "query":"Format churn risk as 'Risk: <value>'.",
-      "payload":{
-        "columns":{"A":"ID","E":"Churn"},
-        "rows":[{"A":"1","E":"5"},{"A":"2","E":"4"},{"A":"3","E":"5"},{"A":"4","E":"3"},{"A":"5","E":""}]
-      }
-    },
-    "output":["Risk: High","Risk: Medium","Risk: High","Risk: Low","Risk: Incomplete data"]
-  }
-})
-
+DEFAULT_PROMPT_BATCHED = (
+    "- You are a precise data-analysis assistant.\n"
+    "- The user provides a JSON object with:\n"
+    "    •  **query**   – instructions on how to transform each row.\n"
+    "    •  **payload** – an object containing\n"
+    "        •  **columns** – map of column letters to their headers, and\n"
+    "        •  **rows**    – array of row objects (keys are column letters).\n"
+    "- For **every row** in *rows* return **one concise string** that satisfies *query*.\n"
+    "- If any field needed to answer a row is missing or blank, output **'Incomplete data'** for that row.\n"
+    "- Output **only** valid JSON in **this exact shape** (no markdown, no extra keys, no text before/after):\n"
+    "  {\"response\": [\"<answer for row 1>\", \"<answer for row 2>\", …]}\n"
+    "- The length of the `response` array **must equal** the number of input rows.\n"
+    "- Never add explanations, apologies, or commentary.\n"
+    "\n"
+    "Example:\n"
+    "Input:\n"
+    "{\n"
+    "  \"query\": \"Format churn risk as 'Risk: <value>'.\",\n"
+    "  \"payload\": {\n"
+    "    \"columns\": {\"A\": \"ID\", \"E\": \"Churn\"},\n"
+    "    \"rows\": [\n"
+    "      {\"A\": \"1\", \"E\": \"5\"},\n"
+    "      {\"A\": \"2\", \"E\": \"4\"},\n"
+    "      {\"A\": \"3\", \"E\": \"5\"},\n"
+    "      {\"A\": \"4\", \"E\": \"3\"},\n"
+    "      {\"A\": \"5\", \"E\": \"\"}\n"
+    "    ]\n"
+    "  }\n"
+    "}\n"
+    "Output:\n"
+    "{\"response\": [\"Risk: High\", \"Risk: Medium\", \"Risk: High\", \"Risk: Low\", \"Risk: Incomplete data\"]}"
+)
 
 def extract_and_parse_json(raw_data):
     """
@@ -295,14 +308,7 @@ class OpenAIConnector:
                 messages = [
                     {
                         "role": "system",
-                        "content": (
-                            "You are a precise data analysis assistant. "
-                            "Given a 'query' and a JSON object with 'columns' and 'rows', "
-                            "answer the query for each row. "
-                            "Return ONLY a JSON array of strings, one per row, in order. "
-                            "No explanations, intros, or extra text. "
-                            "Example output: [\"answer1\", \"answer2\", ...]."
-                        )
+                        "content": DEFAULT_PROMPT_BATCHED
                     },
                     {
                         "role": "user",
