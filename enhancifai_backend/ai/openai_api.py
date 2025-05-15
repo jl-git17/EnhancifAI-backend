@@ -291,37 +291,29 @@ class OpenAIConnector:
 
         for attempt in range(max_attempts):
             try:
+                # Optimized, lean, and accurate system prompt
                 messages = [
                     {
                         "role": "system",
                         "content": (
-                            "You are a data analysis assistant. "
-                            "Given a query and a JSON payload with 'columns' and 'rows', "
-                            "process each row according to the query and return ONLY a valid JSON array of strings, "
-                            "with one answer per row, in the same order as the input rows. "
-                            "Do NOT return a single string with all answers concatenated. "
-                            "Do NOT return a string with newlines or bullet points. "
-                            "Do NOT include any explanations, intros, or extra text. "
-                            "Your output must be a JSON array of strings, e.g. [\"answer1\", \"answer2\", ...]. "
-                            "If you return a single string or anything other than a JSON array of strings, it will be considered an error."
+                            "You are a precise data analysis assistant. "
+                            "Given a 'query' and a JSON object with 'columns' and 'rows', "
+                            "answer the query for each row. "
+                            "Return ONLY a JSON array of strings, one per row, in order. "
+                            "No explanations, intros, or extra text. "
+                            "If data is missing for a row, return 'Incomplete data' for that row. "
+                            "Example output: [\"answer1\", \"answer2\", ...]."
                         )
                     },
                     {
                         "role": "user",
-                        "content": (
-                            "For example, if there are 3 rows and the query is 'Summarize progress', "
-                            "your response should be:\n"
-                            "[\"Child 1 made progress in X.\", \"Child 2 improved Y.\", \"Child 3 needs help with Z.\"]\n"
-                            "Do NOT return a single string with all answers combined. "
-                            "Now, here is the actual query and data:\n"
-                            + json.dumps({
-                                "query": query,
-                                "payload": {
-                                    "columns": columns,
-                                    "rows": rows
-                                }
-                            })
-                        )
+                        "content": json.dumps({
+                            "query": query,
+                            "payload": {
+                                "columns": columns,
+                                "rows": rows
+                            }
+                        })
                     }
                 ]
 
