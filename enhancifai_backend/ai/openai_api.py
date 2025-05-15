@@ -331,7 +331,7 @@ class OpenAIConnector:
                     model=self.engine,
                     messages=messages,
                     response_format=OpenAIResponseFormatBatched,
-                    temperature=0.1
+                    temperature=0.5
                 )
 
                 data = completion.choices[0].message.parsed
