@@ -329,10 +329,16 @@ class OpenAIConnector:
 
                 response = data.response
                 if response is None:
+                    logging.error(f"AI did not return valid JSON. data: {data}")
                     raise RuntimeError("AI did not return valid JSON")
                 if not isinstance(response, list):
+                    logging.error(f"AI did not return a list. Got type: {type(response)}. Value: {response}")
                     raise RuntimeError("AI did not return valid JSON array")
                 if len(response) != len(rows):
+                    logging.error(
+                        f"AI returned {len(response)} items, but expected {len(rows)}. "
+                        f"Response: {response}, Input rows: {rows}"
+                    )
                     raise RuntimeError("AI did not return the same number of rows as input")
 
                 tokens_used = completion.usage.total_tokens
