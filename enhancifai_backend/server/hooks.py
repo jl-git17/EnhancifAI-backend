@@ -14,8 +14,7 @@ from enhancifai_backend.server.utils import AdminSettings
 
 pi_ai_connection = OpenAIConnector("gpt-4.1-nano")  # TODO env var
 
-def get_ai_connection():
-    engine = AdminSettings.get_ai_engine()
+def get_ai_connection(engine):
     if engine == 'gemini':
         return GeminiConnector()
     else:
@@ -32,13 +31,16 @@ async def handle_csv_file(csv_file, prompts, max_recs, run_id, user_id, filename
     unique_filename = f"processed_{uuid.uuid4()}_{int(time.time()*1000)}.csv"
     processed_csv_path = os.path.join('/tmp', unique_filename)
 
-    engine = AdminSettings.get_ai_engine()
+    if performance_optimization:
+        engine = AdminSettings.get_ai_engine_performance_optimization()
+    else:
+        engine = AdminSettings.get_ai_engine()
 
     csv_handler = CSVHandler(
         run_id=run_id,
         file_path=temp_csv_file_path,
         output_file=processed_csv_path,
-        ai_connector=get_ai_connection(),
+        ai_connector=get_ai_connection(engine),
         engine=engine,
         user_id=user_id,
         filename=filename,
@@ -80,12 +82,15 @@ async def handle_excel_file(excel_file, prompts, max_recs, run_id, user_id, file
     unique_filename = f"processed_{uuid.uuid4()}_{int(time.time()*1000)}{file_extension}"
     processed_excel_path = os.path.join('/tmp', unique_filename)
 
-    engine = AdminSettings.get_ai_engine()
+    if performance_optimization:
+        engine = AdminSettings.get_ai_engine_performance_optimization()
+    else:
+        engine = AdminSettings.get_ai_engine()
     excel_handler = ExcelHandler(
         run_id=run_id,
         file_path=temp_excel_file_path,
         output_file=processed_excel_path,
-        ai_connector=get_ai_connection(),
+        ai_connector=get_ai_connection(engine),
         engine=engine,
         user_id=user_id,
         filename=filename,

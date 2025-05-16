@@ -28,7 +28,8 @@ class AdminSettings:
     """Class to manage AI settings for the application."""
     settings = {
         'ai_api_key': settings.openai_api_key,
-        'ai_engine': 'gpt-4.1-nano'
+        'ai_engine': 'gpt-4.1-nano',
+        'ai_engine_performance_optimization': 'gpt-4.1-mini',
     }
 
     @classmethod
@@ -56,6 +57,16 @@ class AdminSettings:
             str: The current AI engine.
         """
         return cls.settings['ai_engine']
+
+    @classmethod
+    def get_ai_engine_performance_optimization(cls) -> str:
+        """
+        Get the current AI engine performance optimization.
+
+        Returns:
+            str: The current AI engine performance optimization.
+        """
+        return cls.settings['ai_engine_performance_optimization']
 
     @classmethod
     def get_ai_api_key(cls) -> str:
