@@ -3,8 +3,13 @@ from collections import deque
 from threading import Lock
 
 from enhancifai_backend.database.handlers.runs import RunsDbCore
+from enhancifai_backend.config import settings
 
 GLOBAL_RATE_LIMIT_DELAY = 0.1
+
+MAIN_MODEL = settings.main_model
+FALLBACK_MODEL_ONE = settings.fallback_model_one
+FALLBACK_MODEL_TWO = settings.fallback_model_two
 
 class RateLimitManager:
     def __init__(self):
@@ -89,34 +94,31 @@ class RateLimitManager:
             self.request_logs[model].append(time.time())
         return True, "API call successful"
 
-    def _weighted_round_robin_fallback(self, model):
+    def _weighted_round_robin_fallback(self):
         """
         Original fallback method kept for future reference.
         """
         with self.queue_lock:
             for _ in range(self.weights[self.current_priority]):  # Process based on weight
                 if self.queue[self.current_priority]:
-                    if self._is_request_allowed(model):
+                    if self._is_request_allowed(MAIN_MODEL):
                         current_id = self.queue[self.current_priority].popleft()
-                        if self._are_tokens_available(model):
+                        if self._are_tokens_available(MAIN_MODEL):
                             with self.awarded_lock:
-                                self.awarded[current_id] = model
+                                self.awarded[current_id] = MAIN_MODEL
                             break
                         else:
-                            if self._are_tokens_available('gpt-3.5-turbo'):
+                            if self._are_tokens_available(FALLBACK_MODEL_ONE):
                                 with self.awarded_lock:
-                                    self.awarded[current_id] = 'gpt-3.5-turbo'
+                                    self.awarded[current_id] = FALLBACK_MODEL_ONE
                                 break
-                            elif self._are_tokens_available('gpt-4o'):
+                            elif self._are_tokens_available(FALLBACK_MODEL_TWO):
                                 with self.awarded_lock:
-                                    self.awarded[current_id] = 'gpt-4o'
+                                    self.awarded[current_id] = FALLBACK_MODEL_TWO
                                 break
         self.current_priority = (self.current_priority + 1) % len(self.weights)
 
-    def can_make_api_call(self, model, run_id, priority=0):
-        if model not in self.limits:
-            raise ValueError("Model not recognized")
-
+    def can_make_api_call(self, run_id, priority=0):
         # Generate unique ID
         unique_id = f"{id(self)}-{len(self.queue[priority])}-{run_id}"
         with self.queue_lock:
@@ -133,10 +135,10 @@ class RateLimitManager:
             with self.queue_lock:
                 for _ in range(self.weights[self.current_priority]):  # Process based on weight
                     if self.queue[self.current_priority]:
-                        if self._is_request_allowed(model) and self._are_tokens_available(model):
+                        if self._is_request_allowed(MAIN_MODEL) and self._are_tokens_available(MAIN_MODEL):
                             current_id = self.queue[self.current_priority].popleft()
                             with self.awarded_lock:
-                                self.awarded[current_id] = model
+                                self.awarded[current_id] = MAIN_MODEL
                             break
 
             self.current_priority = (self.current_priority + 1) % len(self.weights)

@@ -1,5 +1,4 @@
 import json
-import os
 import re
 import time
 import logging
@@ -13,7 +12,8 @@ from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.database.handlers.admin import PromptsDbCore
-from enhancifai_backend.engine.rate_limit_manager import rate_limit_manager
+from enhancifai_backend.engine.rate_limit_manager import RateLimitManager, rate_limit_manager
+from enhancifai_backend.engine.rate_limit_manager_free import RateLimitManagerFree, rate_limit_manager_free
 
 BUFFER_MULTIPLIER = 2
 
@@ -100,7 +100,11 @@ def extract_and_parse_json(raw_data):
 
 
 class PromptImproverSettings:
-    def __init__(self, prompt: str=PI_DEFAULT_PROMPT, ai_engine: str=PI_DEFAULT_AI_ENGINE):
+    def __init__(self, prompt: str=PI_DEFAULT_PROMPT, ai_engine: str=PI_DEFAULT_AI_ENGINE,
+                 free_mode: bool=False):
+        self.rate_limit_manager: RateLimitManager|RateLimitManagerFree = (
+            rate_limit_manager_free if free_mode else rate_limit_manager
+        )
         self._prompt = prompt
         self._ai_engine = ai_engine
         self._update_from_db()
@@ -148,11 +152,13 @@ class OpenAIResponseFormatBatched(BaseModel):
 class OpenAIConnector:
     """Class to manage connections and requests to OpenAI API."""
 
-    def __init__(self, engine) -> None:
-        self.engine = engine
+    def __init__(self, free_mode: bool = False) -> None:
         #self.temperature = temperature
         #self.top_p = top_p
         # Initialize OpenAI client with API key
+        self.rate_limit_manager: RateLimitManager | RateLimitManagerFree = (
+            rate_limit_manager_free if free_mode else rate_limit_manager
+        )
         self.client = OpenAI(api_key=settings.openai_api_key)
         self.rate_limit = False
 
@@ -176,8 +182,8 @@ class OpenAIConnector:
         _err = None
 
         # Check rate limit manager
-        self.engine = rate_limit_manager.can_make_api_call(model=self.engine,run_id=run_id)
-        logging.debug(f"Got engine from rlm: {self.engine}")
+        engine_to_use = self.rate_limit_manager.can_make_api_call(run_id=run_id)
+        logging.debug("Got engine from rlm: %s", engine_to_use)
 
         for attempt in range(max_attempts):
             try:
@@ -201,38 +207,38 @@ class OpenAIConnector:
                 )
 
                 completion = self.client.beta.chat.completions.parse(
-                    model=self.engine,
+                    model=engine_to_use,
                     messages=messages,
                     response_format=OpenAIResponseFormat
                 )
 
                 data = completion.choices[0].message.parsed
-                logging.debug(f"ROW >> Raw data: {data}")
+                logging.debug("ROW >> Raw data: %s", data)
                 tokens_used = completion.usage.total_tokens
                 input_tokens = completion.usage.prompt_tokens
                 output_tokens = tokens_used - input_tokens
 
                 # Update rate limit manager
-                rate_limit_manager.update_make_api_call(self.engine, tokens_used=tokens_used)
+                self.rate_limit_manager.update_make_api_call(model=engine_to_use, tokens_used=tokens_used)
 
                 response = data.response
                 if response is None:
                     raise RuntimeError("AI did not return valid JSON")
                 if not isinstance(response, str):
                     raise RuntimeError("AI did not return valid JSON string")
-                
+
                 #if 'SYS:NONE' in data:
                     #data = data.replace('SYS:NONE', '').strip()
 
                 # Save token usage entry
                 user_id = RunsDbCore.get_user_id(run_id)
-                UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
+                UsersDbCore.add_user_token_usage(user_id, run_id, engine_to_use, tokens_used)
 
                 return {
                     "content": response,
                     "input_tokens": input_tokens,
                     "output_tokens": output_tokens,
-                    "engine_used": self.engine
+                    "engine_used": engine_to_use
                 }
 
             except Exception as e:
@@ -250,10 +256,10 @@ class OpenAIConnector:
                         delay = 5  # Default to 5 seconds if parsing fails
 
                     sleep_time = delay * BUFFER_MULTIPLIER  # Add a buffer time
-                    logging.debug(f"Rate limit exceeded. Waiting for {sleep_time} seconds before retrying...")
+                    logging.debug("Rate limit exceeded. Waiting for %s seconds before retrying...", sleep_time)
                     time.sleep(sleep_time)
                 else:
-                    logging.error(f"OpenAI API error on attempt {attempt + 1}: {e}")
+                    logging.error("OpenAI API error on attempt %d: %s", attempt + 1, e)
                     _err = e
                     if attempt < max_attempts - 1:
                         # Exponential backoff with a base delay of 1 second
@@ -264,7 +270,7 @@ class OpenAIConnector:
             raise RuntimeError("Failed to get answer from OpenAI API after 3 attempts.")
         else:
             logging.error("Failed to get answer from OpenAI API after 3 attempts.")
-            return {'content': _err, 'tokens': 0, 'engine_used': self.engine}
+            return {'content': _err, 'tokens': 0, 'engine_used': engine_to_use}
 
     def process_csv_rows(
         self,
@@ -282,7 +288,7 @@ class OpenAIConnector:
 
         logging.info("Query: %s  \nRows: %s  \nColumns: %s", query, rows, columns)
 
-        self.engine = rate_limit_manager.can_make_api_call(model=self.engine, run_id=run_id)
+        engine_to_use = self.rate_limit_manager.can_make_api_call(run_id=run_id)
 
         for attempt in range(max_attempts):
             try:
@@ -304,30 +310,30 @@ class OpenAIConnector:
                     }
                 ]
 
-                logging.debug(f"MODEL: {self.engine}")
+                logging.debug("MODEL: %s", engine_to_use)
 
                 completion = self.client.beta.chat.completions.parse(
-                    model=self.engine,
+                    model=engine_to_use,
                     messages=messages,
                     response_format=OpenAIResponseFormatBatched,
                     temperature=0.5
                 )
 
                 data = completion.choices[0].message.parsed
-                logging.debug(f"Raw data: {data}")
+                logging.debug("Raw data: %s", data)
 
                 response = data.response
                 # Validate: must be a list of strings, not a single string
                 if response is None:
-                    logging.error(f"AI did not return valid JSON. data: {data}")
+                    logging.error("AI did not return valid JSON. data: %s", data)
                     raise RuntimeError("AI did not return valid JSON")
                 if not isinstance(response, list) or not all(isinstance(x, str) for x in response):
-                    logging.error(f"AI did not return a list of strings. Got: {response}")
+                    logging.error("AI did not return a list of strings. Got: %s", response)
                     raise RuntimeError("AI did not return a JSON array of strings")
                 if len(response) != len(rows):
                     logging.error(
-                        f"AI returned {len(response)} items, but expected {len(rows)}. "
-                        f"Response: {response}, Input rows: {rows}"
+                        "AI returned %d items, but expected %d. Response: %s, Input rows: %s",
+                        len(response), len(rows), response, rows
                     )
                     raise RuntimeError("AI did not return the same number of rows as input")
 
@@ -335,10 +341,10 @@ class OpenAIConnector:
                 input_tokens = completion.usage.prompt_tokens
                 output_tokens = tokens_used - input_tokens
 
-                rate_limit_manager.update_make_api_call(self.engine, tokens_used=tokens_used)
+                self.rate_limit_manager.update_make_api_call(engine_to_use, tokens_used=tokens_used)
 
                 user_id = RunsDbCore.get_user_id(run_id)
-                UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
+                UsersDbCore.add_user_token_usage(user_id, run_id, engine_to_use, tokens_used)
 
                 results = []
                 for line in response:
@@ -346,12 +352,12 @@ class OpenAIConnector:
                         "content": line,
                         "input_tokens": input_tokens,
                         "output_tokens": output_tokens,
-                        "engine_used": self.engine
+                        "engine_used": engine_to_use
                     })
                 return results
 
             except Exception as e:
-                logging.error(f"Attempt {attempt + 1} failed with error: {e}")
+                logging.error("Attempt %d failed with error: %s", attempt + 1, e)
                 if hasattr(e, 'status_code'):
                     if e.status_code == 429:
                         match = RATE_LIMIT_PATTERN.search(e.body['message']) if hasattr(e, 'body') else None
@@ -360,20 +366,20 @@ class OpenAIConnector:
                         else:
                             delay = 5
                         sleep_time = delay * BUFFER_MULTIPLIER
-                        logging.debug(f"Rate limit reached. Waiting {sleep_time} seconds before retrying...")
+                        logging.debug("Rate limit reached. Waiting %s seconds before retrying...", sleep_time)
                         time.sleep(sleep_time)
                 else:
                     _err = e
                     if attempt < max_attempts - 1:
                         backoff_time = 2 ** attempt
-                        logging.error(f"Error encountered. Retrying in {backoff_time} seconds...")
+                        logging.error("Error encountered. Retrying in %s seconds...", backoff_time)
                         time.sleep(backoff_time)
 
         if _err is None:
             raise RuntimeError("Failed to get answer from OpenAI API after 3 attempts.")
         else:
             logging.error("Failed to get answer from OpenAI API after 3 attempts.")
-            return [{'content': str(_err), 'tokens': 0, 'engine_used': self.engine}]
+            return [{'content': str(_err), 'tokens': 0, 'engine_used': engine_to_use}]
 
 
     def improve_prompt(self, prompt: str, user_id: int):
@@ -403,8 +409,11 @@ class OpenAIConnector:
                     }
                 )
 
+                engine_to_use = pi_settings.ai_engine
+                logging.debug("PI:: Using engine: %s", engine_to_use)
+
                 completion = self.client.chat.completions.create(
-                    model=self.engine,
+                    model=engine_to_use,
                     messages=messages,
                     temperature=1,
                     #temperature=self.temperature,
@@ -417,12 +426,12 @@ class OpenAIConnector:
                 output_tokens = tokens_used - input_tokens
 
                 new_prompt = data.replace("```", "").strip()
-                UsersDbCore.add_user_token_usage_pi(user_id, self.engine, tokens_used)
+                UsersDbCore.add_user_token_usage_pi(user_id, engine_to_use, tokens_used)
                 return {
                     "content": new_prompt,
                     "input_tokens": input_tokens,
                     "output_tokens": output_tokens,
-                    "engine_used": self.engine
+                    "engine_used": engine_to_use
                 }
 
             except json.JSONDecodeError:
@@ -444,10 +453,10 @@ class OpenAIConnector:
                         delay = 5  # Default to 5 seconds if parsing fails
 
                     sleep_time = delay * BUFFER_MULTIPLIER  # Add a buffer time
-                    logging.debug(f"Rate limit exceeded. Waiting for {sleep_time} seconds before retrying...")
+                    logging.debug("Rate limit exceeded. Waiting for %s seconds before retrying...", sleep_time)
                     time.sleep(sleep_time)
                 else:
-                    logging.error(f"OpenAI API error on attempt {attempt + 1}: {e}")
+                    logging.error("OpenAI API error on attempt %d: %s", attempt + 1, e)
                     _err = e
                     if attempt < 2:
                         # Exponential backoff with a base delay of 1 second
