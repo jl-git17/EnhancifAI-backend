@@ -42,6 +42,15 @@ class Settings(BaseSettings):
     stripe_subscription_price_id: str = Field(..., env="STRIPE_SUBSCRIPTION_PRICE_ID")
     billing_start: str = Field(..., env="BILLING_START")
 
+    # Model settings
+    main_model: str = Field(..., env="MAIN_MODEL")
+    main_model_free: str = Field(..., env="MAIN_MODEL_FREE")
+    fallback_model_one: str = Field(..., env="FALLBACK_MODEL_ONE")
+    fallback_model_one_free: str = Field(..., env="FALLBACK_MODEL_ONE_FREE")
+    fallback_model_two: str = Field(..., env="FALLBACK_MODEL_TWO")
+    fallback_model_two_free: str = Field(..., env="FALLBACK_MODEL_TWO_FREE")
+
+
     class Config:
         pass
 
