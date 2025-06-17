@@ -145,7 +145,8 @@ async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name,
             user_id=user_id,
             filename=file_name,
             batched_processing=batched_processing,
-            performance_optimization=performance_optimization
+            performance_optimization=performance_optimization,
+            free_mode=False
         )
     elif mime_type in EXCEL_MIME_TYPES:
         results = await handle_excel_file(
@@ -156,7 +157,8 @@ async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name,
             user_id=user_id,
             filename=file_name,
             batched_processing=batched_processing,
-            performance_optimization=performance_optimization
+            performance_optimization=performance_optimization,
+            free_mode=False
         )
     else:
         # Handle unsupported file types or add more conditions for other types
@@ -262,7 +264,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
             logging.debug("User is uncapped, setting max records to 0")
             max_recs = 0
         else:
-            logging.debug(f"User is capped, setting max records to {GLOBAL_MAX_ROWS}")
+            logging.debug("User is capped, setting max records to %s", GLOBAL_MAX_ROWS)
             max_recs = GLOBAL_MAX_ROWS
 
     temp_data_file_path = None
