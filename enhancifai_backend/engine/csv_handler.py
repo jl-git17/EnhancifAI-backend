@@ -11,6 +11,7 @@ from enhancifai_backend.database.handlers.run_logs import RunLogsDbCore
 from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.runs_progress import runs_progress
+from enhancifai_backend.config import settings
 
 # Default concurrency
 DEFAULT_MAX_THREADS = 2
@@ -22,7 +23,6 @@ class CSVHandler:
         output_file,
         ai_connector,
         run_id,
-        engine,
         user_id,
         filename,
         batched_processing=False,
@@ -38,7 +38,6 @@ class CSVHandler:
         self.prompt_progress = 0
         self.row_completion = {}
         self.run_id = run_id
-        self.engine = engine
         self.user_id = user_id
         self.errors = []
         self.overflow = False
@@ -47,6 +46,7 @@ class CSVHandler:
         self.output_tokens = 0
         self.batched_processing = batched_processing
         self.performance_optimization = performance_optimization
+        self.last_engine_used = settings.main_model  # Default engine
 
     def _is_run_cancelled(self):
         return RunsDbCore.is_run_cancelled(self.run_id)
@@ -159,7 +159,9 @@ class CSVHandler:
             return self._handle_cancel(start_time)
 
         self.save_csv()
-        self._insert_log(end_time - start_time)
+        diff = end_time - start_time
+        logging.info(f"Run {self.run_id} completed in {diff:.2f} seconds.")
+        self._insert_log(diff, settings.main_model)
         return {
             "total_records": len(self.data),
             "processed_records": self.processed,
@@ -190,7 +192,8 @@ class CSVHandler:
             query=prompt_config['prompt'],
             run_id=self.run_id
         )
-        if data['engine_used'] != self.engine:
+        self.last_engine_used = data.get('engine_used', settings.main_model)
+        if data['engine_used'] != settings.main_model:
             self.overflow = True
 
         result[f"{output_heading}"] = data.get("content", "")
@@ -250,8 +253,9 @@ class CSVHandler:
                     "prompt_number": prompt_config['prompt_number'],
                     f"{output_heading}": item.get("content", "")
                 }
+                self.last_engine_used = item.get('engine_used', settings.main_model)
                 # If engine used is different, mark overflow
-                if item.get("engine_used") != self.engine:
+                if item.get("engine_used") != settings.main_model:
                     self.overflow = True
 
 
@@ -356,14 +360,16 @@ class CSVHandler:
         # If row completed all prompts, increment 'processed'
         # But we only know total prompts at the very end, so we do that after gather_results or in final logic
 
-    def _handle_cancel(self, start_time):
+    def _handle_cancel(self, start_time, model_used=settings.main_model):
         """
         Mark the run as cancelled, log, and return partial results.
         """
         end_time = time.time()
         if not RunsDbCore.is_run_cancelled(self.run_id):
             RunsDbCore.cancel_run(self.run_id)
-        self._insert_log(end_time - start_time)
+        diff = end_time - start_time
+        logging.info(f"Run {self.run_id} cancelled after {diff:.2f} seconds.")
+        self._insert_log(diff, model_used)
         return {
             "total_records": len(self.data),
             "processed_records": self.processed,
@@ -374,12 +380,12 @@ class CSVHandler:
             "errors": self.errors
         }
 
-    def _insert_log(self, time_elapsed):
+    def _insert_log(self, time_elapsed, model_used):
         _name = UsersDbCore.get_user_by_id(self.user_id)['name'] or f"user_{self.user_id}"
         RunLogsDbCore.insert_log(
             run_id=self.run_id,
             user_name=_name,
-            engine_model=self.engine,
+            engine_model=model_used,
             log_timestamp=datetime.now(tz=timezone.utc),
             num_rows_processed=self.processed,
             time_elapsed=time_elapsed,

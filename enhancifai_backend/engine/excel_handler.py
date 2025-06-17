@@ -16,6 +16,8 @@ from enhancifai_backend.engine.runs_progress import runs_progress
 
 DEFAULT_MAX_THREADS = 2
 
+# TODO: as in csv_handler
+
 class ExcelHandler:
     def __init__(
         self,
