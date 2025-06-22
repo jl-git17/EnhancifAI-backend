@@ -295,3 +295,43 @@ CREATE TABLE IF NOT EXISTS enhancifai.subscription_payments (
     created_at TIMESTAMP DEFAULT now(),
     paid_at TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS enhancifai.use_cases_free (
+    id SERIAL PRIMARY KEY,
+    user_id INT REFERENCES enhancifai.users(user_id),
+    title TEXT NOT NULL,
+    description TEXT,
+    thumbnail BYTEA,
+    sample_input_file_csv BYTEA,
+    sample_input_file_excel BYTEA,
+    prompt_config_file BYTEA,
+    created_at TIMESTAMP DEFAULT now(),
+    updated_at TIMESTAMP DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS enhancifai.demo_usage_logs (
+    id SERIAL PRIMARY KEY,
+    ip_address VARCHAR(45),
+    session_id VARCHAR(64),
+    use_case_id INT,
+    model_name VARCHAR(100),
+    tokens_used INT,
+    created_at TIMESTAMP DEFAULT now(),
+    status VARCHAR(20)
+);
+
+-- Settings for public demo (model_default, model_fallback)
+CREATE TABLE IF NOT EXISTS enhancifai.demo_settings (
+    id SERIAL PRIMARY KEY,
+    model_default VARCHAR(100),
+    model_fallback VARCHAR(100),
+    updated_at TIMESTAMP DEFAULT now()
+);
+
+-- Insert default row if not exists
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM enhancifai.demo_settings) THEN
+        INSERT INTO enhancifai.demo_settings (model_default, model_fallback) VALUES ('', '');
+    END IF;
+END $$;
