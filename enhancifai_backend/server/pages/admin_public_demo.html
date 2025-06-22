@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>EnhancifAI - Public Demo Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            padding-top: 56px;
+            background-color: #F8FBFF;
+            color: #1A1A1A;
+        }
+        .navbar {
+            background-color: #0078FF;
+        }
+        .navbar .navbar-brand {
+            color: #fff;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 1.5rem;
+            text-align: center;
+            color: #0078FF;
+        }
+        .table {
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.07);
+        }
+        .table-striped tbody tr:nth-of-type(odd) {
+            background-color: #E6F2FF;
+        }
+        .form-section {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.07);
+            padding: 24px;
+            margin-bottom: 32px;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .btn-primary {
+            background-color: #0078FF;
+            border-color: #0078FF;
+        }
+        .btn-primary:hover, .btn-primary:focus {
+            background-color: #005FCC;
+            border-color: #005FCC;
+        }
+        .btn-danger {
+            border-radius: 4px;
+        }
+        .alert {
+            display: none;
+        }
+        .modal .modal-content {
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <a class="navbar-brand mx-auto" href="#">EnhancifAI Admin - Use Case Management</a>
+    </nav>
+    <div class="container mt-5">
+        <h1>Manage Public Use Cases</h1>
+        <!-- Settings Section -->
+        <div class="form-section mb-4">
+            <form id="settings-form">
+                <h5 class="mb-3">Demo Settings</h5>
+                <div class="mb-3">
+                    <label for="model_default" class="form-label">Default Model</label>
+                    <input type="text" class="form-control" id="model_default" name="model_default">
+                </div>
+                <div class="mb-3">
+                    <label for="model_fallback" class="form-label">Fallback Model</label>
+                    <input type="text" class="form-control" id="model_fallback" name="model_fallback">
+                </div>
+                <button type="submit" class="btn btn-primary">Save Settings</button>
+                <div id="settings-success" class="alert alert-success mt-3">Settings saved!</div>
+                <div id="settings-error" class="alert alert-danger mt-3">Error saving settings.</div>
+            </form>
+        </div>
+        <!-- End Settings Section -->
+        <div class="form-section mb-4">
+            <form id="use-case-form">
+                <input type="hidden" id="use_case_id">
+                <div class="mb-3">
+                    <label for="title" class="form-label">Title</label>
+                    <input type="text" class="form-control" id="title" required>
+                </div>
+                <div class="mb-3">
+                    <label for="description" class="form-label">Description</label>
+                    <textarea class="form-control" id="description" rows="3"></textarea>
+                </div>
+                <div class="mb-3">
+                    <label for="thumbnail" class="form-label">Thumbnail (Image File)</label>
+                    <input type="file" class="form-control" id="thumbnail" accept="image/*">
+                </div>
+                <div class="mb-3">
+                    <label for="sample_input_file_csv" class="form-label">Sample Input File (CSV)</label>
+                    <input type="file" class="form-control" id="sample_input_file_csv" accept=".csv">
+                </div>
+                <div class="mb-3">
+                    <label for="sample_input_file_excel" class="form-label">Sample Input File (Excel)</label>
+                    <input type="file" class="form-control" id="sample_input_file_excel" accept=".xls,.xlsx">
+                </div>
+                <div class="mb-3">
+                    <label for="prompt_config_file" class="form-label">Prompt Config File</label>
+                    <input type="file" class="form-control" id="prompt_config_file">
+                </div>
+                <button type="submit" class="btn btn-primary" id="save-btn">Add Use Case</button>
+                <button type="button" class="btn btn-secondary" id="cancel-edit-btn" style="display:none;">Cancel</button>
+                <div id="form-success" class="alert alert-success mt-3">Saved successfully!</div>
+                <div id="form-error" class="alert alert-danger mt-3">Error saving use case.</div>
+            </form>
+        </div>
+        <div class="mb-3">
+            <input type="text" class="form-control" id="search-box" placeholder="Search by title or description...">
+        </div>
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Title</th>
+                        <th>Description</th>
+                        <th>Created At</th>
+                        <th>Updated At</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="use-cases-table">
+                    <!-- Use cases will be populated here -->
+                </tbody>
+            </table>
+        </div>
+        <div id="table-error" class="alert alert-danger mt-3">Error loading use cases.</div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="deleteModalLabel">Delete Use Case</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            Are you sure you want to delete this use case?
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-danger" id="confirm-delete-btn">Delete</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let useCases = [];
+        let deleteId = null;
+
+        function showAlert(id, show, msg) {
+            const el = document.getElementById(id);
+            if (show) {
+                el.style.display = 'block';
+                if (msg) el.textContent = msg;
+            } else {
+                el.style.display = 'none';
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('use_case_id').value = '';
+            document.getElementById('title').value = '';
+            document.getElementById('description').value = '';
+            document.getElementById('thumbnail').value = '';
+            document.getElementById('sample_input_file_csv').value = '';
+            document.getElementById('sample_input_file_excel').value = '';
+            document.getElementById('prompt_config_file').value = '';
+            document.getElementById('save-btn').textContent = 'Add Use Case';
+            document.getElementById('cancel-edit-btn').style.display = 'none';
+        }
+
+        function populateTable(data) {
+            const table = document.getElementById('use-cases-table');
+            table.innerHTML = '';
+            if (!data.length) {
+                table.innerHTML = '<tr><td colspan="6">No use cases found.</td></tr>';
+                return;
+            }
+            data.forEach(uc => {
+                table.innerHTML += `
+                    <tr>
+                        <td>${uc.id}</td>
+                        <td>${uc.title}</td>
+                        <td>${uc.description || ''}</td>
+                        <td>${uc.created_at ? uc.created_at.split('T')[0] : ''}</td>
+                        <td>${uc.updated_at ? uc.updated_at.split('T')[0] : ''}</td>
+                        <td>
+                            <button class="btn btn-sm btn-success me-1" onclick="editUseCase(${uc.id})"><i class="bi bi-pencil"></i></button>
+                            <button class="btn btn-sm btn-danger" onclick="showDeleteModal(${uc.id})"><i class="bi bi-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        async function fetchUseCases() {
+            showAlert('table-error', false);
+            try {
+                const res = await fetch('/demo/use-cases');
+                if (!res.ok) throw new Error('Failed to fetch use cases');
+                useCases = await res.json();
+                populateTable(useCases);
+            } catch (e) {
+                showAlert('table-error', true, e.message);
+            }
+        }
+
+        window.editUseCase = function(id) {
+            const uc = useCases.find(u => u.id === id);
+            if (!uc) return;
+            document.getElementById('use_case_id').value = uc.id;
+            document.getElementById('title').value = uc.title;
+            document.getElementById('description').value = uc.description || '';
+            document.getElementById('save-btn').textContent = 'Update Use Case';
+            document.getElementById('cancel-edit-btn').style.display = 'inline-block';
+            window.scrollTo({top: 0, behavior: 'smooth'});
+        };
+
+        document.getElementById('cancel-edit-btn').onclick = function() {
+            resetForm();
+        };
+
+        window.showDeleteModal = function(id) {
+            deleteId = id;
+            const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+            modal.show();
+        };
+
+        document.getElementById('confirm-delete-btn').onclick = async function() {
+            if (!deleteId) return;
+            try {
+                const res = await fetch(`/demo/use-cases/${deleteId}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Delete failed');
+                await fetchUseCases();
+                resetForm();
+            } catch (e) {
+                alert('Error deleting use case.');
+            }
+            deleteId = null;
+            bootstrap.Modal.getInstance(document.getElementById('deleteModal')).hide();
+        };
+
+        document.getElementById('use-case-form').onsubmit = async function(e) {
+            e.preventDefault();
+            showAlert('form-success', false);
+            showAlert('form-error', false);
+            const id = document.getElementById('use_case_id').value;
+            const title = document.getElementById('title').value;
+            const description = document.getElementById('description').value;
+            const thumbnail = document.getElementById('thumbnail').files[0];
+            const csv = document.getElementById('sample_input_file_csv').files[0];
+            const excel = document.getElementById('sample_input_file_excel').files[0];
+            const promptConfig = document.getElementById('prompt_config_file').files[0];
+            const formData = new FormData();
+            formData.append('title', title);
+            formData.append('description', description);
+            if (thumbnail) formData.append('thumbnail', thumbnail);
+            if (csv) formData.append('sample_input_file_csv', csv);
+            if (excel) formData.append('sample_input_file_excel', excel);
+            if (promptConfig) formData.append('prompt_config_file', promptConfig);
+            let url = '/demo/use-cases';
+            let method = 'POST';
+            if (id) {
+                url = `/demo/use-cases/${id}`;
+                method = 'PUT';
+            }
+            try {
+                const res = await fetch(url, {
+                    method,
+                    body: formData
+                });
+                if (!res.ok) throw new Error('Save failed');
+                showAlert('form-success', true);
+                await fetchUseCases();
+                resetForm();
+            } catch (e) {
+                showAlert('form-error', true, e.message);
+            }
+        };
+
+        document.getElementById('search-box').oninput = function() {
+            const q = this.value.toLowerCase();
+            const filtered = useCases.filter(u =>
+                (u.title && u.title.toLowerCase().includes(q)) ||
+                (u.description && u.description.toLowerCase().includes(q))
+            );
+            populateTable(filtered);
+        };
+
+        // Settings AJAX
+        function fetchSettings() {
+            $.get('/demo/settings', function(data) {
+                $('#model_default').val(data.model_default || '');
+                $('#model_fallback').val(data.model_fallback || '');
+            });
+        }
+        $('#settings-form').on('submit', function(e) {
+            e.preventDefault();
+            $('#settings-success').hide();
+            $('#settings-error').hide();
+            const formData = new FormData(this);
+            $.ajax({
+                url: '/demo/settings',
+                type: 'PUT',
+                data: formData,
+                processData: false,
+                contentType: false,
+                success: function() {
+                    $('#settings-success').show();
+                },
+                error: function(xhr) {
+                    $('#settings-error').text(xhr.responseJSON?.detail || 'Error saving settings.').show();
+                }
+            });
+        });
+
+        $(function() {
+            fetchSettings();
+            fetchUseCases();
+        });
+    </script>
+</body>
+</html>
