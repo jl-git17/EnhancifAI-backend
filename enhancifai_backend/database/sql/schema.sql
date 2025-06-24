@@ -312,7 +312,6 @@ CREATE TABLE IF NOT EXISTS enhancifai.use_cases_free (
 CREATE TABLE IF NOT EXISTS enhancifai.demo_usage_logs (
     id SERIAL PRIMARY KEY,
     ip_address VARCHAR(45),
-    session_id VARCHAR(64),
     use_case_id INT,
     model_name VARCHAR(100),
     tokens_used INT,
@@ -335,3 +334,25 @@ BEGIN
         INSERT INTO enhancifai.demo_settings (model_default, model_fallback) VALUES ('', '');
     END IF;
 END $$;
+
+-- Table to record each demo run
+CREATE TABLE IF NOT EXISTS enhancifai.demo_runs (
+    id SERIAL PRIMARY KEY,
+    use_case_id INT REFERENCES enhancifai.use_cases_free(id),
+    session_id VARCHAR(64),
+    ip_address VARCHAR(45),
+    source_type VARCHAR(20), -- e.g., 'csv', 'excel'
+    source_filename VARCHAR,
+    run_details JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT now(),
+    check_in FLOAT,
+    cancelled BOOLEAN
+);
+
+-- Table to record each prompt call within a demo run
+CREATE TABLE IF NOT EXISTS enhancifai.demo_run_calls (
+    id SERIAL PRIMARY KEY,
+    demo_run_id INT REFERENCES enhancifai.demo_runs(id),
+    prompt TEXT,
+    tokens_used INT
+);
