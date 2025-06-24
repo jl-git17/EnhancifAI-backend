@@ -16,16 +16,20 @@ def human_readable_duration(seconds):
 
 def delete_old_files():
     """
-    Deletes files in /tmp directory that are older than FILE_AGE_LIMIT.
+    Deletes files in /tmp/enhancifai_cache directory that are older than FILE_AGE_LIMIT.
     """
+    target_dir = '/tmp/enhancifai_cache'
     current_time = time.time()
-    for filename in os.listdir('/tmp'):
-        file_path = os.path.join('/tmp', filename)
+    if not os.path.exists(target_dir):
+        logging.warning(f"Directory {target_dir} does not exist.")
+        return
+    for filename in os.listdir(target_dir):
+        file_path = os.path.join(target_dir, filename)
         try:
-            # Get the file's last modification time
-            file_mtime = os.path.getmtime(file_path)
-            # Check if the file is older than the specified age limit
-            if current_time - file_mtime > FILE_AGE_LIMIT:
-                os.remove(file_path)
+            # Only process files, not subdirectories
+            if os.path.isfile(file_path):
+                file_mtime = os.path.getmtime(file_path)
+                if current_time - file_mtime > FILE_AGE_LIMIT:
+                    os.remove(file_path)
         except Exception as e:
             logging.error(f"Error deleting file {file_path}: {e}")
