@@ -10,7 +10,7 @@ from enhancifai_backend.server.models.execution import CacheRequest
 from enhancifai_backend.server.utils import get_current_user_id, verify_secret_key
 
 
-CACHE_DIRECTORY = '/tmp/cache'
+CACHE_DIRECTORY = '/tmp/enhancifai_cache'
 
 router = APIRouter()
 
@@ -81,7 +81,7 @@ async def add_cached_file(
     if not data_file_suffix:
         raise HTTPException(status_code=400, detail="Invalid data file type")
     # Handling Data File
-    with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
+    with NamedTemporaryFile(delete=False, dir='/tmp/enhancifai_cache', suffix=data_file_suffix) as temp_data_file:
         temp_data_file_path = temp_data_file.name
         data_contents = await data_file.read()
         temp_data_file.write(data_contents)

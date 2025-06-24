@@ -27,7 +27,7 @@ from enhancifai_backend.server.models.execution import (
 from enhancifai_backend.database.handlers.run_logs import PromptImproverRunLogsDbCore
 from enhancifai_backend.server.routes.files_routes import save_to_cache
 from enhancifai_backend.server.utils import (
-    STATIC_FILES_DIRECTORY, get_current_user_id, verify_secret_key)
+    STATIC_FILES_DIRECTORY, extract_columns_from_file, get_current_user_id, verify_secret_key)
 
 TEST_MAX_RECORDS = 10
 GLOBAL_MAX_ROWS = settings.global_max_rows
@@ -43,76 +43,6 @@ class EngineType(str, Enum):
 
 router = APIRouter()
 
-def read_prompt_file(prompt_file_path: str):
-    """
-    Reads and validates prompts from a CSV file.
-    """
-    valid_prompts = []
-    errors = []
-    with open(prompt_file_path, newline='', encoding='utf-8') as csvfile:
-        i = 1
-        reader = csv.DictReader(csvfile)
-        for row in reader:
-            try:
-                prompt_number = row['Line Number']
-                columns = row['Columns being Referenced']
-                prompt = row['The Prompt']
-                output_heading = row['Output Heading']
-
-                if not prompt_number.isdigit():
-                    errors.append(f"Row {i} >> Invalid prompt number: {prompt_number}")
-                    continue
-
-                columns = columns.replace(" ", "").upper()
-                if (columns != '*' and not all(c.isalpha() and
-                            len(c) == 1 for c in columns.split('+'))):
-                    if '+' not in columns:
-                        errors.append(
-                            "'Columns being Referenced' must be separated "
-                            "by a '+' (plus) character."
-                            f"\nSubmitted columns: ({columns})")
-                    else:
-                        errors.append(f"Invalid 'Columns being Referenced' format: ({columns})")
-                    continue
-
-                if not prompt:
-                    errors.append("Missing prompt text")
-                    continue
-
-                valid_prompts.append(
-                    {
-                        'prompt_number': prompt_number,
-                        'columns': columns,
-                        'prompt': prompt,
-                        'output_heading': output_heading
-                    }
-                )
-                i += 1
-            except KeyError as e:
-                logging.error(e)
-                logging.error("CSV file format is incorrect.")
-                errors.append(f"CSV is missing a column: {e}")
-                break
-    errors = list(set(errors))
-    if len(errors) > 0:
-        _errors = '\n\n'.join(errors).strip()
-        raise HTTPException(status_code=400, detail=_errors)
-
-    return valid_prompts
-
-def extract_columns_from_file(file_path):
-    # Read the file based on its extension
-    if file_path.endswith('.csv'):
-        df = pd.read_csv(file_path)
-    elif file_path.endswith(('.xls', '.xlsx')):
-        df = pd.read_excel(file_path)
-    else:
-        raise ValueError("Unsupported file format")
-
-    # Extract columns and format them as JSON objects
-    columns = {chr(65 + i): col for i, col in enumerate(df.columns)}
-    extracted_columns = [columns]
-    return extracted_columns
 
 def start_async_run(
         run_id, data_file, prompts, max_recs, user_id,
@@ -281,7 +211,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
             _json_data = json.loads(json_data)
             sheet_name = _json_data['sheet_name']
             data_json = _json_data['data']
-            with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx') as temp_data_file:
+            with NamedTemporaryFile(delete=False, dir='/tmp/enhancifai_cache', suffix='.xlsx') as temp_data_file:
                 temp_data_file_path = temp_data_file.name
                 json_to_excel(data_json, temp_data_file_path)
             file_name = f"{sheet_name}.xlsx"
@@ -306,7 +236,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
             raise HTTPException(status_code=400, detail="Invalid prompt file type")
 
         # Handling Data File with empty content check
-        with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
+        with NamedTemporaryFile(delete=False, dir='/tmp/enhancifai_cache', suffix=data_file_suffix) as temp_data_file:
             temp_data_file_path = temp_data_file.name
             data_contents = await data_file.read()
             if not data_contents:
@@ -334,7 +264,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
         max_prompts = 0
     else:
         max_prompts = GLOBAL_MAX_PROMPTS
-    with NamedTemporaryFile(delete=False, dir='/tmp', suffix=prompt_file_suffix) as temp_prompt_file:
+    with NamedTemporaryFile(delete=False, dir='/tmp/enhancifai_cache', suffix=prompt_file_suffix) as temp_prompt_file:
         temp_prompt_file_path = temp_prompt_file.name
         prompt_contents = await prompt_file.read()
         if not prompt_contents:
@@ -480,7 +410,7 @@ async def upload_direct_prompt(
             sheet_name = _json_data['sheet_name']
             logging.debug("Sheet name extracted: %s", sheet_name)
             data_json = _json_data['data']
-            with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx') as temp_data_file:
+            with NamedTemporaryFile(delete=False, dir='/tmp/enhancifai_cache', suffix='.xlsx') as temp_data_file:
                 temp_data_file_path = temp_data_file.name
                 logging.debug("Created temporary data file at %s", temp_data_file_path)
                 json_to_excel(data_json, temp_data_file_path)
@@ -516,7 +446,7 @@ async def upload_direct_prompt(
 
         # Handling Data File with empty content check
         try:
-            with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
+            with NamedTemporaryFile(delete=False, dir='/tmp/enhancifai_cache', suffix=data_file_suffix) as temp_data_file:
                 temp_data_file_path = temp_data_file.name
                 logging.debug("Created temporary data file at %s", temp_data_file_path)
                 data_contents = await data_file.read()
@@ -688,7 +618,7 @@ async def upload_prompts(prompt_file: UploadFile = File(...), _: str = Depends(v
             max_prompts = 0
         else:
             max_prompts = GLOBAL_MAX_PROMPTS
-        with NamedTemporaryFile(delete=False, dir='/tmp', suffix=prompt_file_suffix) as temp_prompt_file:
+        with NamedTemporaryFile(delete=False, dir='/tmp/enhancifai_cache', suffix=prompt_file_suffix) as temp_prompt_file:
             temp_prompt_file_path = temp_prompt_file.name
             prompt_contents = await prompt_file.read()
             if not prompt_contents:
@@ -737,7 +667,7 @@ async def download_prompts(prompts: str = Form(...), _: str = Depends(verify_sec
             )
         file_path = os.path.join(STATIC_FILES_DIRECTORY, "prompts_template.xlsx")
         unique_filename = f"prompts_{uuid.uuid4()}_{int(time.time()*1000)}.xlsx"
-        processed_excel_path = os.path.join('/tmp', unique_filename)
+        processed_excel_path = os.path.join('/tmp/enhancifai_cache', unique_filename)
 
         try:
             prompt_list = json.loads(prompts)
