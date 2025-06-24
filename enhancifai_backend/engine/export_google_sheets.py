@@ -39,9 +39,9 @@ async def export_to_google_sheets(user_id: int, file_url: str, source_filename: 
     client = gspread.authorize(creds)
     logging.debug("Google Sheets authentication successful")
 
-    # Extract filename from URL and construct the file path in /tmp directory
+    # Extract filename from URL and construct the file path in /tmp/enhancifai_cache directory
     filename = file_url.split('/')[-1]
-    file_path = os.path.join('/tmp', filename)
+    file_path = os.path.join('/tmp/enhancifai_cache', filename)
     logging.debug(f"Resolved file path: {file_path}")
 
     try:
