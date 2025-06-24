@@ -49,7 +49,7 @@ async def download_file(filename: str, _: str = Depends(verify_secret_key),
                 status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
                 detail="User has not consented for AI usage."
             )
-        file_path = os.path.join('/tmp', filename)
+        file_path = os.path.join('/tmp/enhancifai_cache', filename)
         if os.path.exists(file_path):
             # Guess the MIME type of the file based on its extension
             mime_type, _ = mimetypes.guess_type(file_path)
