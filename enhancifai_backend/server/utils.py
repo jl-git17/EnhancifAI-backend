@@ -1,3 +1,4 @@
+import csv
 import os
 import hashlib
 import secrets
@@ -229,3 +230,75 @@ def generate_unique_token() -> str:
         str: The generated token.
     """
     return secrets.token_hex(32)
+
+
+def read_prompt_file(prompt_file_path: str):
+    """
+    Reads and validates prompts from a CSV file.
+    """
+    valid_prompts = []
+    errors = []
+    with open(prompt_file_path, newline='', encoding='utf-8') as csvfile:
+        i = 1
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            try:
+                prompt_number = row['Line Number']
+                columns = row['Columns being Referenced']
+                prompt = row['The Prompt']
+                output_heading = row['Output Heading']
+
+                if not prompt_number.isdigit():
+                    errors.append(f"Row {i} >> Invalid prompt number: {prompt_number}")
+                    continue
+
+                columns = columns.replace(" ", "").upper()
+                if (columns != '*' and not all(c.isalpha() and
+                            len(c) == 1 for c in columns.split('+'))):
+                    if '+' not in columns:
+                        errors.append(
+                            "'Columns being Referenced' must be separated "
+                            "by a '+' (plus) character."
+                            f"\nSubmitted columns: ({columns})")
+                    else:
+                        errors.append(f"Invalid 'Columns being Referenced' format: ({columns})")
+                    continue
+
+                if not prompt:
+                    errors.append("Missing prompt text")
+                    continue
+
+                valid_prompts.append(
+                    {
+                        'prompt_number': prompt_number,
+                        'columns': columns,
+                        'prompt': prompt,
+                        'output_heading': output_heading
+                    }
+                )
+                i += 1
+            except KeyError as e:
+                logging.error(e)
+                logging.error("CSV file format is incorrect.")
+                errors.append(f"CSV is missing a column: {e}")
+                break
+    errors = list(set(errors))
+    if len(errors) > 0:
+        _errors = '\n\n'.join(errors).strip()
+        raise HTTPException(status_code=400, detail=_errors)
+
+    return valid_prompts
+
+def extract_columns_from_file(file_path):
+    # Read the file based on its extension
+    if file_path.endswith('.csv'):
+        df = pd.read_csv(file_path)
+    elif file_path.endswith(('.xls', '.xlsx')):
+        df = pd.read_excel(file_path)
+    else:
+        raise ValueError("Unsupported file format")
+
+    # Extract columns and format them as JSON objects
+    columns = {chr(65 + i): col for i, col in enumerate(df.columns)}
+    extracted_columns = [columns]
+    return extracted_columns
