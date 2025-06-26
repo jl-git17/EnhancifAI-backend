@@ -147,6 +147,6 @@ class RateLimitManagerFree:
             self.current_priority = (self.current_priority + 1) % len(self.weights)
             time.sleep(GLOBAL_RATE_LIMIT_DELAY)
             print(f"RLM:: Waiting for {GLOBAL_RATE_LIMIT_DELAY} seconds before retrying...")
-            
+
 # Example usage:
 rate_limit_manager_free = RateLimitManagerFree()
