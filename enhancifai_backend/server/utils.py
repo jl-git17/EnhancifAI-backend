@@ -1,4 +1,5 @@
 import csv
+import logging
 import os
 import hashlib
 import secrets
@@ -7,6 +8,7 @@ from typing import Optional
 
 from fastapi import HTTPException, Header, status
 import jwt
+import pandas as pd
 
 from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.users import UsersDbCore
