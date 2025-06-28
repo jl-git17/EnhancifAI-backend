@@ -38,7 +38,7 @@ def prepare_database(db: DbSession) -> None:
         sys.exit(1)
 
     db.do('execute', f"CREATE SCHEMA IF NOT EXISTS {schema_name};")
-    for sql_file in ['schema.sql', 'migration.sql']:
+    for sql_file in ['schema.sql', 'migration.sql', 'indexes.sql']:
         try:
             process_sql_file(db, sql_file)
         except Exception as e:
