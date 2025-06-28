@@ -8,7 +8,7 @@ class RunsDbCore:
     """
 
     @classmethod
-    def new_run(cls, user_id, source_type, source_filename):
+    def new_run(cls, user_id, source_type, source_filename, free: bool = False):
         """
         Insert a new run into the database.
         
@@ -16,18 +16,20 @@ class RunsDbCore:
             user_id (str): The identifier for the user.
             source_type (str): The type/category of the source.
             source_filename (str): Filename of the source.
-        
+            free (bool): Indicates if the run is free or not.
+
         Returns:
             The newly created run's id if successful, otherwise None.
         """
-        sql = schemafy("INSERT INTO enhancifai.runs (user_id, source_type, source_filename) VALUES (%s,%s,%s) RETURNING id;")
+        table_name = "enhancifai.runs" if not free else "enhancifai.demo_runs"
+        sql = schemafy(f"INSERT INTO {table_name} (user_id, source_type, source_filename) VALUES (%s,%s,%s) RETURNING id;")
         result = write_db.do('execute', sql=sql, data=(user_id, source_type, source_filename))
         if result:
             return result['id']
         return None
 
     @classmethod
-    def new_run_call(cls, run_id, prompt, tokens_used):
+    def new_run_call(cls, run_id, prompt, tokens_used, free: bool = False):
         """
         Record a new run call in the database.
         
@@ -39,11 +41,12 @@ class RunsDbCore:
         Returns:
             The result from the database operation.
         """
-        sql = schemafy("INSERT INTO enhancifai.runs_calls (run_id, prompt, tokens_used) VALUES (%s,%s,%s);")
+        table_name = "enhancifai.runs_calls" if not free else "enhancifai.demo_run_calls"
+        sql = schemafy(f"INSERT INTO {table_name} (run_id, prompt, tokens_used) VALUES (%s,%s,%s);")
         return write_db.do('execute', sql=sql, data=(run_id, prompt, tokens_used))
 
     @classmethod
-    def insert_run_details(cls, run_id, run_details):
+    def insert_run_details(cls, run_id, run_details, free: bool = False):
         """
         Update run details in the database.
         
@@ -54,11 +57,12 @@ class RunsDbCore:
         Returns:
             The result from the database operation.
         """
-        sql = schemafy("UPDATE enhancifai.runs SET run_details = %s WHERE id = %s;")
+        table_name = "enhancifai.runs" if not free else "enhancifai.demo_runs"
+        sql = schemafy(f"UPDATE {table_name} SET run_details = %s WHERE id = %s;")
         return write_db.do('execute', sql=sql, data=(run_details, run_id))
 
     @classmethod
-    def get_run_details(cls, run_id):
+    def get_run_details(cls, run_id, free: bool = False):
         """
         Retrieve details for a given run.
         
@@ -68,11 +72,12 @@ class RunsDbCore:
         Returns:
             The run details if found, otherwise None.
         """
-        sql = schemafy("SELECT run_details FROM enhancifai.runs WHERE id = %s;")
+        table_name = "enhancifai.runs" if not free else "enhancifai.demo_runs"
+        sql = schemafy(f"SELECT run_details FROM {table_name} WHERE id = %s;")
         return read_db.do('select_one', sql=sql, data=(run_id,))
 
     @classmethod
-    def set_run_checkin(cls, run_id):
+    def set_run_checkin(cls, run_id, free: bool = False):
         """
         Update the check-in timestamp for a run.
         
@@ -83,11 +88,12 @@ class RunsDbCore:
             The result from the database operation.
         """
         current_time = time.time()
-        sql = schemafy("UPDATE enhancifai.runs SET check_in = %s WHERE id = %s AND cancelled IS NOT TRUE;")
+        table_name = "enhancifai.runs" if not free else "enhancifai.demo_runs"
+        sql = schemafy(f"UPDATE {table_name} SET check_in = %s WHERE id = %s AND cancelled IS NOT TRUE;")
         return write_db.do('execute', sql=sql, data=(current_time, run_id))
 
     @classmethod
-    def cancel_run(cls, run_id):
+    def cancel_run(cls, run_id, free: bool = False):
         """
         Mark a run as cancelled and update its status.
         
@@ -97,16 +103,17 @@ class RunsDbCore:
         Returns:
             The result from the database operation.
         """
-        sql = schemafy("""
-            UPDATE enhancifai.runs 
+        table_name = "enhancifai.runs" if not free else "enhancifai.demo_runs"
+        sql = schemafy(f"""
+            UPDATE {table_name}
             SET cancelled = TRUE, 
-                run_details = jsonb_set(run_details, '{status}', '"cancelled"')
+                run_details = jsonb_set(run_details, '{{status}}', '"cancelled"')
             WHERE id = %s;
         """)
         return write_db.do('execute', sql=sql, data=(run_id,))
 
     @classmethod
-    def get_run_status(cls, run_id):
+    def get_run_status(cls, run_id, free: bool = False):
         """
         Fetch the current status of a run.
         
@@ -116,16 +123,17 @@ class RunsDbCore:
         Returns:
             A string indicating the run's status or None if not found.
         """
-        sql = schemafy("""
+        table_name = "enhancifai.runs" if not free else "enhancifai.demo_runs"
+        sql = schemafy(f"""
             SELECT run_details->>'status' AS status 
-            FROM enhancifai.runs 
+            FROM {table_name}
             WHERE id = %s;
         """)
         result = read_db.do('select_one', sql=sql, data=(run_id,))
         return result['status'] if result else None
 
     @classmethod
-    def is_run_cancelled(cls, run_id):
+    def is_run_cancelled(cls, run_id, free: bool = False):
         """
         Determine if a run has been cancelled.
         
@@ -135,12 +143,13 @@ class RunsDbCore:
         Returns:
             True if the run is cancelled, otherwise False.
         """
-        sql = schemafy("SELECT COALESCE(cancelled, FALSE) AS cancelled FROM enhancifai.runs WHERE id = %s;")
+        table_name = "enhancifai.runs" if not free else "enhancifai.demo_runs"
+        sql = schemafy(f"SELECT COALESCE(cancelled, FALSE) AS cancelled FROM {table_name} WHERE id = %s;")
         result = read_db.do('select_one', sql=sql, data=(run_id,))
         return result['cancelled'] if result else False
 
     @classmethod
-    def check_run_ownership(cls, user_id, run_id) -> bool:
+    def check_run_ownership(cls, user_id, run_id, free: bool = False) -> bool:
         """
         Verify if a user owns the specified run.
         
@@ -151,11 +160,12 @@ class RunsDbCore:
         Returns:
             True if the user is the owner, otherwise False.
         """
-        sql = schemafy("SELECT * FROM enhancifai.runs WHERE user_id = %s AND id = %s")
+        table_name = "enhancifai.runs" if not free else "enhancifai.demo_runs"
+        sql = schemafy(f"SELECT * FROM {table_name} WHERE user_id = %s AND id = %s")
         return read_db.do('select_exists', sql=sql, data=(user_id, run_id))
 
     @classmethod
-    def get_user_id(cls, run_id):
+    def get_user_id(cls, run_id, free: bool = False):
         """
         Retrieve the user ID associated with a run.
         
@@ -165,12 +175,13 @@ class RunsDbCore:
         Returns:
             The user ID if found, otherwise None.
         """
-        sql = schemafy("SELECT user_id FROM enhancifai.runs WHERE id = %s;")
+        table_name = "enhancifai.runs" if not free else "enhancifai.demo_runs"
+        sql = schemafy(f"SELECT user_id FROM {table_name} WHERE id = %s;")
         result = read_db.do('select_one', sql=sql, data=(run_id,))
         return result['user_id'] if result else None
 
     @classmethod
-    def get_run_file_url(cls, run_id):
+    def get_run_file_url(cls, run_id, free: bool = False):
         """
         Extract the file URL from the run details JSONB field.
         
@@ -180,7 +191,8 @@ class RunsDbCore:
         Returns:
             The file URL if present, otherwise None.
         """
-        sql = schemafy("SELECT run_details FROM enhancifai.runs WHERE id = %s;")
+        table_name = "enhancifai.runs" if not free else "enhancifai.demo_runs"
+        sql = schemafy(f"SELECT run_details FROM {table_name} WHERE id = %s;")
         result = read_db.do('select_one', sql=sql, data=(run_id,))
 
         if result and 'run_details' in result:
@@ -191,7 +203,7 @@ class RunsDbCore:
         return None
 
     @classmethod
-    def get_source_filename(cls, run_id):
+    def get_source_filename(cls, run_id, free: bool = False):
         """
         Retrieve the source filename for the specified run.
         
@@ -201,6 +213,7 @@ class RunsDbCore:
         Returns:
             The source filename if found, otherwise None.
         """
-        sql = schemafy("SELECT source_filename FROM enhancifai.runs WHERE id = %s;")
+        table_name = "enhancifai.runs" if not free else "enhancifai.demo_runs"
+        sql = schemafy(f"SELECT source_filename FROM {table_name} WHERE id = %s;")
         result = read_db.do('select_one', sql=sql, data=(run_id,))
         return result['source_filename'] if result else None
