@@ -26,13 +26,12 @@ from enhancifai_backend.server.models.execution import (
 from enhancifai_backend.database.handlers.run_logs import PromptImproverRunLogsDbCore
 from enhancifai_backend.server.routes.files_routes import save_to_cache
 from enhancifai_backend.server.utils import (
-    STATIC_FILES_DIRECTORY, extract_columns_from_file, get_current_user_id, verify_secret_key)
+    STATIC_FILES_DIRECTORY, extract_columns_from_file, get_current_user_id,
+    verify_secret_key, EXCEL_MIME_TYPES)
 
 TEST_MAX_RECORDS = 10
 GLOBAL_MAX_ROWS = settings.global_max_rows
 GLOBAL_MAX_PROMPTS = settings.global_max_prompts
-EXCEL_MIME_TYPES = ['application/vnd.ms-excel',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
 
 class EngineType(str, Enum):
     gpt_4_1_nano = "gpt-4.1-nano"
