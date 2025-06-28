@@ -200,21 +200,6 @@ CREATE TABLE IF NOT EXISTS enhancifai.run_logs (
     output_tokens INT
 );
 
--- Index on run_id for faster JOINs and queries filtering by run_id
-CREATE INDEX IF NOT EXISTS idx_run_logs_run_id 
-    ON enhancifai.run_logs(run_id);
-
--- Index on user_name for quicker lookups based on user_name
-CREATE INDEX IF NOT EXISTS idx_run_logs_user_name 
-    ON enhancifai.run_logs(user_name);
-
--- Index on engine_model for efficient queries filtering by engine_model
-CREATE INDEX IF NOT EXISTS idx_run_logs_engine_model 
-    ON enhancifai.run_logs(engine_model);
-
--- Index on log_timestamp for improved performance on time-based queries
-CREATE INDEX IF NOT EXISTS idx_run_logs_log_timestamp 
-    ON enhancifai.run_logs(log_timestamp);
 
 
 CREATE TABLE IF NOT EXISTS enhancifai.prompt_improver_run_logs (
@@ -228,12 +213,6 @@ CREATE TABLE IF NOT EXISTS enhancifai.prompt_improver_run_logs (
     errors TEXT
 );
 
--- Create indexes to optimize query performance
-CREATE INDEX IF NOT EXISTS idx_prompt_improver_engine_model 
-    ON enhancifai.prompt_improver_run_logs(engine_model);
-
-CREATE INDEX IF NOT EXISTS idx_prompt_improver_log_timestamp 
-    ON enhancifai.prompt_improver_run_logs(log_timestamp);
 
 CREATE TABLE IF NOT EXISTS enhancifai.prompts (
     id SERIAL PRIMARY KEY,
