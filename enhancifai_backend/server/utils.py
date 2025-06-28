@@ -26,6 +26,12 @@ VALID_ENGINES = ["gpt-4-turbo", "gpt-3.5-turbo", "gemini", "gpt-4o", "gpt-4o-min
 
 FILE_AGE_LIMIT = 86400  # seconds (1 day)
 
+CACHE_DIRECTORY = '/tmp/enhancifai_cache'
+CACHE_DIRECTORY_FREE = '/tmp/enhancifai_cache_free'
+
+EXCEL_MIME_TYPES = ['application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
+
 
 class AdminSettings:
     """Class to manage AI settings for the application."""
