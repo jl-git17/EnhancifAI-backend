@@ -1,7 +1,10 @@
+import asyncio
 import json
 import logging
+import mimetypes
 import os
 from tempfile import NamedTemporaryFile
+from threading import Thread
 from fastapi import APIRouter, Body, Depends, File, Form, UploadFile, Request
 from fastapi.responses import JSONResponse
 import base64
@@ -10,13 +13,16 @@ import pandas as pd
 import uuid
 
 from enhancifai_backend.config import settings
-from enhancifai_backend.database.handlers.public_demo import PublicDemoDbCore, PublicDemoRunsDbCore
+from enhancifai_backend.database.handlers.public_demo import PublicDemoDbCore, PublicDemoRunsDbCore, PublicDemoSettingsDbCore
+from enhancifai_backend.server.hooks import handle_csv_file, handle_excel_file, pi_ai_connection
 from enhancifai_backend.engine.prompts import PromptsProcessor
-from enhancifai_backend.server.utils import CACHE_DIRECTORY_FREE, extract_columns_from_file, get_current_user_id, verify_secret_key
+from enhancifai_backend.engine.runs_progress_free import runs_progress_free
+from enhancifai_backend.server.utils import (
+    CACHE_DIRECTORY_FREE, extract_columns_from_file, get_current_user_id,
+    verify_secret_key, EXCEL_MIME_TYPES)
 
 from enhancifai_backend.server.models.execution import PromptObject
-
-from enhancifai_backend.server.routes.execution_routes import cleanup_temp_files
+from enhancifai_backend.server.routes.files_routes import save_to_cache
 
 from enhancifai_backend.engine.runs_progress_free import runs_progress_free
 
@@ -24,6 +30,65 @@ GLOBAL_MAX_PROMPTS = settings.global_max_prompts
 GLOBAL_MAX_ROWS = settings.global_max_rows
 
 router = APIRouter()
+
+def start_async_run(
+        run_id, data_file, prompts, max_recs, user_id,
+        file_name, batched_processing=False, performance_optimization=False
+):
+    coro = process_run(
+        run_id,
+        data_file,
+        prompts,
+        max_recs,
+        user_id,
+        file_name,
+        batched_processing=batched_processing,
+        performance_optimization=performance_optimization
+    )
+    asyncio.run(coro)
+
+async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name,
+                        batched_processing=False, performance_optimization=False):
+
+    # Guess the MIME type based on the file extension
+    mime_type, _ = mimetypes.guess_type(data_file)
+
+    if mime_type == 'text/csv':
+        results = await handle_csv_file(
+            run_id=run_id,
+            csv_file=data_file,
+            prompts=prompts,
+            max_recs=max_recs,
+            user_id=user_id,
+            filename=file_name,
+            batched_processing=batched_processing,
+            performance_optimization=performance_optimization,
+            free_mode=True
+        )
+    elif mime_type in EXCEL_MIME_TYPES:
+        results = await handle_excel_file(
+            run_id=run_id,
+            excel_file=data_file,
+            prompts=prompts,
+            max_recs=max_recs,
+            user_id=user_id,
+            filename=file_name,
+            batched_processing=batched_processing,
+            performance_optimization=performance_optimization,
+            free_mode=True
+        )
+    else:
+        # Handle unsupported file types or add more conditions for other types
+        results = f"Unsupported file type: {mime_type}"
+
+    # Assuming runs_progress is defined elsewhere to track the progress of runs
+    runs_progress_free.update_details(run_id=run_id, details=results)
+
+def cleanup_temp_files(prompt_file_path, data_file_path):
+    if prompt_file_path and os.path.exists(prompt_file_path):
+        os.remove(prompt_file_path)
+    if data_file_path and os.path.exists(data_file_path):
+        os.remove(data_file_path)
 
 @router.get("/demo/use-cases", tags=["Demo"])
 async def get_use_cases():
@@ -127,8 +192,7 @@ async def do_demo_run(
     except Exception as e:
         logging.exception("Error handling uploaded data file")
         raise HTTPException(status_code=500, detail="Failed to process uploaded data file.") from e
-        
-    
+
     if data_file_suffix == '.csv':
         df = pd.read_csv(temp_data_file_path)
     else:
@@ -175,16 +239,15 @@ async def do_demo_run(
         cleanup_temp_files(None, temp_data_file_path)
         raise HTTPException(status_code=500, detail="Failed to create new run.") from e
 
-
-
-
     try:
-        save_to_cache(temp_data_file_path, user_id, file_name)
+        save_to_cache(temp_data_file_path, ip_address, file_name, free=True)
         logging.debug("Saved data file to cache for run %s", run_id)
     except Exception as e:
         logging.exception("Error saving data file to cache")
         cleanup_temp_files(None, temp_data_file_path)
         raise HTTPException(status_code=500, detail="Failed to save data file to cache.") from e
+
+    max_recs = GLOBAL_MAX_ROWS
 
     # Start asynchronous run in a separate thread, passing batched_processing
     try:
@@ -196,12 +259,12 @@ async def do_demo_run(
                 temp_data_file_path,
                 read_prompts,
                 max_recs,
-                user_id,
+                ip_address,
                 file_name
             ),
             kwargs={
-                "batched_processing": batched_processing,
-                "performance_optimization": performance_optimization,
+                "batched_processing": False,
+                "performance_optimization": False
             },
         ).start()
         logging.debug("Asynchronous run thread started successfully")
@@ -264,10 +327,10 @@ async def get_demo_settings():
     """
     Get demo settings (model_default, model_fallback).
     """
-    settings = PublicDemoDbCore.get_demo_settings()
-    if not settings:
+    _settings = PublicDemoSettingsDbCore.get_demo_settings()
+    if not _settings:
         return JSONResponse(status_code=404, content={"detail": "Settings not found"})
-    return JSONResponse(content=settings)
+    return JSONResponse(content=_settings)
 
 @router.put("/demo/settings", tags=["Demo"])
 async def update_demo_settings(
@@ -279,7 +342,7 @@ async def update_demo_settings(
     """
     Update demo settings (model_default, model_fallback).
     """
-    updated = PublicDemoDbCore.update_demo_settings(model_default=model_default, model_fallback=model_fallback)
+    updated = PublicDemoSettingsDbCore.update_demo_settings(model_default=model_default, model_fallback=model_fallback)
     if not updated:
         raise HTTPException(status_code=400, detail="Nothing to update.")
     return {"detail": "Settings updated successfully."}
