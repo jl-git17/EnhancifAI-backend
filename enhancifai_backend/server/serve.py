@@ -26,6 +26,7 @@ from enhancifai_backend.server.routes.billing_routes import router as router_bil
 
 from enhancifai_backend.server.utils import STATIC_FILES_DIRECTORY
 
+# TODO: harden security of admin accessed endpoints
 
 # Environment variables
 SERVER_HOST = settings.server_host
