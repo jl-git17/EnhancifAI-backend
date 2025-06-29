@@ -107,7 +107,7 @@ def cleanup_temp_files(prompt_file_path, data_file_path):
         os.remove(data_file_path)
 
 @router.get("/demo/use-cases", tags=["Demo (WIP)"])
-async def get_use_cases():
+async def get_use_cases(credentials: HTTPBasicCredentials = Depends(security)):
     """
     Returns array of { id, title, description, thumbnail }
     """
@@ -125,7 +125,7 @@ async def get_use_cases():
     return JSONResponse(content=result)
 
 @router.get("/demo/use-cases/{use_case_id}", tags=["Demo (WIP)"])
-async def get_use_case(use_case_id: int):
+async def get_use_case(use_case_id: int, credentials: HTTPBasicCredentials = Depends(security)):
     """
     Returns a single use case by its ID, including sample input files and prompt config if present.
     """
@@ -335,7 +335,7 @@ async def delete_use_case(
     return {"detail": "Use case deleted successfully."}
 
 @router.get("/demo/settings", tags=["Demo (WIP)"])
-async def get_demo_settings():
+async def get_demo_settings(credentials: HTTPBasicCredentials = Depends(security)):
     """
     Get demo settings (model_default, model_fallback).
     """

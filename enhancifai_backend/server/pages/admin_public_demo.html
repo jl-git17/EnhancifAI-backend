@@ -228,7 +228,12 @@
         async function fetchUseCases() {
             showAlert('table-error', false);
             try {
-                const res = await fetch('/demo/use-cases');
+                // Always send Authorization header for admin endpoints
+                const auth = getAuthHeader();
+                if (!auth) return;
+                const res = await fetch('/demo/use-cases', {
+                    headers: { 'Authorization': auth }
+                });
                 if (!res.ok) throw new Error('Failed to fetch use cases');
                 useCases = await res.json();
                 populateTable(useCases);
@@ -333,9 +338,19 @@
 
         // Settings AJAX
         function fetchSettings() {
-            $.get('/demo/settings', function(data) {
-                $('#model_default').val(data.model_default || '');
-                $('#model_fallback').val(data.model_fallback || '');
+            // Always send Authorization header for admin endpoints
+            const auth = getAuthHeader();
+            if (!auth) return;
+            $.ajax({
+                url: '/demo/settings',
+                type: 'GET',
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('Authorization', auth);
+                },
+                success: function(data) {
+                    $('#model_default').val(data.model_default || '');
+                    $('#model_fallback').val(data.model_fallback || '');
+                }
             });
         }
         $('#settings-form').on('submit', function(e) {
