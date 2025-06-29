@@ -26,6 +26,8 @@ from enhancifai_backend.server.routes.files_routes import save_to_cache
 
 from enhancifai_backend.engine.runs_progress_free import runs_progress_free
 
+# TODO: harden security of admin accessed endpoints
+
 GLOBAL_MAX_PROMPTS = settings.global_max_prompts
 GLOBAL_MAX_ROWS = settings.global_max_rows
 
@@ -90,7 +92,7 @@ def cleanup_temp_files(prompt_file_path, data_file_path):
     if data_file_path and os.path.exists(data_file_path):
         os.remove(data_file_path)
 
-@router.get("/demo/use-cases", tags=["Demo"])
+@router.get("/demo/use-cases", tags=["Demo (WIP)"])
 async def get_use_cases():
     """
     Returns array of { id, title, description, thumbnail }
@@ -106,7 +108,7 @@ async def get_use_cases():
         })
     return JSONResponse(content=result)
 
-@router.get("/demo/use-cases/{use_case_id}", tags=["Demo"])
+@router.get("/demo/use-cases/{use_case_id}", tags=["Demo (WIP)"])
 async def get_use_case(use_case_id: int):
     """
     Returns a single use case by its ID, including sample input files and prompt config if present.
@@ -127,7 +129,7 @@ async def get_use_case(use_case_id: int):
     }
     return JSONResponse(content=result)
 
-@router.post("/demo/run-demo", tags=["Demo"])
+@router.post("/demo/run-demo", tags=["Demo (WIP)"])
 async def do_demo_run(
     request: Request,
     use_case_id: int,
@@ -279,7 +281,7 @@ async def do_demo_run(
         content={'run_id': run_id, "data_columns": extracted_columns}
     )
 
-@router.put("/demo/use-cases/{use_case_id}", tags=["Demo"])
+@router.put("/demo/use-cases/{use_case_id}", tags=["Demo (WIP)"])
 async def update_use_case(
     use_case_id: int,
     title: str = Form(...),
@@ -308,7 +310,7 @@ async def update_use_case(
         raise HTTPException(status_code=404, detail="Use case not found or nothing to update.")
     return {"detail": "Use case updated successfully."}
 
-@router.delete("/demo/use-cases/{use_case_id}", tags=["Demo"])
+@router.delete("/demo/use-cases/{use_case_id}", tags=["Demo (WIP)"])
 async def delete_use_case(
     use_case_id: int,
     _: str = Depends(verify_secret_key),
@@ -322,7 +324,7 @@ async def delete_use_case(
         raise HTTPException(status_code=404, detail="Use case not found.")
     return {"detail": "Use case deleted successfully."}
 
-@router.get("/demo/settings", tags=["Demo"])
+@router.get("/demo/settings", tags=["Demo (WIP)"])
 async def get_demo_settings():
     """
     Get demo settings (model_default, model_fallback).
@@ -332,7 +334,7 @@ async def get_demo_settings():
         return JSONResponse(status_code=404, content={"detail": "Settings not found"})
     return JSONResponse(content=_settings)
 
-@router.put("/demo/settings", tags=["Demo"])
+@router.put("/demo/settings", tags=["Demo (WIP)"])
 async def update_demo_settings(
     model_default: str = Form(None),
     model_fallback: str = Form(None),
