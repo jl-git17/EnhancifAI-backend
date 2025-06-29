@@ -58,5 +58,9 @@ TAGS_METADATA = [
     {
         "name": "Demo",
         "description": "Demo endpoints."
+    },
+    {
+        "name": "Demo (WIP)",
+        "description": "Work in progress demo endpoints."
     }
 ]
