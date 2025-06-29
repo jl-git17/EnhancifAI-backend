@@ -30,6 +30,24 @@ def process_sql_file(db: DbSession, filename: str) -> None:
         logging.error(f"Error reading file {filename}: {e}")
         sys.exit(1)
 
+def process_sql_file_indexes(db: DbSession, filename: str) -> None:
+    """
+    Processes the index.sql file by splitting on semicolons, skipping empty statements and comments,
+    and executes each statement outside a transaction block.
+    """
+    filepath = os.path.join(SOURCE_DIR, filename)
+    try:
+        with open(filepath, 'r', encoding='UTF-8') as file:
+            sql = file.read()
+            statements = [stmt.strip() for stmt in sql.split(';') if stmt.strip()]
+            for stmt in statements:
+                if stmt.startswith('--'):
+                    continue
+                db.do('execute', schemafy(stmt))
+    except IOError as e:
+        logging.error("Error reading file %s: %s", filename, e)
+        sys.exit(1)
+
 def prepare_database(db: DbSession) -> None:
     """Prepares the database by creating a schema and processing SQL files."""
     schema_name = settings.db_schema
@@ -38,13 +56,14 @@ def prepare_database(db: DbSession) -> None:
         sys.exit(1)
 
     db.do('execute', f"CREATE SCHEMA IF NOT EXISTS {schema_name};")
-    for sql_file in ['schema.sql', 'migration.sql', 'indexes.sql']:
+    for sql_file in ['schema.sql', 'migration.sql']:
         try:
             process_sql_file(db, sql_file)
         except Exception as e:
             logging.error("Error processing %s: %s", sql_file, e)
 
     db.do('commit')
+    process_sql_file_indexes(db, 'indexes.sql')
 
 def run() -> NoReturn:
     """Main entrypoint that sets up the database and runs the server."""
