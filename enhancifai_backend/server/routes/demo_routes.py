@@ -98,6 +98,8 @@ async def get_use_cases():
     Returns array of { id, title, description, thumbnail }
     """
     use_cases = PublicDemoDbCore.get_all_use_cases()
+    if use_cases is None:
+        use_cases = []
     result = []
     for uc in use_cases:
         result.append({
