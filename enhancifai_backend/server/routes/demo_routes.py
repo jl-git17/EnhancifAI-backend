@@ -11,6 +11,7 @@ import base64
 from fastapi import HTTPException, status
 import pandas as pd
 import uuid
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.public_demo import PublicDemoDbCore, PublicDemoRunsDbCore, PublicDemoSettingsDbCore
@@ -25,6 +26,19 @@ from enhancifai_backend.server.models.execution import PromptObject
 from enhancifai_backend.server.routes.files_routes import save_to_cache
 
 from enhancifai_backend.engine.runs_progress_free import runs_progress_free
+
+USERNAME = settings.admin_username
+PASSWORD = settings.admin_password
+
+security = HTTPBasic()
+
+def check_admin(credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username != USERNAME or credentials.password != PASSWORD:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
 
 # TODO: harden security of admin accessed endpoints
 
@@ -292,12 +306,9 @@ async def update_use_case(
     sample_input_file_csv: UploadFile = File(None),
     sample_input_file_excel: UploadFile = File(None),
     prompt_config_file: UploadFile = File(None),
-    _: str = Depends(verify_secret_key),
-    user_id: int = Depends(get_current_user_id)
+    credentials: HTTPBasicCredentials = Depends(security)
 ):
-    """
-    Update a use case by its ID. Only provided fields will be updated.
-    """
+    check_admin(credentials)
     update_fields = {"title": title, "description": description}
     if thumbnail:
         update_fields["thumbnail"] = await thumbnail.read()
@@ -315,12 +326,9 @@ async def update_use_case(
 @router.delete("/demo/use-cases/{use_case_id}", tags=["Demo (WIP)"])
 async def delete_use_case(
     use_case_id: int,
-    _: str = Depends(verify_secret_key),
-    user_id: int = Depends(get_current_user_id)
+    credentials: HTTPBasicCredentials = Depends(security)
 ):
-    """
-    Delete a use case by its ID.
-    """
+    check_admin(credentials)
     deleted = PublicDemoDbCore.delete_use_case(use_case_id)
     if not deleted:
         raise HTTPException(status_code=404, detail="Use case not found.")
@@ -340,12 +348,9 @@ async def get_demo_settings():
 async def update_demo_settings(
     model_default: str = Form(None),
     model_fallback: str = Form(None),
-    _: str = Depends(verify_secret_key),
-    user_id: int = Depends(get_current_user_id)
+    credentials: HTTPBasicCredentials = Depends(security)
 ):
-    """
-    Update demo settings (model_default, model_fallback).
-    """
+    check_admin(credentials)
     updated = PublicDemoSettingsDbCore.update_demo_settings(model_default=model_default, model_fallback=model_fallback)
     if not updated:
         raise HTTPException(status_code=400, detail="Nothing to update.")
