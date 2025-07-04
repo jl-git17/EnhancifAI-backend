@@ -277,7 +277,6 @@ CREATE TABLE IF NOT EXISTS enhancifai.subscription_payments (
 
 CREATE TABLE IF NOT EXISTS enhancifai.use_cases_free (
     id SERIAL PRIMARY KEY,
-    user_id INT REFERENCES enhancifai.users(user_id),
     title TEXT NOT NULL,
     description TEXT,
     thumbnail BYTEA,
@@ -334,4 +333,5 @@ CREATE TABLE IF NOT EXISTS enhancifai.demo_run_calls (
     demo_run_id INT REFERENCES enhancifai.demo_runs(id),
     prompt TEXT,
     tokens_used INT
+);
 );

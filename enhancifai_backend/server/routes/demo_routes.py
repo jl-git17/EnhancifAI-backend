@@ -355,3 +355,32 @@ async def update_demo_settings(
     if not updated:
         raise HTTPException(status_code=400, detail="Nothing to update.")
     return {"detail": "Settings updated successfully."}
+
+@router.post("/demo/use-cases", tags=["Demo (WIP)"])
+async def create_use_case(
+    request: Request,
+    title: str = Form(...),
+    description: str = Form(None),
+    thumbnail: UploadFile = File(None),
+    sample_input_file_csv: UploadFile = File(None),
+    sample_input_file_excel: UploadFile = File(None),
+    prompt_config_file: UploadFile = File(None),
+    credentials: HTTPBasicCredentials = Depends(security)
+):
+    check_admin(credentials)
+    # user_id is no longer used
+    thumbnail_bytes = await thumbnail.read() if thumbnail else None
+    csv_bytes = await sample_input_file_csv.read() if sample_input_file_csv else None
+    excel_bytes = await sample_input_file_excel.read() if sample_input_file_excel else None
+    prompt_config_bytes = await prompt_config_file.read() if prompt_config_file else None
+    new_id = PublicDemoDbCore.create_use_case(
+        title=title,
+        description=description,
+        thumbnail=thumbnail_bytes,
+        sample_input_file_csv=csv_bytes,
+        sample_input_file_excel=excel_bytes,
+        prompt_config_file=prompt_config_bytes
+    )
+    if not new_id:
+        raise HTTPException(status_code=500, detail="Failed to create use case.")
+    return {"id": new_id}

@@ -9,23 +9,15 @@ class PublicDemoDbCore:
     # --- use_cases_free methods ---
 
     @classmethod
-    def get_all_use_cases(cls, user_id=None):
+    def get_all_use_cases(cls):
         """
-        Retrieve all free use cases, optionally filtered by user_id.
+        Retrieve all free use cases.
         """
-        if user_id:
-            sql = schemafy("""
-                SELECT * FROM enhancifai.use_cases_free
-                WHERE user_id = %s
-                ORDER BY created_at DESC;
-            """)
-            return read_db.do('select', sql=sql, data=(user_id,))
-        else:
-            sql = schemafy("""
-                SELECT * FROM enhancifai.use_cases_free
-                ORDER BY created_at DESC;
-            """)
-            return read_db.do('select', sql=sql)
+        sql = schemafy("""
+            SELECT * FROM enhancifai.use_cases_free
+            ORDER BY created_at DESC;
+        """)
+        return read_db.do('select', sql=sql)
 
     @classmethod
     def get_use_case_by_id(cls, use_case_id):
@@ -39,18 +31,18 @@ class PublicDemoDbCore:
         return read_db.do('select_one', sql=sql, data=(use_case_id,))
 
     @classmethod
-    def create_use_case(cls, user_id, title, description=None, thumbnail=None,
+    def create_use_case(cls, title, description=None, thumbnail=None,
                        sample_input_file_csv=None, sample_input_file_excel=None, prompt_config_file=None):
         """
         Create a new free use case.
         """
         sql = schemafy("""
             INSERT INTO enhancifai.use_cases_free
-                (user_id, title, description, thumbnail, sample_input_file_csv, sample_input_file_excel, prompt_config_file)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                (title, description, thumbnail, sample_input_file_csv, sample_input_file_excel, prompt_config_file)
+            VALUES (%s, %s, %s, %s, %s, %s)
             RETURNING id;
         """)
-        return write_db.do('execute', sql=sql, data=(user_id, title, description, thumbnail, sample_input_file_csv, sample_input_file_excel, prompt_config_file))
+        return write_db.do('execute', sql=sql, data=(title, description, thumbnail, sample_input_file_csv, sample_input_file_excel, prompt_config_file))
 
     @classmethod
     def update_use_case(cls, use_case_id, **kwargs):
