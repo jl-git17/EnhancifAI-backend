@@ -15,6 +15,7 @@ from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.runs_progress import runs_progress
 
 DEFAULT_MAX_THREADS = 2
+PERFORMANCE_OPTIMIZATION_CHUNK_SIZE = 5
 
 class ExcelHandler:
     def __init__(
@@ -111,7 +112,7 @@ class ExcelHandler:
 
             else:
                 # NEW approach: chunk multiple rows => single AI call
-                chunk_size = 10
+                chunk_size = PERFORMANCE_OPTIMIZATION_CHUNK_SIZE
                 for prompt_config in prompts:
                     for start_idx in range(0, total_records, chunk_size):
                         if self._is_run_cancelled():
