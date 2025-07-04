@@ -73,7 +73,7 @@ class CSVHandler:
         logging.error("Failed to read CSV with all attempted encodings.")
         return False
 
-    def _compute_dynamic_chunk_size(self):
+    def _compute_dynamic_chunk_size(self, max_records):
         """
         Dynamically compute chunk size based on data characteristics:
         - Target a chunk to use up to ~128 KB of memory.
@@ -110,6 +110,8 @@ class CSVHandler:
 
         # Clamp to min/max
         chunk_size = max(MIN_CHUNK, min(MAX_CHUNK, est_chunk_size))
+        if max_records > 0:
+            chunk_size = min(chunk_size, max_records)
         return chunk_size
 
     def process_csv(self, prompts: list, max_records=0):
@@ -167,7 +169,7 @@ class CSVHandler:
                             futures[future] = idx
             else:
                 # Dynamically compute chunk size
-                chunk_size = self._compute_dynamic_chunk_size()
+                chunk_size = self._compute_dynamic_chunk_size(max_records)
                 logging.debug(f"Using chunk size: {chunk_size} for performance optimization")
                 for prompt_config in prompts:
                     for start_idx in range(0, total_records, chunk_size):
