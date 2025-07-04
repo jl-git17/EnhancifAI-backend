@@ -85,7 +85,7 @@ class CSVHandler:
             return PERFORMANCE_OPTIMIZATION_CHUNK_SIZE
 
         MIN_CHUNK = 5
-        MAX_CHUNK = 100
+        MAX_CHUNK = 20
         TARGET_CHUNK_BYTES = 128 * 1024  # 128 KB
 
         num_rows = len(self.data)
