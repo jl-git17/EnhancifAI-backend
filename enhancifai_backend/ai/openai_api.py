@@ -44,7 +44,7 @@ DEFAULT_PROMPT = (
 )
 
 DEFAULT_PROMPT_BATCHED = (
-    "- You are a precise data-analysis assistant.\n"
+    "- You are an assistant with expertise in data analysis and can use your general knowledge to answer.\n"
     "- The user provides a JSON object with:\n"
     "    •  **query**   – instructions on how to transform each row.\n"
     "    •  **payload** – an object containing\n"
