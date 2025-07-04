@@ -15,7 +15,7 @@ from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.runs_progress import runs_progress
 
 DEFAULT_MAX_THREADS = 2
-PERFORMANCE_OPTIMIZATION_CHUNK_SIZE = 5
+PERFORMANCE_OPTIMIZATION_CHUNK_SIZE = 10
 
 class ExcelHandler:
     def __init__(

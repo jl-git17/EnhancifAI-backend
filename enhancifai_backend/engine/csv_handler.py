@@ -14,7 +14,7 @@ from enhancifai_backend.engine.runs_progress import runs_progress
 
 # Default concurrency
 DEFAULT_MAX_THREADS = 2
-PERFORMANCE_OPTIMIZATION_CHUNK_SIZE = 5
+PERFORMANCE_OPTIMIZATION_CHUNK_SIZE = 10
 
 class CSVHandler:
     def __init__(
