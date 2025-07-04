@@ -51,7 +51,6 @@ DEFAULT_PROMPT_BATCHED = (
     "        •  **columns** – map of column letters to their headers, and\n"
     "        •  **rows**    – array of row objects (keys are column letters).\n"
     "- For **every row** in *rows* return **one concise string** that satisfies *query*.\n"
-    #"- If any field needed to answer a row is missing or blank, output **'Incomplete data: <reason>'** for that row, with a reason.\n"
     "- Output **only** valid JSON in **this exact shape** (no markdown, no extra keys, no text before/after):\n"
     "  {\"response\": [\"<answer for row 1>\", \"<answer for row 2>\", …]}\n"
     "- The length of the `response` array **must equal** the number of input rows.\n"
