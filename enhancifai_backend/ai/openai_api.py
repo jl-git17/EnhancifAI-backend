@@ -224,7 +224,8 @@ class OpenAIConnector:
                 completion = self.client.beta.chat.completions.parse(
                     model=self.engine,
                     messages=messages,
-                    response_format=OpenAIResponseFormat
+                    response_format=OpenAIResponseFormat,
+                    temperature=0.5
                 )
 
                 data = completion.choices[0].message.parsed
