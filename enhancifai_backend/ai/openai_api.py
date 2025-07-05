@@ -27,7 +27,7 @@ PI_DEFAULT_PROMPT = (
 PI_DEFAULT_AI_ENGINE = "gpt-4.1-nano"
 ADMIN_USER_ID = settings.admin_user_id
 
-DEFAULT_PROMPT = (
+DEFAULT_PROMPT_OLD = (
     "- You are an assistant with expertise in data analysis and can use your general knowledge "
     "to answer.\n"
     "- The user provides '<query>: <data>', where 'query' contains instructions on how to transform the data.\n"
@@ -41,6 +41,20 @@ DEFAULT_PROMPT = (
     #"about the symptoms for which the drug Lyrica Caps 50mg 90s is prescribed.'\n"
     "Return **one string** that satisfies *query*.\n"
     'Respond in JSON: {"response": "<your answer here>"}'
+)
+
+DEFAULT_PROMPT = (
+    "- You are an assistant with expertise in data analysis and can use your general knowledge to answer.\n"
+    "- The user provides a JSON object with:\n"
+    "    •  **query**   – instructions on how to transform each row.\n"
+    "    •  **payload** – an object containing\n"
+    "        •  **columns** – map of column letters to their headers, and\n"
+    "        •  **rows**    – array of row objects (keys are column letters).\n"
+    "- For **every row** in *rows* return **one string** that satisfies *query*.\n"
+    "- Output **only** valid JSON in **this exact shape** (no markdown, no extra keys, no text before/after):\n"
+    "  {\"response\": [\"<answer for row 1>\", \"<answer for row 2>\", …]}\n"
+    "- The length of the `response` array **must equal** the number of input rows.\n"
+    "- Never add explanations, apologies, or commentary.\n"
 )
 
 DEFAULT_PROMPT_BATCHED = (
@@ -195,7 +209,13 @@ class OpenAIConnector:
                 messages.append(
                     {
                         "role": "user",
-                        "content": f"{query}:\n\n```{json.dumps(payload)}```"
+                        "content": json.dumps({
+                            "query": query,
+                            "payload": {
+                                "columns": columns,
+                                "rows": rows
+                            }
+                        })
                     }
                 )
 
