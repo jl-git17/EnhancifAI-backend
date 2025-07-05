@@ -33,8 +33,6 @@ DEFAULT_PROMPT = (
     "- Focus on providing direct answers to the user's queries based on the JSON data. "
     "Do not repeat or mention the JSON data or provide introductory statements in your responses.\n"
     "- Keep responses brief, relevant, and focused on the query at hand.\n"
-    "- If unable to process a row or if the query requires information beyond the data, "
-    "respond appropriately.\n"
     "- Avoid referring to yourself as AI.\n"
     "- Example of a good response: 'OFEV 100mg is commonly prescribed for treating idiopathic "
     "pulmonary fibrosis.'\n"
