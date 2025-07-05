@@ -86,7 +86,7 @@ class CSVHandler:
 
         MIN_CHUNK = 5
         MAX_CHUNK = 20
-        TARGET_CHUNK_BYTES = 1024  # 1 KB
+        TARGET_CHUNK_BYTES = 1024 * 2  # 2 KB
 
         num_rows = len(self.data)
         # Estimate average row size in bytes
