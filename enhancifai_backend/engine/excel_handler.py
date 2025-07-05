@@ -153,14 +153,16 @@ class ExcelHandler:
                         if self._is_run_cancelled():
                             return self._handle_cancel(start_time)
 
-                        chunk_data = self.data[start_idx : start_idx + chunk_size]
+                        # Ensure we do not exceed total_records (which is min(len(self.data), max_records))
+                        end_idx = min(start_idx + chunk_size, total_records)
+                        chunk_data = self.data[start_idx:end_idx]
                         future = executor.submit(
                             self.process_chunk,
                             start_idx,
                             chunk_data,
                             prompt_config
                         )
-                        futures[future] = (start_idx, start_idx + chunk_size)
+                        futures[future] = (start_idx, end_idx)
 
             results = self._gather_results(futures, start_time)
 
