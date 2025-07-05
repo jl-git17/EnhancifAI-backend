@@ -77,7 +77,7 @@ class ExcelHandler:
 
         MIN_CHUNK = 5
         MAX_CHUNK = 20
-        TARGET_CHUNK_BYTES = 2048  # 2 KB
+        TARGET_CHUNK_BYTES = 1024  # 1 KB
 
         num_rows = len(self.data)
         # Estimate average row size in bytes
@@ -91,12 +91,6 @@ class ExcelHandler:
 
         # Compute chunk size to target ~128KB per chunk
         est_chunk_size = int(TARGET_CHUNK_BYTES // max(avg_row_size, 1))
-
-        # Adjust for very large or very small files
-        if num_rows > 10000:
-            est_chunk_size = min(est_chunk_size, 25)
-        elif num_rows < 200:
-            est_chunk_size = max(est_chunk_size, num_rows // 2)
 
         # Clamp to min/max
         chunk_size = max(MIN_CHUNK, min(MAX_CHUNK, est_chunk_size))
