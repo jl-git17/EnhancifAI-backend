@@ -198,6 +198,8 @@ class OpenAIConnector:
                     }
                 )
 
+                logging.debug(messages)
+
                 completion = self.client.beta.chat.completions.parse(
                     model=self.engine,
                     messages=messages,
