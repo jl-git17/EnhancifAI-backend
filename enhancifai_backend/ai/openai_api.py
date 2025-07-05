@@ -209,7 +209,7 @@ class OpenAIConnector:
                             "query": query,
                             "payload": {
                                 "columns": columns,
-                                "row": row
+                                "row": rows
                             }
                         })
                     }
