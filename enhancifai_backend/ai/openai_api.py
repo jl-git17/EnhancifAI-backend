@@ -198,10 +198,6 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": DEFAULT_PROMPT
-                    },
-                    {
-                        "role": "assistant",
-                        "content": "Ready to assist with your queries. Please provide your question."
                     }
                 ]
 
