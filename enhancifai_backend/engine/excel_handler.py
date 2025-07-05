@@ -64,6 +64,47 @@ class ExcelHandler:
             logging.error(f"Error loading Excel file: {e}")
             return False
 
+    def _compute_dynamic_chunk_size(self, max_records):
+        """
+        Dynamically compute chunk size based on data characteristics:
+        - Target a chunk to use up to ~128 KB of memory.
+        - For small files, use larger chunks.
+        - For very large files, use smaller chunks.
+        - Always stay within min/max bounds.
+        """
+        if not self.data:
+            return PERFORMANCE_OPTIMIZATION_CHUNK_SIZE
+
+        MIN_CHUNK = 5
+        MAX_CHUNK = 20
+        TARGET_CHUNK_BYTES = 128 * 1024  # 128 KB
+
+        num_rows = len(self.data)
+        # Estimate average row size in bytes
+        avg_row_size = (
+            sum(sum(len(str(v).encode('utf-8')) for v in row.values()) for row in self.data[:min(100, num_rows)])
+            / min(100, num_rows)
+        )
+
+        # For very small files, just process all at once
+        if num_rows <= 20:
+            return num_rows
+
+        # Compute chunk size to target ~128KB per chunk
+        est_chunk_size = int(TARGET_CHUNK_BYTES // max(avg_row_size, 1))
+
+        # Adjust for very large or very small files
+        if num_rows > 10000:
+            est_chunk_size = min(est_chunk_size, 25)
+        elif num_rows < 200:
+            est_chunk_size = max(est_chunk_size, num_rows // 2)
+
+        # Clamp to min/max
+        chunk_size = max(MIN_CHUNK, min(MAX_CHUNK, est_chunk_size))
+        if max_records > 0:
+            chunk_size = min(chunk_size, max_records)
+        return chunk_size
+
     def process_excel(self, prompts: list, max_records=0):
         start_time = time.time()
 
@@ -112,7 +153,8 @@ class ExcelHandler:
 
             else:
                 # NEW approach: chunk multiple rows => single AI call
-                chunk_size = PERFORMANCE_OPTIMIZATION_CHUNK_SIZE
+                chunk_size = self._compute_dynamic_chunk_size(max_records)
+                logging.debug(f"Using chunk size: {chunk_size} for performance optimization")
                 for prompt_config in prompts:
                     for start_idx in range(0, total_records, chunk_size):
                         if self._is_run_cancelled():
