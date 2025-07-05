@@ -33,12 +33,13 @@ DEFAULT_PROMPT = (
     "- The user provides '<query>: <data>', where 'query' contains instructions on how to transform the data.\n"
     #"- Focus on providing direct answers to the user's queries based on the JSON data. "
     #"Do not repeat or mention the JSON data or provide introductory statements in your responses.\n"
-    "- Keep responses brief, relevant, and focused on the query at hand.\n"
-    "- Avoid referring to yourself as AI.\n"
-    "- Example of a good response: 'OFEV 100mg is commonly prescribed for treating idiopathic "
-    "pulmonary fibrosis.'\n"
+    #"- Keep responses brief, relevant, and focused on the query at hand.\n"
+    #"- Avoid referring to yourself as AI.\n"
+    #"- Example of a good response: 'OFEV 100mg is commonly prescribed for treating idiopathic "
+    #"pulmonary fibrosis.'\n"
     #"- Another example of a good response: 'Unfortunately, I do not have enough information "
     #"about the symptoms for which the drug Lyrica Caps 50mg 90s is prescribed.'\n"
+    "Return **one string** that satisfies *query*.\n"
     'Respond in JSON: {"response": "<your answer here>"}'
 )
 
