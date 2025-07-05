@@ -86,6 +86,9 @@ class ExcelHandler:
             / min(100, num_rows)
         )
 
+        # Log size of row in bytes
+        logging.debug(f"Average row size: {avg_row_size} bytes")
+
         # Compute chunk size to target ~128KB per chunk
         est_chunk_size = int(TARGET_CHUNK_BYTES // max(avg_row_size, 1))
 
