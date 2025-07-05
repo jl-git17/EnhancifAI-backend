@@ -77,7 +77,7 @@ class ExcelHandler:
 
         MIN_CHUNK = 5
         MAX_CHUNK = 20
-        TARGET_CHUNK_BYTES = 128 * 1024  # 128 KB
+        TARGET_CHUNK_BYTES = 128 * 200  # 128 KB
 
         num_rows = len(self.data)
         # Estimate average row size in bytes
