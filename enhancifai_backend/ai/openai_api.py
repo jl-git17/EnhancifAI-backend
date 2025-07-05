@@ -36,8 +36,8 @@ DEFAULT_PROMPT = (
     "- Avoid referring to yourself as AI.\n"
     "- Example of a good response: 'OFEV 100mg is commonly prescribed for treating idiopathic "
     "pulmonary fibrosis.'\n"
-    "- Another example of a good response: 'Unfortunately, I do not have enough information "
-    "about the symptoms for which the drug Lyrica Caps 50mg 90s is prescribed.'\n"
+    #"- Another example of a good response: 'Unfortunately, I do not have enough information "
+    #"about the symptoms for which the drug Lyrica Caps 50mg 90s is prescribed.'\n"
     'Respond in JSON: {"response": "<your answer here>"}'
 )
 
