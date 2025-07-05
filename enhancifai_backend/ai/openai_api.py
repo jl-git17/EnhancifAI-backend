@@ -346,7 +346,7 @@ class OpenAIConnector:
                         f"AI returned {len(response)} items, but expected {len(rows)}. "
                         f"Response: {response}, Input rows: {rows}"
                     )
-                    raise RuntimeError("AI did not return the same number of rows as input")
+                    raise ValueError("AI did not return the same number of rows as input")
 
                 tokens_used = completion.usage.total_tokens
                 input_tokens = completion.usage.prompt_tokens
@@ -369,7 +369,13 @@ class OpenAIConnector:
 
             except Exception as e:
                 logging.error(f"Attempt {attempt + 1} failed with error: {e}")
-                if hasattr(e, 'status_code'):
+                if isinstance(e, ValueError):
+                    _err = e
+                    if attempt < max_attempts - 1:
+                        backoff_time = 2 ** attempt
+                        logging.error(f"ValueError encountered. Retrying in {backoff_time} seconds...")
+                        time.sleep(backoff_time)
+                elif hasattr(e, 'status_code'):
                     if e.status_code == 429:
                         match = RATE_LIMIT_PATTERN.search(e.body['message']) if hasattr(e, 'body') else None
                         if match:
