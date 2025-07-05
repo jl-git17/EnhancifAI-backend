@@ -95,10 +95,6 @@ class CSVHandler:
             / min(100, num_rows)
         )
 
-        # For very small files, just process all at once
-        if num_rows <= 20:
-            return num_rows
-
         # Compute chunk size to target ~128KB per chunk
         est_chunk_size = int(TARGET_CHUNK_BYTES // max(avg_row_size, 1))
 
