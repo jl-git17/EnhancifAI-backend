@@ -52,8 +52,7 @@ DEFAULT_PROMPT = (
     "        •  **rows**    – array of row objects (keys are column letters).\n"
     "- For **the one row**, return **one string** that satisfies *query*.\n"
     "- Output **only** valid JSON in **this exact shape** (no markdown, no extra keys, no text before/after):\n"
-    "  {\"response\": [\"<answer for row 1>\", \"<answer for row 2>\", …]}\n"
-    "- The length of the `response` array **must equal** the number of input rows.\n"
+    "  {\"response\": \"<answer for row>\"}\n"
     "- Never add explanations, apologies, or commentary.\n"
 )
 
