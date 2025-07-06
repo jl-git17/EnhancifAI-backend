@@ -334,4 +334,3 @@ CREATE TABLE IF NOT EXISTS enhancifai.demo_run_calls (
     prompt TEXT,
     tokens_used INT
 );
-);
