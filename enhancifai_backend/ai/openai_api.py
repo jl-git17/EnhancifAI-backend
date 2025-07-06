@@ -27,31 +27,43 @@ PI_DEFAULT_PROMPT = (
 PI_DEFAULT_AI_ENGINE = "gpt-4.1-nano"
 ADMIN_USER_ID = settings.admin_user_id
 
-DEFAULT_PROMPT = (
+DEFAULT_PROMPT_OLD = (
     "- You are an assistant with expertise in data analysis and can use your general knowledge "
     "to answer.\n"
-    "- Focus on providing direct answers to the user's queries based on the JSON data. "
-    "Do not repeat or mention the JSON data or provide introductory statements in your responses.\n"
-    "- Keep responses brief, relevant, and focused on the query at hand.\n"
-    "- If unable to process a row or if the query requires information beyond the data, "
-    "respond appropriately.\n"
-    "- Avoid referring to yourself as AI.\n"
-    "- Example of a good response: 'OFEV 100mg is commonly prescribed for treating idiopathic "
-    "pulmonary fibrosis.'\n"
-    "- Another example of a good response: 'Unfortunately, I do not have enough information "
-    "about the symptoms for which the drug Lyrica Caps 50mg 90s is prescribed.'\n"
+    "- The user provides '<query>: <data>', where 'query' contains instructions on how to transform the data.\n"
+    #"- Focus on providing direct answers to the user's queries based on the JSON data. "
+    #"Do not repeat or mention the JSON data or provide introductory statements in your responses.\n"
+    #"- Keep responses brief, relevant, and focused on the query at hand.\n"
+    #"- Avoid referring to yourself as AI.\n"
+    #"- Example of a good response: 'OFEV 100mg is commonly prescribed for treating idiopathic "
+    #"pulmonary fibrosis.'\n"
+    #"- Another example of a good response: 'Unfortunately, I do not have enough information "
+    #"about the symptoms for which the drug Lyrica Caps 50mg 90s is prescribed.'\n"
+    "Return **one string** that satisfies *query*.\n"
     'Respond in JSON: {"response": "<your answer here>"}'
 )
 
-DEFAULT_PROMPT_BATCHED = (
-    "- You are a precise data-analysis assistant.\n"
+DEFAULT_PROMPT = (
+    "- You are an assistant with expertise in data analysis and can use your general knowledge to answer.\n"
     "- The user provides a JSON object with:\n"
     "    •  **query**   – instructions on how to transform each row.\n"
     "    •  **payload** – an object containing\n"
     "        •  **columns** – map of column letters to their headers, and\n"
     "        •  **rows**    – array of row objects (keys are column letters).\n"
-    "- For **every row** in *rows* return **one concise string** that satisfies *query*.\n"
-    "- If any field needed to answer a row is missing or blank, output **'Incomplete data'** for that row.\n"
+    "- For **the one row**, return **one string** that satisfies *query*.\n"
+    "- Output **only** valid JSON in **this exact shape** (no markdown, no extra keys, no text before/after):\n"
+    "  {\"response\": \"<answer for row>\"}\n"
+    "- Never add explanations, apologies, or commentary.\n"
+)
+
+DEFAULT_PROMPT_BATCHED = (
+    "- You are an assistant with expertise in data analysis and can use your general knowledge to answer.\n"
+    "- The user provides a JSON object with:\n"
+    "    •  **query**   – instructions on how to transform each row.\n"
+    "    •  **payload** – an object containing\n"
+    "        •  **columns** – map of column letters to their headers, and\n"
+    "        •  **rows**    – array of row objects (keys are column letters).\n"
+    "- For **every row** in *rows* return **one string** that satisfies *query*.\n"
     "- Output **only** valid JSON in **this exact shape** (no markdown, no extra keys, no text before/after):\n"
     "  {\"response\": [\"<answer for row 1>\", \"<answer for row 2>\", …]}\n"
     "- The length of the `response` array **must equal** the number of input rows.\n"
@@ -191,10 +203,6 @@ class OpenAIConnector:
                     {
                         "role": "system",
                         "content": DEFAULT_PROMPT
-                    },
-                    {
-                        "role": "assistant",
-                        "content": "Ready to assist with your queries. Please provide your question."
                     }
                 ]
 
@@ -202,14 +210,23 @@ class OpenAIConnector:
                 messages.append(
                     {
                         "role": "user",
-                        "content": f"{query}:\n\n```{json.dumps(payload)}```"
+                        "content": json.dumps({
+                            "query": query,
+                            "payload": {
+                                "columns": columns,
+                                "row": rows
+                            }
+                        })
                     }
                 )
+
+                logging.debug(messages)
 
                 completion = self.client.beta.chat.completions.parse(
                     model=engine_to_use,
                     messages=messages,
-                    response_format=OpenAIResponseFormat
+                    response_format=OpenAIResponseFormat,
+                    temperature=0.5
                 )
 
                 data = completion.choices[0].message.parsed
@@ -335,7 +352,7 @@ class OpenAIConnector:
                         "AI returned %d items, but expected %d. Response: %s, Input rows: %s",
                         len(response), len(rows), response, rows
                     )
-                    raise RuntimeError("AI did not return the same number of rows as input")
+                    raise ValueError("AI did not return the same number of rows as input")
 
                 tokens_used = completion.usage.total_tokens
                 input_tokens = completion.usage.prompt_tokens
@@ -357,8 +374,14 @@ class OpenAIConnector:
                 return results
 
             except Exception as e:
-                logging.error("Attempt %d failed with error: %s", attempt + 1, e)
-                if hasattr(e, 'status_code'):
+                logging.error(f"Attempt {attempt + 1} failed with error: {e}")
+                if isinstance(e, ValueError):
+                    _err = e
+                    if attempt < max_attempts - 1:
+                        backoff_time = 2 ** attempt
+                        logging.error(f"ValueError encountered. Retrying in {backoff_time} seconds...")
+                        time.sleep(backoff_time)
+                elif hasattr(e, 'status_code'):
                     if e.status_code == 429:
                         match = RATE_LIMIT_PATTERN.search(e.body['message']) if hasattr(e, 'body') else None
                         if match:
