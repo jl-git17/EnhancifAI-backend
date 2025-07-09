@@ -349,12 +349,12 @@ async def get_model_prices_for_month(
         )
 
 @router.get("/admin/public-demo", tags=["Admin"])
-async def admin_public_demo(credentials: HTTPBasicCredentials = Depends(security)):
-    if credentials.username == USERNAME and credentials.password == PASSWORD:
-        return FileResponse(os.path.join(STATIC_PAGES_DIRECTORY, "admin_public_demo.html"))
-    else:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Basic"},
-        )
+async def admin_public_demo():
+    # Removed credentials: HTTPBasicCredentials = Depends(security)
+    # Serve the page without HTTP Basic Auth
+    return FileResponse(os.path.join(STATIC_PAGES_DIRECTORY, "admin_public_demo.html"))
+        #raise HTTPException(
+            #status_code=status.HTTP_401_UNAUTHORIZED,
+            #detail="Incorrect username or password",
+            #headers={"WWW-Authenticate": "Basic"},
+        #)
