@@ -166,10 +166,9 @@
         let deleteId = null;
 
         // Helper to get Basic Auth header
-        function getAuthHeader() {
-            // Prompt only if not already set in sessionStorage
+        function getAuthHeader(forcePrompt = false) {
             let auth = sessionStorage.getItem('admin_auth');
-            if (!auth) {
+            if (!auth || forcePrompt) {
                 const username = prompt('Admin Username:');
                 const password = prompt('Admin Password:');
                 if (username === null || password === null) return null;
@@ -177,6 +176,24 @@
                 sessionStorage.setItem('admin_auth', auth);
             }
             return auth;
+        }
+
+        // Helper to fetch with retry on 401
+        async function fetchWithAuthRetry(url, options = {}, retry = true) {
+            let auth = getAuthHeader();
+            if (!auth) return null;
+            options.headers = options.headers || {};
+            options.headers['Authorization'] = auth;
+            let res = await fetch(url, options);
+            if (res.status === 401 && retry) {
+                // Clear stored credentials and prompt again
+                sessionStorage.removeItem('admin_auth');
+                auth = getAuthHeader(true);
+                if (!auth) return null;
+                options.headers['Authorization'] = auth;
+                res = await fetch(url, options);
+            }
+            return res;
         }
 
         function showAlert(id, show, msg) {
@@ -228,13 +245,8 @@
         async function fetchUseCases() {
             showAlert('table-error', false);
             try {
-                // Always send Authorization header for admin endpoints
-                const auth = getAuthHeader();
-                if (!auth) return;
-                const res = await fetch('/demo/use-cases', {
-                    headers: { 'Authorization': auth }
-                });
-                if (!res.ok) throw new Error('Failed to fetch use cases');
+                const res = await fetchWithAuthRetry('/demo/use-cases');
+                if (!res || !res.ok) throw new Error('Failed to fetch use cases');
                 useCases = await res.json();
                 populateTable(useCases);
             } catch (e) {
@@ -266,15 +278,10 @@
         document.getElementById('confirm-delete-btn').onclick = async function() {
             if (!deleteId) return;
             try {
-                const auth = getAuthHeader();
-                if (!auth) return;
-                const res = await fetch(`/demo/use-cases/${deleteId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': auth
-                    }
+                const res = await fetchWithAuthRetry(`/demo/use-cases/${deleteId}`, {
+                    method: 'DELETE'
                 });
-                if (!res.ok) throw new Error('Delete failed');
+                if (!res || !res.ok) throw new Error('Delete failed');
                 await fetchUseCases();
                 resetForm();
             } catch (e) {
@@ -309,16 +316,11 @@
                 method = 'PUT';
             }
             try {
-                const auth = getAuthHeader();
-                if (!auth) return;
-                const res = await fetch(url, {
+                const res = await fetchWithAuthRetry(url, {
                     method,
-                    body: formData,
-                    headers: {
-                        'Authorization': auth
-                    }
+                    body: formData
                 });
-                if (!res.ok) throw new Error('Save failed');
+                if (!res || !res.ok) throw new Error('Save failed');
                 showAlert('form-success', true);
                 await fetchUseCases();
                 resetForm();
@@ -338,7 +340,6 @@
 
         // Settings AJAX
         function fetchSettings() {
-            // Always send Authorization header for admin endpoints
             const auth = getAuthHeader();
             if (!auth) return;
             $.ajax({
@@ -350,6 +351,13 @@
                 success: function(data) {
                     $('#model_default').val(data.model_default || '');
                     $('#model_fallback').val(data.model_fallback || '');
+                },
+                error: function(xhr) {
+                    if (xhr.status === 401) {
+                        sessionStorage.removeItem('admin_auth');
+                        getAuthHeader(true);
+                        fetchSettings();
+                    }
                 }
             });
         }
@@ -373,6 +381,12 @@
                     $('#settings-success').show();
                 },
                 error: function(xhr) {
+                    if (xhr.status === 401) {
+                        sessionStorage.removeItem('admin_auth');
+                        getAuthHeader(true);
+                        $('#settings-form').submit();
+                        return;
+                    }
                     $('#settings-error').text(xhr.responseJSON?.detail || 'Error saving settings.').show();
                 }
             });
