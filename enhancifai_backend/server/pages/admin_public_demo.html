@@ -288,7 +288,15 @@
         // --- Seamless Auth Carry-Over from Dashboard ---
         // Always use localStorage for admin_auth, never prompt
         function getAuthHeader() {
+            // Try localStorage first
             let auth = localStorage.getItem('admin_auth');
+            // If not found, try sessionStorage and copy to localStorage
+            if (!auth) {
+                auth = sessionStorage.getItem('admin_auth');
+                if (auth) {
+                    localStorage.setItem('admin_auth', auth);
+                }
+            }
             if (!auth) {
                 alert('Authentication required. Please login from the dashboard.');
                 throw new Error('Authentication required');
@@ -316,9 +324,11 @@
         // --- END: HTTP Basic Auth helpers ---
 
         // --- AUTH CHECK ON PAGE LOAD ---
-        if (!getAuthHeader()) {
-            alert('Authentication required. Reload the page to try again.');
-            throw new Error('Authentication required');
+        try {
+            getAuthHeader();
+        } catch (e) {
+            // Stop further execution if not authenticated
+            throw e;
         }
         // Optional: Add a re-authenticate button for admins
         // Example: <button onclick="sessionStorage.removeItem('admin_auth'); location.reload();">Re-authenticate</button>
@@ -547,15 +557,6 @@
 
         $(function() {
             fetchSettings();
-            fetchUseCases();
-            // Enable all tooltips on page load
-            const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-            tooltipTriggerList.map(el => new bootstrap.Tooltip(el));
-        });
-        // --- END: HTTP Basic Auth helpers and AJAX logic ---
-    </script>
-</body>
-</html>
             fetchUseCases();
             // Enable all tooltips on page load
             const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));

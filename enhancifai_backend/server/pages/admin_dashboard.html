@@ -559,10 +559,16 @@
 
         // --- Seamless Auth Carry-Over for Public Demo ---
         document.getElementById('public-demo-link').addEventListener('click', function(e) {
+            // Always copy sessionStorage admin_auth to localStorage before navigating
             const auth = sessionStorage.getItem('admin_auth');
             if (auth) {
-                // Store in localStorage for the next page to pick up
                 localStorage.setItem('admin_auth', auth);
+            } else {
+                // If not in sessionStorage, but in localStorage, keep as is
+                // If not in either, warn user
+                if (!localStorage.getItem('admin_auth')) {
+                    alert('Authentication not found. Please log in again.');
+                }
             }
             // Allow navigation to proceed
         });
