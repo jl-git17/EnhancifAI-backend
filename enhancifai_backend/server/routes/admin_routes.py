@@ -232,11 +232,7 @@ async def get_model_prices_for_month(
 async def admin_public_demo():
     # Serve the page without HTTP Basic Auth
     return FileResponse(os.path.join(STATIC_PAGES_DIRECTORY, "admin_public_demo.html"))
-    )
-    response.headers["Content-Disposition"] = "attachment; filename=run_logs.csv"
-
-    return response
-
+    
 @router.get("/admin/logs/pi_runs/csv", tags=["Admin"])
 async def get_prompt_improver_logs_runs_csv(
     start_date: datetime,
