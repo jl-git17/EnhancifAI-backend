@@ -286,6 +286,17 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="admin_auth.js"></script>
     <script>
+        // --- AUTH CHECK ON PAGE LOAD ---
+        if (!sessionStorage.getItem('admin_auth')) {
+            // Prompt for credentials immediately
+            if (!getAuthHeader()) {
+                alert('Authentication required. Reload the page to try again.');
+                throw new Error('Authentication required');
+            }
+        }
+        // Optional: Add a re-authenticate button for admins
+        // Example: <button onclick="sessionStorage.removeItem('admin_auth'); location.reload();">Re-authenticate</button>
+
         // Uses shared auth helpers from admin_dashboard.html
         let useCases = [];
         let deleteId = null;

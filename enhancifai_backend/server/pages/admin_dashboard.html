@@ -332,6 +332,17 @@
     <script src="admin_auth.js"></script>
     <!-- Custom JS -->
     <script>
+        // --- AUTH CHECK ON PAGE LOAD ---
+        if (!sessionStorage.getItem('admin_auth')) {
+            // Prompt for credentials immediately
+            if (!getAuthHeader()) {
+                alert('Authentication required. Reload the page to try again.');
+                throw new Error('Authentication required');
+            }
+        }
+        // Optional: Add a re-authenticate button for admins
+        // Example: <button onclick="sessionStorage.removeItem('admin_auth'); location.reload();">Re-authenticate</button>
+
         // Initialize Bootstrap tooltips
         function initializeTooltips() {
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -378,11 +389,10 @@
                     return;
                 }
 
-                fetch(endpoint, {
-                    method: 'GET'
-                })
+                // Use fetchWithAuthRetry for protected endpoints
+                fetchWithAuthRetry(endpoint, { method: 'GET' })
                 .then(response => {
-                    if (response.ok) {
+                    if (response && response.ok) {
                         return response.blob();
                     } else {
                         throw new Error('Error downloading CSV. Please try again.');
@@ -434,14 +444,14 @@
             promptHistoryTable.innerHTML = '';
 
             try {
-                const response = await fetch('/admin/prompt-improver/prompts', {
+                const response = await fetchWithAuthRetry('/admin/prompt-improver/prompts', {
                     headers: {
                         'Cache-Control': 'no-cache'
                     }
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response || !response.ok) {
+                    throw new Error(`HTTP error! status: ${response ? response.status : 'unknown'}`);
                 }
 
                 const data = await response.json();
@@ -470,14 +480,14 @@
 
         async function restorePrompt(version) {
             try {
-                const response = await fetch(`/admin/prompt-improver/prompts/${version}`, {
+                const response = await fetchWithAuthRetry(`/admin/prompt-improver/prompts/${version}`, {
                     headers: {
                         'Cache-Control': 'no-cache'
                     }
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response || !response.ok) {
+                    throw new Error(`HTTP error! status: ${response ? response.status : 'unknown'}`);
                 }
 
                 const data = await response.json();
@@ -496,14 +506,14 @@
 
         async function loadSettings() {
             try {
-                const response = await fetch('/admin/prompt-improver/settings', {
+                const response = await fetchWithAuthRetry('/admin/prompt-improver/settings', {
                     headers: {
                         'Cache-Control': 'no-cache'
                     }
                 });
 
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response || !response.ok) {
+                    throw new Error(`HTTP error! status: ${response ? response.status : 'unknown'}`);
                 }
 
                 const data = await response.json();
@@ -527,7 +537,7 @@
             };
 
             try {
-                const response = await fetch('/admin/prompt-improver/settings', {
+                const response = await fetchWithAuthRetry('/admin/prompt-improver/settings', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -536,7 +546,7 @@
                     body: JSON.stringify(formData),
                 });
 
-                if (!response.ok) {
+                if (!response || !response.ok) {
                     throw new Error('Failed to save settings');
                 }
 
