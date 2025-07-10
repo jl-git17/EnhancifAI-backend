@@ -563,12 +563,11 @@
             const auth = sessionStorage.getItem('admin_auth');
             if (auth) {
                 localStorage.setItem('admin_auth', auth);
-            } else {
-                // If not in sessionStorage, but in localStorage, keep as is
-                // If not in either, warn user
-                if (!localStorage.getItem('admin_auth')) {
-                    alert('Authentication not found. Please log in again.');
-                }
+            } else if (!localStorage.getItem('admin_auth')) {
+                // If not in either, block navigation and warn user
+                alert('Authentication not found. Please log in again.');
+                e.preventDefault();
+                return false;
             }
             // Allow navigation to proceed
         });
