@@ -204,6 +204,8 @@
                                         <i class="bi bi-info-circle" data-bs-toggle="tooltip" title="Optional. Shown in the demo UI."></i>
                                     </label>
                                     <input type="file" class="form-control" id="thumbnail" accept="image/*">
+                                    <!-- Thumbnail preview -->
+                                    <img id="thumbnail-preview" src="" alt="Thumbnail Preview" style="display:none;max-width:120px;margin-top:10px;border-radius:8px;box-shadow:0 1px 6px rgba(0,0,0,0.08);">
                                 </div>
                                 <div class="col-12">
                                     <label for="description" class="form-label">Description</label>
@@ -339,7 +341,28 @@
             document.getElementById('prompt_config_file').value = '';
             document.getElementById('save-btn').textContent = 'Add Use Case';
             document.getElementById('cancel-edit-btn').style.display = 'none';
+            // Clear thumbnail preview
+            const preview = document.getElementById('thumbnail-preview');
+            preview.src = '';
+            preview.style.display = 'none';
         }
+
+        // Thumbnail preview logic
+        document.getElementById('thumbnail').addEventListener('change', function(e) {
+            const preview = document.getElementById('thumbnail-preview');
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(ev) {
+                    preview.src = ev.target.result;
+                    preview.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                preview.src = '';
+                preview.style.display = 'none';
+            }
+        });
 
         function populateTable(data) {
             const table = document.getElementById('use-cases-table');
