@@ -224,7 +224,7 @@
             </li>
             <!-- New Public Demo Tab -->
             <li class="nav-item">
-                <a class="nav-link" href="/admin/public-demo">Public Demo</a>
+                <a class="nav-link" href="/admin/public-demo" id="public-demo-link">Public Demo</a>
             </li>
         </ul>
 
@@ -555,6 +555,16 @@
             } finally {
                 saveButton.disabled = false;
             }
+        });
+
+        // --- Seamless Auth Carry-Over for Public Demo ---
+        document.getElementById('public-demo-link').addEventListener('click', function(e) {
+            const auth = sessionStorage.getItem('admin_auth');
+            if (auth) {
+                // Store in localStorage for the next page to pick up
+                localStorage.setItem('admin_auth', auth);
+            }
+            // Allow navigation to proceed
         });
 
         loadSettings();

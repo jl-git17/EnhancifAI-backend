@@ -285,6 +285,11 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // --- Seamless Auth Carry-Over from Dashboard ---
+        if (!sessionStorage.getItem('admin_auth') && localStorage.getItem('admin_auth')) {
+            sessionStorage.setItem('admin_auth', localStorage.getItem('admin_auth'));
+            localStorage.removeItem('admin_auth');
+        }
         // --- HTTP Basic Auth helpers (copied from admin_dashboard.html) ---
         function getAuthHeader() {
             let auth = sessionStorage.getItem('admin_auth');
