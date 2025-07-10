@@ -10,11 +10,17 @@ function getAuthHeader(forcePrompt = false) {
     }
     return auth;
 }
+
 async function fetchWithAuthRetry(url, options = {}, retry = true) {
     let auth = getAuthHeader();
     if (!auth) return null;
     options.headers = options.headers || {};
     options.headers['Authorization'] = auth;
+    // Always send credentials (cookies) for same-origin requests
+    options.credentials = 'same-origin';
+    // Debug: log the Authorization header
+    // console.log('fetchWithAuthRetry: Authorization:', auth);
+
     let res = await fetch(url, options);
     if (res.status === 401 && retry) {
         sessionStorage.removeItem('admin_auth');
@@ -31,3 +37,8 @@ function forceAdminReauth() {
     sessionStorage.removeItem('admin_auth');
     return getAuthHeader(true);
 }
+
+// Make helpers available globally
+window.getAuthHeader = getAuthHeader;
+window.fetchWithAuthRetry = fetchWithAuthRetry;
+window.forceAdminReauth = forceAdminReauth;
