@@ -335,13 +335,13 @@
     <script>
         // Shared HTTP Basic Auth helpers for admin pages
         function getAuthHeader(forcePrompt = false) {
-            let auth = sessionStorage.getItem('admin_auth');
+            let auth = localStorage.getItem('admin_auth');
             if (!auth || forcePrompt) {
                 const username = prompt('Admin Username:');
                 const password = prompt('Admin Password:');
                 if (username === null || password === null) return null;
                 auth = 'Basic ' + btoa(username + ':' + password);
-                sessionStorage.setItem('admin_auth', auth);
+                localStorage.setItem('admin_auth', auth);
             }
             return auth;
         }
@@ -355,7 +355,7 @@
 
             let res = await fetch(url, options);
             if (res.status === 401 && retry) {
-                sessionStorage.removeItem('admin_auth');
+                localStorage.removeItem('admin_auth');
                 auth = getAuthHeader(true);
                 if (!auth) return null;
                 options.headers['Authorization'] = auth;
@@ -366,7 +366,7 @@
 
         // Optional: Helper to force re-authentication
         function forceAdminReauth() {
-            sessionStorage.removeItem('admin_auth');
+            localStorage.removeItem('admin_auth');
             return getAuthHeader(true);
         }
 
@@ -377,15 +377,14 @@
 
         $(function() {
             // --- AUTH CHECK ON PAGE LOAD ---
-            // Remove this line to avoid always clearing the session:
-            // sessionStorage.removeItem('admin_auth');
-            if (!sessionStorage.getItem('admin_auth')) {
-                // Prompt for credentials immediately
+            // if no stored credentials, prompt once
+            if (!localStorage.getItem('admin_auth')) {
                 if (!getAuthHeader()) {
                     alert('Authentication required. Reload the page to try again.');
                     throw new Error('Authentication required');
                 }
             }
+
             // Optional: Add a re-authenticate button for admins
             // Example: <button onclick="sessionStorage.removeItem('admin_auth'); location.reload();">Re-authenticate</button>
 
@@ -614,4 +613,5 @@
         });
     </script>
 </body>
+</html>
 </html>
