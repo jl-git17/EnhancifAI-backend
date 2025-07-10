@@ -25,3 +25,9 @@ async function fetchWithAuthRetry(url, options = {}, retry = true) {
     }
     return res;
 }
+
+// Optional: Helper to force re-authentication (call this on page load if needed)
+function forceAdminReauth() {
+    sessionStorage.removeItem('admin_auth');
+    return getAuthHeader(true);
+}

@@ -332,6 +332,9 @@
     <script src="admin_auth.js"></script>
     <!-- Custom JS -->
     <script>
+        // Always clear previous admin_auth to force login prompt on page load
+        sessionStorage.removeItem('admin_auth');
+
         // --- AUTH CHECK ON PAGE LOAD ---
         if (!sessionStorage.getItem('admin_auth')) {
             // Prompt for credentials immediately
