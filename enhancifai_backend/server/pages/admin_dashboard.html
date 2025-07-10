@@ -376,17 +376,9 @@
         window.forceAdminReauth = forceAdminReauth;
 
         $(function() {
-            // --- AUTH CHECK ON PAGE LOAD ---
-            // if no stored credentials, prompt once
-            if (!localStorage.getItem('admin_auth')) {
-                if (!getAuthHeader()) {
-                    alert('Authentication required. Reload the page to try again.');
-                    throw new Error('Authentication required');
-                }
-            }
-
+            // --- removed initial auth-check here ---
             // Optional: Add a re-authenticate button for admins
-            // Example: <button onclick="sessionStorage.removeItem('admin_auth'); location.reload();">Re-authenticate</button>
+            // Example: <button onclick="localStorage.removeItem('admin_auth'); location.reload();">Re-authenticate</button>
 
             // Initialize Bootstrap tooltips
             function initializeTooltips() {
@@ -613,5 +605,4 @@
         });
     </script>
 </body>
-</html>
 </html>
