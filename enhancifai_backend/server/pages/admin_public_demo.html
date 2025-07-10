@@ -284,15 +284,45 @@
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="admin_auth.js"></script>
     <script>
-        // --- AUTH CHECK ON PAGE LOAD ---
-        if (!sessionStorage.getItem('admin_auth')) {
-            // Prompt for credentials immediately
-            if (!getAuthHeader()) {
-                alert('Authentication required. Reload the page to try again.');
-                throw new Error('Authentication required');
+        // --- HTTP Basic Auth helpers (copied from admin_dashboard.html) ---
+        function getAuthHeader() {
+            let auth = sessionStorage.getItem('admin_auth');
+            if (!auth) {
+                // Prompt for username and password
+                let username = prompt('Admin Username:');
+                if (!username) return null;
+                let password = prompt('Admin Password:');
+                if (!password) return null;
+                auth = btoa(username + ':' + password);
+                sessionStorage.setItem('admin_auth', auth);
             }
+            return 'Basic ' + auth;
+        }
+
+        async function fetchWithAuthRetry(url, options = {}) {
+            // Always set Authorization header
+            options.headers = options.headers || {};
+            options.headers['Authorization'] = getAuthHeader();
+            // For FormData, do not set Content-Type (browser will set it)
+            if (!(options.body instanceof FormData)) {
+                options.headers['Cache-Control'] = 'no-cache';
+            }
+            let res = await fetch(url, options);
+            if (res.status === 401) {
+                // Clear auth and prompt again
+                sessionStorage.removeItem('admin_auth');
+                options.headers['Authorization'] = getAuthHeader();
+                res = await fetch(url, options);
+            }
+            return res;
+        }
+        // --- END: HTTP Basic Auth helpers ---
+
+        // --- AUTH CHECK ON PAGE LOAD ---
+        if (!getAuthHeader()) {
+            alert('Authentication required. Reload the page to try again.');
+            throw new Error('Authentication required');
         }
         // Optional: Add a re-authenticate button for admins
         // Example: <button onclick="sessionStorage.removeItem('admin_auth'); location.reload();">Re-authenticate</button>
