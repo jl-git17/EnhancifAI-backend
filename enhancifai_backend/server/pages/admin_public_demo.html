@@ -475,29 +475,14 @@
                 method = 'PUT';
             }
             try {
-                const auth = getAuthHeader();
-                if (!auth) return;
-                const res = await fetch(url, {
+                const res = await fetchWithAuthRetry(url, {
                     method,
-                    body: formData,
-                    headers: {
-                        'Authorization': auth
-                    }
+                    body: formData
                 });
-                if (res.status === 401) {
-                    sessionStorage.removeItem('admin_auth');
-                    // Try again with new credentials
-                    const newAuth = getAuthHeader(true);
-                    if (!newAuth) throw new Error('Authentication required');
-                    const retryRes = await fetch(url, {
-                        method,
-                        body: formData,
-                        headers: {
-                            'Authorization': newAuth
-                        }
-                    });
-                    if (!retryRes.ok) throw new Error('Save failed');
-                } else if (!res.ok) {
+                if (!res || res.status === 401) {
+                    throw new Error('Authentication required or failed. Please reload and login again.');
+                }
+                if (!res.ok) {
                     throw new Error('Save failed');
                 }
                 showAlert('form-success', true);
@@ -518,58 +503,42 @@
         };
 
         // Settings AJAX
-        function fetchSettings() {
-            const auth = getAuthHeader();
-            if (!auth) return;
-            $.ajax({
-                url: '/demo/settings',
-                type: 'GET',
-                beforeSend: function(xhr) {
-                    xhr.setRequestHeader('Authorization', auth);
-                },
-                success: function(data) {
-                    $('#model_default').val(data.model_default || '');
-                    $('#model_fallback').val(data.model_fallback || '');
-                },
-                error: function(xhr) {
-                    if (xhr.status === 401) {
-                        sessionStorage.removeItem('admin_auth');
-                        getAuthHeader(true);
-                        fetchSettings();
-                    }
-                }
-            });
+        async function fetchSettings() {
+            try {
+                const res = await fetchWithAuthRetry('/demo/settings');
+                if (!res || !res.ok) throw new Error('Failed to fetch settings');
+                const data = await res.json();
+                document.getElementById('model_default').value = data.model_default || '';
+                document.getElementById('model_fallback').value = data.model_fallback || '';
+            } catch (e) {
+                // If unauthorized, let fetchWithAuthRetry handle prompt; else show error
+                showAlert('settings-error', true, e.message);
+            }
         }
-        $('#settings-form').on('submit', function(e) {
+
+        document.getElementById('settings-form').onsubmit = async function(e) {
             e.preventDefault();
-            $('#settings-success').hide();
-            $('#settings-error').hide();
+            showAlert('settings-success', false);
+            showAlert('settings-error', false);
             const formData = new FormData(this);
-            const auth = getAuthHeader();
-            if (!auth) return;
-            $.ajax({
-                url: '/demo/settings',
-                type: 'PUT',
-                data: formData,
-                processData: false,
-                contentType: false,
-                beforeSend: function(xhr) {
-                    xhr.setRequestHeader('Authorization', auth);
-                },
-                success: function() {
-                    $('#settings-success').show();
-                },
-                error: function(xhr) {
-                    if (xhr.status === 401) {
-                        sessionStorage.removeItem('admin_auth');
-                        getAuthHeader(true);
-                        $('#settings-form').submit();
-                        return;
-                    }
-                    $('#settings-error').text(xhr.responseJSON?.detail || 'Error saving settings.').show();
+            try {
+                const res = await fetchWithAuthRetry('/demo/settings', {
+                    method: 'PUT',
+                    body: formData
+                });
+                if (!res || res.status === 401) {
+                    throw new Error('Authentication required or failed. Please reload and login again.');
                 }
-            });
-        });
+                if (!res.ok) {
+                    let msg = 'Error saving settings.';
+                    try { msg = (await res.json()).detail || msg; } catch {}
+                    throw new Error(msg);
+                }
+                showAlert('settings-success', true, 'Settings saved!');
+            } catch (e) {
+                showAlert('settings-error', true, e.message);
+            }
+        };
 
         $(function() {
             fetchSettings();
