@@ -350,11 +350,9 @@
         try {
             getAuthHeader();
         } catch (e) {
-            // Stop further execution if not authenticated
-            throw e;
+            console.warn('Authentication missing—please log in via the dashboard.');
+            // optionally redirect: window.location.href = '/admin/login';
         }
-        // Optional: Add a re-authenticate button for admins
-        // Example: <button onclick="sessionStorage.removeItem('admin_auth'); location.reload();">Re-authenticate</button>
 
         // Uses shared auth helpers from admin_dashboard.html
         let useCases = [];
@@ -587,5 +585,7 @@
         });
         // --- END: HTTP Basic Auth helpers and AJAX logic ---
     </script>
+</body>
+</html>
 </body>
 </html>

@@ -335,6 +335,14 @@
 
     <!-- Custom JS -->
     <script>
+        // --- Sync sessionStorage → localStorage on load (for direct redirects) ---
+        (function() {
+            const sessionAuth = sessionStorage.getItem('admin_auth');
+            if (sessionAuth) {
+                localStorage.setItem('admin_auth', sessionAuth);
+            }
+        })();
+
         // --- Sync auth from localStorage to sessionStorage if present (for returning from public demo) ---
         (function() {
             const localAuth   = localStorage.getItem('admin_auth');
