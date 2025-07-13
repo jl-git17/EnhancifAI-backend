@@ -401,6 +401,15 @@
             document.getElementById('use_case_id').value = uc.id;
             document.getElementById('title').value = uc.title;
             document.getElementById('description').value = uc.description || '';
+            // Show existing thumbnail if available
+            const preview = document.getElementById('thumbnail-preview');
+            if (uc.thumbnail) {
+                preview.src = `data:image/png;base64,${uc.thumbnail}`;
+                preview.style.display = 'block';
+            } else {
+                preview.src = '';
+                preview.style.display = 'none';
+            }
             document.getElementById('save-btn').textContent = 'Update Use Case';
             document.getElementById('cancel-edit-btn').style.display = 'inline-block';
             window.scrollTo({top: 0, behavior: 'smooth'});
