@@ -287,6 +287,17 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // --- Sync auth between localStorage and sessionStorage on page load ---
+        (function() {
+            const localAuth   = localStorage.getItem('admin_auth');
+            const sessionAuth = sessionStorage.getItem('admin_auth');
+            if (localAuth && !sessionAuth) {
+                sessionStorage.setItem('admin_auth', localAuth);
+            } else if (sessionAuth && !localAuth) {
+                localStorage.setItem('admin_auth', sessionAuth);
+            }
+        })();
+
         // --- Sync auth from localStorage to sessionStorage when navigating back to dashboard ---
         const dashboardLink = document.getElementById('dashboard-link');
         if (dashboardLink) {
@@ -299,7 +310,6 @@
         }
 
         // --- Seamless Auth Carry-Over from Dashboard ---
-        // Always use localStorage for admin_auth, never prompt
         function getAuthHeader() {
             // Try localStorage first
             let auth = localStorage.getItem('admin_auth');
