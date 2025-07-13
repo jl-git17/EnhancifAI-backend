@@ -141,6 +141,8 @@
         .card-edit {
             border-left: 4px solid #ffc107; /* amber */
         }
+        /* add a little spacing for preview buttons */
+        .preview-btn { margin-right: 0.25rem; }
     </style>
 </head>
 <body>
@@ -260,6 +262,8 @@
                             <th>Description</th>
                             <th>Created</th>
                             <th>Updated</th>
+                            <!-- added Preview header -->
+                            <th>Preview</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -363,7 +367,7 @@
             table.innerHTML = '';
             document.getElementById('use-case-count').textContent = data.length;
             if (!data.length) {
-                table.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No use cases found.</td></tr>';
+                table.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No use cases found.</td></tr>';
                 return;
             }
             data.forEach(uc => {
@@ -376,6 +380,12 @@
                         <td>${uc.description ? uc.description.replace(/</g, "&lt;").replace(/>/g, "&gt;") : ''}</td>
                         <td>${uc.created_at ? uc.created_at.split('T')[0] : ''}</td>
                         <td>${uc.updated_at ? uc.updated_at.split('T')[0] : ''}</td>
+                        <!-- added Preview buttons -->
+                        <td>
+                            ${uc.sample_input_file_csv ? `<button class="btn btn-sm btn-info preview-btn" onclick="previewFile('${uc.sample_input_file_csv.data}','${uc.sample_input_file_csv.mime}')" title="Preview CSV"><i class="bi bi-file-earmark-spreadsheet"></i></button>` : ''}
+                            ${uc.sample_input_file_excel ? `<button class="btn btn-sm btn-info preview-btn" onclick="previewFile('${uc.sample_input_file_excel.data}','${uc.sample_input_file_excel.mime}')" title="Preview Excel"><i class="bi bi-file-earmark-spreadsheet-fill"></i></button>` : ''}
+                            ${uc.prompt_config_file ? `<button class="btn btn-sm btn-secondary preview-btn" onclick="previewFile('${uc.prompt_config_file.data}','${uc.prompt_config_file.mime}')" title="Preview Config"><i class="bi bi-file-code"></i></button>` : ''}
+                        </td>
                         <td class="action-btns">
                             <button class="btn btn-sm btn-success" onclick="editUseCase(${uc.id})" data-bs-toggle="tooltip" title="Edit">
                                 <i class="bi bi-pencil"></i>
@@ -393,6 +403,12 @@
                 tooltipTriggerList.map(el => new bootstrap.Tooltip(el));
             }, 100);
         }
+
+        // simplified previewFile
+        window.previewFile = function(base64Data, mime) {
+            const url = `data:${mime};base64,${base64Data}`;
+            window.open(url, '_blank');
+        };
 
         async function fetchUseCases() {
             showAlert('table-error', false);

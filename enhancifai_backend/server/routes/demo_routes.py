@@ -106,22 +106,38 @@ def cleanup_temp_files(prompt_file_path, data_file_path):
     if data_file_path and os.path.exists(data_file_path):
         os.remove(data_file_path)
 
+def _detect_mime(file_bytes):
+    return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' if file_bytes[:2] == b'PK' else 'text/csv'
+
 @router.get("/demo/use-cases", tags=["Demo (WIP)"])
 async def get_use_cases(credentials: HTTPBasicCredentials = Depends(security)):
     """
     Returns array of { id, title, description, thumbnail }
     """
-    use_cases = PublicDemoDbCore.get_all_use_cases()
-    if use_cases is None:
-        use_cases = []
+    use_cases = PublicDemoDbCore.get_all_use_cases() or []
     result = []
     for uc in use_cases:
-        result.append({
+        item = {
             "id": uc.get("id"),
             "title": uc.get("title"),
             "description": uc.get("description"),
-            "thumbnail": base64.b64encode(uc["thumbnail"]).decode() if uc.get("thumbnail") else None
-        })
+            "thumbnail": uc.get("thumbnail") and {
+                "data": base64.b64encode(uc["thumbnail"]).decode()
+            }
+        }
+        # sample CSV
+        if uc.get("sample_input_file_csv"):
+            b = uc["sample_input_file_csv"]
+            item["sample_input_file_csv"] = {"data": base64.b64encode(b).decode(), "mime": "text/csv"}
+        # sample Excel
+        if uc.get("sample_input_file_excel"):
+            b = uc["sample_input_file_excel"]
+            item["sample_input_file_excel"] = {"data": base64.b64encode(b).decode(), "mime": _detect_mime(b)}
+        # prompt config (CSV or Excel)
+        if uc.get("prompt_config_file"):
+            b = uc["prompt_config_file"]
+            item["prompt_config_file"] = {"data": base64.b64encode(b).decode(), "mime": _detect_mime(b)}
+        result.append(item)
     return JSONResponse(content=result)
 
 @router.get("/demo/use-cases/{use_case_id}", tags=["Demo (WIP)"])
@@ -132,18 +148,31 @@ async def get_use_case(use_case_id: int, credentials: HTTPBasicCredentials = Dep
     use_case = PublicDemoDbCore.get_use_case_by_id(use_case_id)
     if not use_case:
         return JSONResponse(status_code=404, content={"detail": "Use case not found"})
-    result = {
+    cfg = {}
+    # thumbnail
+    if use_case.get("thumbnail"):
+        cfg["thumbnail"] = {"data": base64.b64encode(use_case["thumbnail"]).decode()}
+    # sample CSV
+    if use_case.get("sample_input_file_csv"):
+        b = use_case["sample_input_file_csv"]
+        cfg["sample_input_file_csv"] = {"data": base64.b64encode(b).decode(), "mime": "text/csv"}
+    # sample Excel
+    if use_case.get("sample_input_file_excel"):
+        b = use_case["sample_input_file_excel"]
+        cfg["sample_input_file_excel"] = {"data": base64.b64encode(b).decode(), "mime": _detect_mime(b)}
+    # prompt config
+    if use_case.get("prompt_config_file"):
+        b = use_case["prompt_config_file"]
+        cfg["prompt_config_file"] = {"data": base64.b64encode(b).decode(), "mime": _detect_mime(b)}
+    resp = {
         "id": use_case.get("id"),
         "title": use_case.get("title"),
         "description": use_case.get("description"),
-        "thumbnail": base64.b64encode(use_case["thumbnail"]).decode() if use_case.get("thumbnail") else None,
-        "sample_input_file_csv": base64.b64encode(use_case["sample_input_file_csv"]).decode() if use_case.get("sample_input_file_csv") else None,
-        "sample_input_file_excel": base64.b64encode(use_case["sample_input_file_excel"]).decode() if use_case.get("sample_input_file_excel") else None,
-        "prompt_config_file": base64.b64encode(use_case["prompt_config_file"]).decode() if use_case.get("prompt_config_file") else None,
+        **cfg,
         "created_at": str(use_case.get("created_at")) if use_case.get("created_at") else None,
         "updated_at": str(use_case.get("updated_at")) if use_case.get("updated_at") else None
     }
-    return JSONResponse(content=result)
+    return JSONResponse(content=resp)
 
 @router.post("/demo/run-demo", tags=["Demo (WIP)"])
 async def do_demo_run(
