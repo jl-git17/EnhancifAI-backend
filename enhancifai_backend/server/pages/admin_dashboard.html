@@ -352,6 +352,41 @@
             }
         })();
 
+        // --- HTTP Basic Auth helpers ---
+        function getAuthHeader() {
+            let auth = localStorage.getItem('admin_auth');
+            if (!auth) {
+                auth = sessionStorage.getItem('admin_auth');
+                if (auth) localStorage.setItem('admin_auth', auth);
+            }
+            if (!auth) {
+                alert('Authentication required. Please log in.');
+                throw new Error('Authentication required');
+            }
+            return 'Basic ' + auth;
+        }
+
+        async function fetchWithAuthRetry(url, options = {}) {
+            options.headers = options.headers || {};
+            options.headers['Authorization'] = getAuthHeader();
+            if (!(options.body instanceof FormData)) {
+                options.headers['Cache-Control'] = 'no-cache';
+            }
+            const res = await fetch(url, options);
+            if (res.status === 401) {
+                localStorage.removeItem('admin_auth');
+                alert('Authentication expired. Please log in again.');
+                throw new Error('Authentication required');
+            }
+            return res;
+        }
+
+        try {
+            getAuthHeader();
+        } catch (e) {
+            console.warn('Missing auth—redirect to login if needed.');
+        }
+        
         // Initialize Bootstrap tooltips
         function initializeTooltips() {
             var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
@@ -398,15 +433,12 @@
                     return;
                 }
 
-                fetch(endpoint, {
-                    method: 'GET'
-                })
+                fetchWithAuthRetry(endpoint, { method: 'GET' })
                 .then(response => {
                     if (response.ok) {
                         return response.blob();
-                    } else {
-                        throw new Error('Error downloading CSV. Please try again.');
                     }
+                    throw new Error('Error downloading CSV. Please try again.');
                 })
                 .then(blob => {
                     const url = window.URL.createObjectURL(blob);
@@ -454,11 +486,7 @@
             promptHistoryTable.innerHTML = '';
 
             try {
-                const response = await fetch('/admin/prompt-improver/prompts', {
-                    headers: {
-                        'Cache-Control': 'no-cache'
-                    }
-                });
+                const response = await fetchWithAuthRetry('/admin/prompt-improver/prompts');
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -490,11 +518,7 @@
 
         async function restorePrompt(version) {
             try {
-                const response = await fetch(`/admin/prompt-improver/prompts/${version}`, {
-                    headers: {
-                        'Cache-Control': 'no-cache'
-                    }
-                });
+                const response = await fetchWithAuthRetry(`/admin/prompt-improver/prompts/${version}`);
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -516,11 +540,7 @@
 
         async function loadSettings() {
             try {
-                const response = await fetch('/admin/prompt-improver/settings', {
-                    headers: {
-                        'Cache-Control': 'no-cache'
-                    }
-                });
+                const response = await fetchWithAuthRetry('/admin/prompt-improver/settings');
 
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -547,11 +567,10 @@
             };
 
             try {
-                const response = await fetch('/admin/prompt-improver/settings', {
+                const response = await fetchWithAuthRetry('/admin/prompt-improver/settings', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Cache-Control': 'no-cache'
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify(formData),
                 });
@@ -578,12 +597,9 @@
         document.getElementById('public-demo-link').addEventListener('click', function() {
             // Propagate any stored token into localStorage, then navigate.
             const auth = sessionStorage.getItem('admin_auth') || localStorage.getItem('admin_auth');
-            if (auth) {
-                localStorage.setItem('admin_auth', auth);
-            }
-            // no client-side blocking here
+            if (auth) localStorage.setItem('admin_auth', auth);
         });
-        
+
         loadSettings();
         fetchPromptHistory();
         initializeTooltips();
