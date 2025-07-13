@@ -135,6 +135,12 @@
         .action-btns .btn:last-child {
             margin-right: 0;
         }
+        .card-add {
+            border-left: 4px solid #28a745; /* green */
+        }
+        .card-edit {
+            border-left: 4px solid #ffc107; /* amber */
+        }
     </style>
 </head>
 <body>
@@ -187,9 +193,9 @@
             <!-- End Settings Section -->
 
             <div class="form-section mb-4">
-                <div class="card">
-                    <div class="card-header">
-                        <i class="bi bi-lightbulb"></i> Add / Edit Use Case
+                <div id="use-case-card" class="card card-add"><!-- toggles to card-edit -->
+                    <div id="use-case-form-header" class="card-header">
+                        <i class="bi bi-lightbulb"></i> Add Use Case
                     </div>
                     <div class="card-body">
                         <form id="use-case-form" autocomplete="off">
@@ -225,8 +231,12 @@
                                 </div>
                             </div>
                             <div class="mt-4 d-flex gap-2">
-                                <button type="submit" class="btn btn-primary" id="save-btn"><i class="bi bi-plus-circle"></i> Add Use Case</button>
-                                <button type="button" class="btn btn-secondary" id="cancel-edit-btn" style="display:none;"><i class="bi bi-x-circle"></i> Cancel</button>
+                                <button type="submit" class="btn btn-primary" id="save-btn">
+                                    <i class="bi bi-plus-circle"></i> Add Use Case
+                                </button>
+                                <button type="button" class="btn btn-secondary" id="cancel-edit-btn" style="display:none;">
+                                    <i class="bi bi-x-circle"></i> Cancel
+                                </button>
                                 <div id="form-success" class="alert alert-success py-1 px-3 mb-0 ms-3">Saved successfully!</div>
                                 <div id="form-error" class="alert alert-danger py-1 px-3 mb-0 ms-3">Error saving use case.</div>
                             </div>
@@ -319,12 +329,16 @@
             document.getElementById('sample_input_file_csv').value = '';
             document.getElementById('sample_input_file_excel').value = '';
             document.getElementById('prompt_config_file').value = '';
-            document.getElementById('save-btn').textContent = 'Add Use Case';
-            document.getElementById('cancel-edit-btn').style.display = 'none';
-            // Clear thumbnail preview
-            const preview = document.getElementById('thumbnail-preview');
-            preview.src = '';
-            preview.style.display = 'none';
+            // Switch back to Add mode
+            document.getElementById('use-case-form-header').innerHTML =
+                '<i class="bi bi-lightbulb"></i> Add Use Case';
+            const card = document.getElementById('use-case-card');
+            card.classList.add('card-add');
+            card.classList.remove('card-edit');
+            const btn = document.getElementById('save-btn');
+            btn.classList.add('btn-primary');
+            btn.classList.remove('btn-warning');
+            btn.innerHTML = '<i class="bi bi-plus-circle"></i> Add Use Case';
         }
 
         // Thumbnail preview logic
@@ -410,7 +424,16 @@
                 preview.src = '';
                 preview.style.display = 'none';
             }
-            document.getElementById('save-btn').textContent = 'Update Use Case';
+            // Switch to Edit mode
+            document.getElementById('use-case-form-header').innerHTML =
+                '<i class="bi bi-pencil"></i> Edit Use Case';
+            const card = document.getElementById('use-case-card');
+            card.classList.add('card-edit');
+            card.classList.remove('card-add');
+            const btn = document.getElementById('save-btn');
+            btn.classList.add('btn-warning');
+            btn.classList.remove('btn-primary');
+            btn.innerHTML = '<i class="bi bi-save"></i> Update Use Case';
             document.getElementById('cancel-edit-btn').style.display = 'inline-block';
             window.scrollTo({top: 0, behavior: 'smooth'});
         };
