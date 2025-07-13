@@ -567,22 +567,15 @@
         });
 
         // --- Seamless Auth Carry-Over for Public Demo ---
-        document.getElementById('public-demo-link').addEventListener('click', function(e) {
-            // Always copy sessionStorage admin_auth to localStorage before navigating
-            const sessionAuth = sessionStorage.getItem('admin_auth');
-            const localAuth = localStorage.getItem('admin_auth');
-            if (sessionAuth) {
-                localStorage.setItem('admin_auth', sessionAuth);
+        document.getElementById('public-demo-link').addEventListener('click', function() {
+            // Propagate any stored token into localStorage, then navigate.
+            const auth = sessionStorage.getItem('admin_auth') || localStorage.getItem('admin_auth');
+            if (auth) {
+                localStorage.setItem('admin_auth', auth);
             }
-            if (!sessionAuth && !localAuth) {
-                // If not in either, block navigation and warn user
-                alert('Authentication not found. Please log in again.');
-                e.preventDefault();
-                return false;
-            }
-            // Allow navigation to proceed
+            // no client-side blocking here
         });
-
+        
         loadSettings();
         fetchPromptHistory();
         initializeTooltips();
