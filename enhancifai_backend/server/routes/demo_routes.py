@@ -109,7 +109,7 @@ def cleanup_temp_files(prompt_file_path, data_file_path):
 def _detect_mime(file_bytes):
     return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' if file_bytes[:2] == b'PK' else 'text/csv'
 
-@router.get("/demo/use-cases", tags=["Demo (WIP)"])
+@router.get("/demo/use-cases", tags=["Demo"])
 async def get_use_cases(credentials: HTTPBasicCredentials = Depends(security)):
     """
     Returns array of { id, title, description, thumbnail }
@@ -140,7 +140,7 @@ async def get_use_cases(credentials: HTTPBasicCredentials = Depends(security)):
         result.append(item)
     return JSONResponse(content=result)
 
-@router.get("/demo/use-cases/{use_case_id}", tags=["Demo (WIP)"])
+@router.get("/demo/use-cases/{use_case_id}", tags=["Demo"])
 async def get_use_case(use_case_id: int, credentials: HTTPBasicCredentials = Depends(security)):
     """
     Returns a single use case by its ID, including sample input files and prompt config if present.
@@ -326,7 +326,7 @@ async def do_demo_run(
         content={'run_id': run_id, "data_columns": extracted_columns}
     )
 
-@router.put("/demo/use-cases/{use_case_id}", tags=["Demo (WIP)"])
+@router.put("/demo/use-cases/{use_case_id}", tags=["Demo"])
 async def update_use_case(
     use_case_id: int,
     title: str = Form(...),
@@ -352,7 +352,7 @@ async def update_use_case(
         raise HTTPException(status_code=404, detail="Use case not found or nothing to update.")
     return {"detail": "Use case updated successfully."}
 
-@router.delete("/demo/use-cases/{use_case_id}", tags=["Demo (WIP)"])
+@router.delete("/demo/use-cases/{use_case_id}", tags=["Demo"])
 async def delete_use_case(
     use_case_id: int,
     credentials: HTTPBasicCredentials = Depends(security)
@@ -363,7 +363,7 @@ async def delete_use_case(
         raise HTTPException(status_code=404, detail="Use case not found.")
     return {"detail": "Use case deleted successfully."}
 
-@router.get("/demo/settings", tags=["Demo (WIP)"])
+@router.get("/demo/settings", tags=["Demo"])
 async def get_demo_settings(credentials: HTTPBasicCredentials = Depends(security)):
     """
     Get demo settings (model_default, model_fallback).
@@ -373,7 +373,7 @@ async def get_demo_settings(credentials: HTTPBasicCredentials = Depends(security
         return JSONResponse(status_code=404, content={"detail": "Settings not found"})
     return JSONResponse(content=_settings)
 
-@router.put("/demo/settings", tags=["Demo (WIP)"])
+@router.put("/demo/settings", tags=["Demo"])
 async def update_demo_settings(
     model_default: str = Form(None),
     model_fallback: str = Form(None),
@@ -385,7 +385,7 @@ async def update_demo_settings(
         raise HTTPException(status_code=400, detail="Nothing to update.")
     return {"detail": "Settings updated successfully."}
 
-@router.post("/demo/use-cases", tags=["Demo (WIP)"])
+@router.post("/demo/use-cases", tags=["Demo"])
 async def create_use_case(
     request: Request,
     title: str = Form(...),
