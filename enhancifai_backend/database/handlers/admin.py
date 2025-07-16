@@ -159,3 +159,37 @@ class ModelPricesDbCore:
             ORDER BY model_name;
         """)
         return read_db.do('select', sql=sql, data=(year, month,))
+
+class AISettingsDbCore:
+    @classmethod
+    def get_ai_settings(cls):
+        """
+        Fetch the AI settings from the database.
+        
+        Returns:
+            dict: A dictionary containing the AI settings.
+        """
+        sql = schemafy("""
+            SELECT openai_temperature, openai_temperature_batched FROM enhancifai.global_settings
+            LIMIT 1;
+        """)
+        return read_db.do('select_one', sql=sql)
+
+    @classmethod
+    def update_ai_settings(cls, openai_temperature, openai_temperature_batched):
+        """
+        Update the AI settings in the database.
+        
+        Parameters:
+            openai_temperature (float): The new temperature setting for OpenAI.
+            openai_temperature_batched (float): The new batched temperature setting for OpenAI.
+        
+        Returns:
+            None
+        """
+        sql = schemafy("""
+            UPDATE enhancifai.global_settings
+            SET openai_temperature = %s, openai_temperature_batched = %s
+            WHERE id = 1;
+        """)
+        write_db.do('execute', sql=sql, data=(openai_temperature, openai_temperature_batched))
