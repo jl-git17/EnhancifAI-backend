@@ -173,7 +173,13 @@ class AISettingsDbCore:
             SELECT openai_temperature, openai_temperature_batched FROM enhancifai.global_settings
             LIMIT 1;
         """)
-        return read_db.do('select_one', sql=sql)
+        try:
+            result = read_db.do('select_one', sql=sql)
+            if result:
+                return result
+        except Exception as e:
+            print(f"Error fetching AI settings: {e}")
+        return {"openai_temperature": 0.5, "openai_temperature_batched": 0.5}
 
     @classmethod
     def update_ai_settings(cls, openai_temperature, openai_temperature_batched):
