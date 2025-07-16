@@ -297,7 +297,7 @@ CREATE TABLE IF NOT EXISTS enhancifai.subscription_payments (
 );
 
 CREATE TABLE IF NOT EXISTS enhancifai.global_settings (
-    active PRIMARY KEY BOOLEAN DEFAULT TRUE,
+    active BOOLEAN PRIMARY KEY DEFAULT TRUE,
     openai_temperature FLOAT,
     openai_temperature_batched FLOAT
 );
