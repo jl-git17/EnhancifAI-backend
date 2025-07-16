@@ -165,11 +165,8 @@ class OpenAIConnector:
         #self.temperature = temperature
         #self.top_p = top_p
         # Initialize OpenAI client with API key
-        ai_settings = AISettingsDbCore.get_ai_settings()
         self.client = OpenAI(api_key=settings.openai_api_key)
         self.rate_limit = False
-        self.temperature = ai_settings['openai_temperature']
-        self.temperature_batched = ai_settings['openai_temperature_batched']
 
     def process_csv_row(self, columns: list, rows: dict, query: str, run_id: int) -> dict:
         """
@@ -193,6 +190,9 @@ class OpenAIConnector:
         # Check rate limit manager
         self.engine = rate_limit_manager.can_make_api_call(model=self.engine,run_id=run_id)
         logging.debug(f"Got engine from rlm: {self.engine}")
+
+        ai_settings = AISettingsDbCore.get_ai_settings()
+        
 
         for attempt in range(max_attempts):
             try:
@@ -223,7 +223,7 @@ class OpenAIConnector:
                     model=self.engine,
                     messages=messages,
                     response_format=OpenAIResponseFormat,
-                    temperature=self.temperature
+                    temperature=ai_settings['openai_temperature']
                 )
 
                 data = completion.choices[0].message.parsed
@@ -304,6 +304,8 @@ class OpenAIConnector:
 
         self.engine = rate_limit_manager.can_make_api_call(model=self.engine, run_id=run_id)
 
+        ai_settings = AISettingsDbCore.get_ai_settings()
+
         for attempt in range(max_attempts):
             try:
                 # Optimized, lean, and accurate system prompt
@@ -330,7 +332,7 @@ class OpenAIConnector:
                     model=self.engine,
                     messages=messages,
                     response_format=OpenAIResponseFormatBatched,
-                    temperature=self.temperature_batched
+                    temperature=ai_settings['openai_temperature_batched']
                 )
 
                 data = completion.choices[0].message.parsed
