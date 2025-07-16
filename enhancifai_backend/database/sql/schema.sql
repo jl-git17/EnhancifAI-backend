@@ -295,3 +295,12 @@ CREATE TABLE IF NOT EXISTS enhancifai.subscription_payments (
     created_at TIMESTAMP DEFAULT now(),
     paid_at TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS enhancifai.global_settings (
+    active PRIMARY KEY BOOLEAN DEFAULT TRUE,
+    openai_temperature FLOAT,
+    openai_temperature_batched FLOAT
+);
+INSERT INTO enhancifai.global_settings (active, openai_temperature, openai_temperature_batched)
+VALUES (TRUE, 0.5, 0.5)
+ON CONFLICT (active) DO NOTHING;
