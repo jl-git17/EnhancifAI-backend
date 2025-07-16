@@ -195,7 +195,6 @@ class AISettingsDbCore:
         """
         sql = schemafy("""
             UPDATE enhancifai.global_settings
-            SET openai_temperature = %s, openai_temperature_batched = %s
-            WHERE id = 1;
+            SET openai_temperature = %s, openai_temperature_batched = %s;
         """)
         write_db.do('execute', sql=sql, data=(openai_temperature, openai_temperature_batched))
