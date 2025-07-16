@@ -219,6 +219,10 @@
             <li class="nav-item">
                 <a class="nav-link" id="prompt-improver-tab" data-bs-toggle="tab" href="#prompt-improver" role="tab" aria-controls="prompt-improver" aria-selected="false">Prompt Improver</a>
             </li>
+            <!-- Added AI Tab -->
+            <li class="nav-item">
+                <a class="nav-link" id="ai-tab" data-bs-toggle="tab" href="#ai" role="tab" aria-controls="ai" aria-selected="false">AI</a>
+            </li>
             <li class="nav-item">
                 <a class="nav-link" href="dashboard/billing">Billing</a>
             </li>
@@ -311,6 +315,36 @@
                             <!-- Prompt versions will be populated here -->
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- AI Tab Pane -->
+            <div class="tab-pane fade" id="ai" role="tabpanel" aria-labelledby="ai-tab">
+                <div class="container mt-4">
+                    <h1>AI Settings</h1>
+                    <form id="ai-settings-form">
+                        <div class="form-group">
+                            <label for="temperature">Temperature:</label>
+                            <select id="temperature" name="temperature" class="form-control">
+                                <option value="0.0">0.0</option>
+                                <option value="0.1">0.1</option>
+                                <option value="0.2">0.2</option>
+                                <option value="0.3">0.3</option>
+                                <option value="0.4">0.4</option>
+                                <option value="0.5">0.5</option>
+                                <option value="0.6">0.6</option>
+                                <option value="0.7">0.7</option>
+                                <option value="0.8">0.8</option>
+                                <option value="0.9">0.9</option>
+                                <option value="1.0">1.0</option>
+                            </select>
+                        </div>
+                        <!-- added submit button and success message -->
+                        <button type="submit" class="btn btn-primary btn-sm">Save AI Settings</button>
+                        <div id="ai-success-message" class="alert alert-success mt-3">
+                            AI settings saved successfully!
+                        </div>
+                    </form>
                 </div>
             </div>
   
@@ -552,6 +586,47 @@
                 saveButton.disabled = false;
             }
         });
+
+        // AI Settings JS
+        const aiForm = document.getElementById('ai-settings-form');
+        const temperatureField = document.getElementById('temperature');
+        const aiSaveButton = aiForm.querySelector('button[type="submit"]');
+        const aiSuccessMessage = document.getElementById('ai-success-message');
+
+        async function loadAISettings() {
+            try {
+                const res = await fetch('/admin/ai/settings', {
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
+                if (!res.ok) throw new Error();
+                const data = await res.json();
+                temperatureField.value = data.temperature;
+            } catch (err) {
+                console.error('Error loading AI settings:', err);
+            }
+        }
+
+        aiForm.addEventListener('submit', async function (e) {
+            e.preventDefault();
+            aiSuccessMessage.style.display = 'none';
+            aiSaveButton.disabled = true;
+            try {
+                const res = await fetch('/admin/ai/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ temperature: temperatureField.value })
+                });
+                if (!res.ok) throw new Error();
+                aiSuccessMessage.style.display = 'block';
+            } catch (err) {
+                console.error('Error saving AI settings:', err);
+            } finally {
+                aiSaveButton.disabled = false;
+            }
+        });
+
+        // initialize on load
+        loadAISettings();
 
         loadSettings();
         fetchPromptHistory();
