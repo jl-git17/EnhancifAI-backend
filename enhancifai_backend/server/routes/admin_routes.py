@@ -9,7 +9,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from enhancifai_backend.config import settings
 from enhancifai_backend.ai.openai_api import PI_DEFAULT_AI_ENGINE, PI_DEFAULT_PROMPT
-from enhancifai_backend.database.handlers.admin import PromptsDbCore, ModelPricesDbCore
+from enhancifai_backend.database.handlers.admin import AISettingsDbCore, PromptsDbCore, ModelPricesDbCore
 from enhancifai_backend.database.handlers.run_logs import PromptImproverRunLogsDbCore, RunLogsDbCore
 from enhancifai_backend.server.models.admin import AdminAISettings, RunLogsRequest
 from enhancifai_backend.server.utils import STATIC_PAGES_DIRECTORY, get_current_user_id, verify_secret_key, AdminSettings
@@ -64,6 +64,39 @@ async def set_admin_settings_ai(settings_admin_ai:AdminAISettings, _: str = Depe
     # TODO: check if user is an admin
     AdminSettings.set_ai_settings(engine=settings_admin_ai.ai_engine.value, api_key=settings_admin_ai.api_key)
     return JSONResponse(status_code=200, content={"message": "Success."})
+
+# New: Retrieve current AI settings
+@router.get("/admin/ai/settings", tags=["Admin"])
+async def get_admin_ai_settings(credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        ai_settings = AISettingsDbCore.get_ai_settings()
+        return JSONResponse(status_code=200, content=ai_settings)
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+# New: Update AI settings
+@router.post("/admin/ai/settings", tags=["Admin"])
+async def set_admin_ai_settings(
+    payload: dict = Body(...),
+    credentials: HTTPBasicCredentials = Depends(security)
+):
+    """
+    Set the Admin AI settings (stub - implement functionality yourself)
+    """
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        # payload may contain e.g. {"temperature": "0.7"} etc.
+        AISettingsDbCore.update_ai_settings(**payload)
+        return JSONResponse(status_code=200, content={"message": "AI settings updated successfully"})
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
 
 @router.get("/admin/prompt-improver", tags=["Admin"])
 async def admin_prompt_improver(credentials: HTTPBasicCredentials = Depends(security)):
