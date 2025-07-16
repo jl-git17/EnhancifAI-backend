@@ -558,6 +558,23 @@
             }
         }
 
+        // Add: fetch current AI settings from DB and populate sliders + badges
+        async function loadAISettings() {
+            try {
+                const res = await fetch('/admin/ai/settings', {
+                    headers: { 'Cache-Control': 'no-cache' }
+                });
+                if (!res.ok) throw new Error('Failed to load AI settings');
+                const data = await res.json();
+                temperatureField.value = data.openai_temperature;
+                batchedTemperatureField.value = data.openai_temperature_batched;
+                document.getElementById('temperature-value').textContent = temperatureField.value;
+                document.getElementById('temperature-batched-value').textContent = batchedTemperatureField.value;
+            } catch (err) {
+                console.error('Error loading AI settings:', err);
+            }
+        }
+
         settingsForm.addEventListener('submit', async function(event) {
             event.preventDefault();
             successMessage.style.display = 'none';
@@ -636,15 +653,8 @@
             }
         });
 
-        // initialize slider badges after settings load
-        setTimeout(() => {
-            document.getElementById('temperature-value').textContent = temperatureField.value;
-            document.getElementById('temperature-batched-value').textContent = batchedTemperatureField.value;
-        }, 0);
-
         // initialize on load
         loadAISettings();
-
         loadSettings();
         fetchPromptHistory();
         initializeTooltips();
