@@ -1,3 +1,4 @@
+import time
 from enhancifai_backend.database.handlers.utils import schemafy
 from enhancifai_backend.database.access import read_db, write_db
 
@@ -82,17 +83,17 @@ class PublicDemoDbCore:
     # --- demo_usage_logs methods ---
 
     @classmethod
-    def log_demo_usage(cls, ip_address, use_case_id, model_name, tokens_used, status):
+    def log_demo_usage(cls, ip_address, use_case_id, model_name, tokens_used):
         """
         Log a demo usage event.
         """
         sql = schemafy("""
             INSERT INTO enhancifai.demo_usage_logs
-                (ip_address, use_case_id, model_name, tokens_used, status)
-            VALUES (%s, %s, %s, %s, %s)
+                (ip_address, use_case_id, model_name, tokens_used)
+            VALUES (%s, %s, %s, %s)
             RETURNING id;
         """)
-        return write_db.do('execute', sql=sql, data=(ip_address, use_case_id, model_name, tokens_used, status))
+        return write_db.do('execute', sql=sql, data=(ip_address, use_case_id, model_name, tokens_used))
 
     @classmethod
     def get_demo_usage_logs(cls, use_case_id=None, ip_address=None, limit=100):
@@ -197,7 +198,7 @@ class PublicDemoRunsDbCore:
         return write_db.do('execute', sql=sql, data=(run_details, demo_run_id))
 
     @classmethod
-    def set_demo_run_checkin(cls, demo_run_id, check_in_time):
+    def set_demo_run_checkin(cls, demo_run_id):
         """
         Update the check_in timestamp for a demo run.
         """
@@ -206,7 +207,8 @@ class PublicDemoRunsDbCore:
             SET check_in = %s
             WHERE id = %s AND cancelled IS NOT TRUE;
         """)
-        return write_db.do('execute', sql=sql, data=(check_in_time, demo_run_id))
+        current_time = time.time()
+        return write_db.do('execute', sql=sql, data=(current_time, demo_run_id))
 
     @classmethod
     def cancel_demo_run(cls, demo_run_id):
@@ -246,6 +248,18 @@ class PublicDemoRunsDbCore:
         """)
         result = read_db.do('select_one', sql=sql, data=(demo_run_id,))
         return result['cancelled'] if result else False
+
+    @classmethod
+    def get_demo_run_ip_address(cls, demo_run_id):
+        """
+        Retrieve the IP address for a demo run by its id.
+        """
+        sql = schemafy("""
+            SELECT ip_address FROM enhancifai.demo_runs
+            WHERE id = %s;
+        """)
+        result = read_db.do('select_one', sql=sql, data=(demo_run_id,))
+        return result['ip_address'] if result else None
 
 
 class PublicDemoRunCallsDbCore:

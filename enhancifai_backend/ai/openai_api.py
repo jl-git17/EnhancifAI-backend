@@ -11,9 +11,11 @@ from pydantic import BaseModel
 from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
-from enhancifai_backend.database.handlers.admin import PromptsDbCore
+from enhancifai_backend.database.handlers.admin import AISettingsDbCore, PromptsDbCore
 from enhancifai_backend.engine.rate_limit_manager import RateLimitManager, rate_limit_manager
 from enhancifai_backend.engine.rate_limit_manager_free import RateLimitManagerFree, rate_limit_manager_free
+
+from enhancifai_backend.database.handlers.public_demo import PublicDemoDbCore, PublicDemoRunsDbCore
 
 BUFFER_MULTIPLIER = 2
 
@@ -168,13 +170,17 @@ class OpenAIConnector:
         #self.temperature = temperature
         #self.top_p = top_p
         # Initialize OpenAI client with API key
+        ai_settings = AISettingsDbCore.get_ai_settings()
         self.rate_limit_manager: RateLimitManager | RateLimitManagerFree = (
             rate_limit_manager_free if free_mode else rate_limit_manager
         )
         self.client = OpenAI(api_key=settings.openai_api_key)
         self.rate_limit = False
+        self.free_mode = free_mode
+        self.temperature = ai_settings.openai_temperature
+        self.temperature_batched = ai_settings.openai_temperature_batched
 
-    def process_csv_row(self, columns: list, rows: dict, query: str, run_id: int) -> dict:
+    def process_csv_row(self, columns: list, rows: dict, query: str, run_id: int, use_case_id: int = None) -> dict:
         """
         Process a CSV row with specified columns and query using OpenAI API.
 
@@ -226,7 +232,7 @@ class OpenAIConnector:
                     model=engine_to_use,
                     messages=messages,
                     response_format=OpenAIResponseFormat,
-                    temperature=0.5
+                    temperature=self.temperature
                 )
 
                 data = completion.choices[0].message.parsed
@@ -248,8 +254,17 @@ class OpenAIConnector:
                     #data = data.replace('SYS:NONE', '').strip()
 
                 # Save token usage entry
-                user_id = RunsDbCore.get_user_id(run_id)
-                UsersDbCore.add_user_token_usage(user_id, run_id, engine_to_use, tokens_used)
+                if not self.free_mode:
+                    user_id = RunsDbCore.get_user_id(run_id)
+                    UsersDbCore.add_user_token_usage(user_id, run_id, engine_to_use, tokens_used)
+                else:
+                    ip_address = PublicDemoRunsDbCore.get_demo_run_ip_address(run_id)
+                    PublicDemoDbCore.log_demo_usage(
+                        ip_address=ip_address,
+                        use_case_id=use_case_id,
+                        model_name=engine_to_use,
+                        tokens_used=tokens_used
+                    )
 
                 return {
                     "content": response,
@@ -294,7 +309,8 @@ class OpenAIConnector:
         columns: Dict[str, str],
         rows: List[Dict[str, str]],
         query: str,
-        run_id: int
+        run_id: int,
+        use_case_id: int = None
     ) -> List[Dict[str, object]]:
 
         if RunsDbCore.is_run_cancelled(run_id):
@@ -333,7 +349,7 @@ class OpenAIConnector:
                     model=engine_to_use,
                     messages=messages,
                     response_format=OpenAIResponseFormatBatched,
-                    temperature=0.5
+                    temperature=self.temperature_batched
                 )
 
                 data = completion.choices[0].message.parsed
@@ -360,8 +376,18 @@ class OpenAIConnector:
 
                 self.rate_limit_manager.update_make_api_call(engine_to_use, tokens_used=tokens_used)
 
-                user_id = RunsDbCore.get_user_id(run_id)
-                UsersDbCore.add_user_token_usage(user_id, run_id, engine_to_use, tokens_used)
+                # Save token usage entry
+                if not self.free_mode:
+                    user_id = RunsDbCore.get_user_id(run_id)
+                    UsersDbCore.add_user_token_usage(user_id, run_id, engine_to_use, tokens_used)
+                else:
+                    ip_address = PublicDemoRunsDbCore.get_demo_run_ip_address(run_id)
+                    PublicDemoDbCore.log_demo_usage(
+                        ip_address=ip_address,
+                        use_case_id=use_case_id,
+                        model_name=engine_to_use,
+                        tokens_used=tokens_used
+                    )
 
                 results = []
                 for line in response:

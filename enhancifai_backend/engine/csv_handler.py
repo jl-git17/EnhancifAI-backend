@@ -13,6 +13,8 @@ from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.runs_progress import runs_progress
 from enhancifai_backend.config import settings
 
+from enhancifai_backend.database.handlers.public_demo import PublicDemoRunsDbCore
+
 # Default concurrency
 DEFAULT_MAX_THREADS = 2
 PERFORMANCE_OPTIMIZATION_CHUNK_SIZE = 10
@@ -27,8 +29,10 @@ class CSVHandler:
         user_id,
         filename,
         batched_processing=False,
-        performance_optimization=False
+        performance_optimization=False,
+        free_mode=False
     ):
+        self.free_mode = free_mode
         self.file_path = file_path
         self.filename = filename
         self.output_file = output_file
@@ -50,7 +54,10 @@ class CSVHandler:
         self.last_engine_used = settings.main_model  # Default engine
 
     def _is_run_cancelled(self):
-        return RunsDbCore.is_run_cancelled(self.run_id)
+        if not self.free_mode:
+            return RunsDbCore.is_run_cancelled(self.run_id)
+        else:
+            return PublicDemoRunsDbCore.is_demo_run_cancelled(self.run_id)
 
     def load_csv(self):
         encodings = ['utf-8', 'ISO-8859-1', 'Windows-1252']
@@ -216,7 +223,10 @@ class CSVHandler:
         """
         if self._is_run_cancelled():
             return None
-        RunsDbCore.set_run_checkin(self.run_id)
+        if not self.free_mode:
+            RunsDbCore.set_run_checkin(self.run_id)
+        else:
+            PublicDemoRunsDbCore.set_demo_run_checkin(self.run_id)
 
         result = {
             "row_index": idx,

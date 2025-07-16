@@ -287,14 +287,14 @@ CREATE TABLE IF NOT EXISTS enhancifai.use_cases_free (
     updated_at TIMESTAMP DEFAULT now()
 );
 
+DROP TABLE IF EXISTS enhancifai.demo_usage_logs; -- Temp
 CREATE TABLE IF NOT EXISTS enhancifai.demo_usage_logs (
     id SERIAL PRIMARY KEY,
     ip_address VARCHAR(45),
     use_case_id INT,
     model_name VARCHAR(100),
     tokens_used INT,
-    created_at TIMESTAMP DEFAULT now(),
-    status VARCHAR(20)
+    created_at TIMESTAMP DEFAULT now()
 );
 
 -- Settings for public demo (model_default, model_fallback)
@@ -334,3 +334,12 @@ CREATE TABLE IF NOT EXISTS enhancifai.demo_run_calls (
     prompt TEXT,
     tokens_used INT
 );
+
+CREATE TABLE IF NOT EXISTS enhancifai.global_settings (
+    active PRIMARY KEY BOOLEAN DEFAULT TRUE,
+    openai_temperature FLOAT,
+    openai_temperature_batched FLOAT
+);
+INSERT INTO enhancifai.global_settings (active, openai_temperature, openai_temperature_batched)
+VALUES (TRUE, 0.5, 0.5)
+ON CONFLICT (active) DO NOTHING;
