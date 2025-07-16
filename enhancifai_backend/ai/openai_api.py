@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.runs import RunsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
-from enhancifai_backend.database.handlers.admin import PromptsDbCore
+from enhancifai_backend.database.handlers.admin import AISettingsDbCore, PromptsDbCore
 from enhancifai_backend.engine.rate_limit_manager import rate_limit_manager
 
 BUFFER_MULTIPLIER = 2
@@ -165,8 +165,11 @@ class OpenAIConnector:
         #self.temperature = temperature
         #self.top_p = top_p
         # Initialize OpenAI client with API key
+        ai_settings = AISettingsDbCore.get_ai_settings()
         self.client = OpenAI(api_key=settings.openai_api_key)
         self.rate_limit = False
+        self.temperature = ai_settings['openai_temperature']
+        self.temperature_batched = ai_settings['openai_temperature_batched']
 
     def process_csv_row(self, columns: list, rows: dict, query: str, run_id: int) -> dict:
         """
@@ -220,7 +223,7 @@ class OpenAIConnector:
                     model=self.engine,
                     messages=messages,
                     response_format=OpenAIResponseFormat,
-                    temperature=0.5
+                    temperature=self.temperature
                 )
 
                 data = completion.choices[0].message.parsed
@@ -327,7 +330,7 @@ class OpenAIConnector:
                     model=self.engine,
                     messages=messages,
                     response_format=OpenAIResponseFormatBatched,
-                    temperature=0.5
+                    temperature=self.temperature_batched
                 )
 
                 data = completion.choices[0].message.parsed
