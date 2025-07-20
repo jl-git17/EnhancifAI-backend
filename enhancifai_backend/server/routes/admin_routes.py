@@ -3,7 +3,7 @@ from datetime import datetime
 import io
 import os
 from typing import Optional
-from fastapi import APIRouter, Body, Depends, HTTPException, status
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 import base64
@@ -12,7 +12,7 @@ from enhancifai_backend.config import settings
 from enhancifai_backend.ai.openai_api import PI_DEFAULT_AI_ENGINE, PI_DEFAULT_PROMPT
 from enhancifai_backend.database.handlers.admin import AISettingsDbCore, PromptsDbCore, ModelPricesDbCore
 from enhancifai_backend.database.handlers.run_logs import PromptImproverRunLogsDbCore, RunLogsDbCore
-from enhancifai_backend.database.handlers.public_demo import PublicDemoDbCore
+from enhancifai_backend.database.handlers.public_demo import PublicDemoDbCore, PublicDemoSettingsDbCore
 from enhancifai_backend.server.models.admin import AdminAISettings, RunLogsRequest
 from enhancifai_backend.server.utils import STATIC_PAGES_DIRECTORY, get_current_user_id, verify_secret_key, AdminSettings
 
@@ -259,11 +259,14 @@ async def admin_public_demo():
     # Serve the page without HTTP Basic Auth
     return FileResponse(os.path.join(STATIC_PAGES_DIRECTORY, "admin_public_demo.html"))
 
-@router.get("/admin/demo/use-cases", tags=["Demo"])
+# DEMO USE CASES
+
+@router.get("/admin/demo/use-cases", tags=["Admin"])
 async def get_use_cases(credentials: HTTPBasicCredentials = Depends(security)):
     """
     Returns array of { id, title, description, thumbnail }
     """
+    check_admin_credentials(credentials)
     use_cases = PublicDemoDbCore.get_all_use_cases() or []
     result = []
     for uc in use_cases:
@@ -290,11 +293,12 @@ async def get_use_cases(credentials: HTTPBasicCredentials = Depends(security)):
         result.append(item)
     return JSONResponse(content=result)
 
-@router.get("/admin/demo/use-cases/{use_case_id}", tags=["Demo"])
+@router.get("/admin/demo/use-cases/{use_case_id}", tags=["Admin"])
 async def get_use_case(use_case_id: int, credentials: HTTPBasicCredentials = Depends(security)):
     """
     Returns a single use case by its ID, including sample input files and prompt config if present.
     """
+    check_admin_credentials(credentials)
     use_case = PublicDemoDbCore.get_use_case_by_id(use_case_id)
     if not use_case:
         return JSONResponse(status_code=404, content={"detail": "Use case not found"})
@@ -323,3 +327,95 @@ async def get_use_case(use_case_id: int, credentials: HTTPBasicCredentials = Dep
         "updated_at": str(use_case.get("updated_at")) if use_case.get("updated_at") else None
     }
     return JSONResponse(content=resp)
+
+
+@router.put("/demo/use-cases/{use_case_id}", tags=["Admin"])
+async def update_use_case(
+    use_case_id: int,
+    title: str = Form(...),
+    description: str = Form(None),
+    thumbnail: UploadFile = File(None),
+    sample_input_file_csv: UploadFile = File(None),
+    sample_input_file_excel: UploadFile = File(None),
+    prompt_config_file: UploadFile = File(None),
+    credentials: HTTPBasicCredentials = Depends(security)
+):
+    check_admin_credentials(credentials)
+    update_fields = {"title": title, "description": description}
+    if thumbnail:
+        update_fields["thumbnail"] = await thumbnail.read()
+    if sample_input_file_csv:
+        update_fields["sample_input_file_csv"] = await sample_input_file_csv.read()
+    if sample_input_file_excel:
+        update_fields["sample_input_file_excel"] = await sample_input_file_excel.read()
+    if prompt_config_file:
+        update_fields["prompt_config_file"] = await prompt_config_file.read()
+    updated = PublicDemoDbCore.update_use_case(use_case_id, **{k: v for k, v in update_fields.items() if v is not None})
+    if not updated:
+        raise HTTPException(status_code=404, detail="Use case not found or nothing to update.")
+    return {"detail": "Use case updated successfully."}
+
+@router.delete("/demo/use-cases/{use_case_id}", tags=["Admin"])
+async def delete_use_case(
+    use_case_id: int,
+    credentials: HTTPBasicCredentials = Depends(security)
+):
+    check_admin_credentials(credentials)
+    deleted = PublicDemoDbCore.delete_use_case(use_case_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Use case not found.")
+    return {"detail": "Use case deleted successfully."}
+
+
+@router.get("/demo/settings", tags=["Admin"])
+async def get_demo_settings(credentials: HTTPBasicCredentials = Depends(security)):
+    """
+    Get demo settings (model_default, model_fallback).
+    """
+    check_admin_credentials(credentials)
+    _settings = PublicDemoSettingsDbCore.get_demo_settings()
+    if not _settings:
+        return JSONResponse(status_code=404, content={"detail": "Settings not found"})
+    return JSONResponse(content=_settings)
+
+
+@router.put("/demo/settings", tags=["Admin"])
+async def update_demo_settings(
+    model_default: str = Form(None),
+    model_fallback: str = Form(None),
+    credentials: HTTPBasicCredentials = Depends(security)
+):
+    check_admin_credentials(credentials)
+    updated = PublicDemoSettingsDbCore.update_demo_settings(model_default=model_default, model_fallback=model_fallback)
+    if not updated:
+        raise HTTPException(status_code=400, detail="Nothing to update.")
+    return {"detail": "Settings updated successfully."}
+
+@router.post("/demo/use-cases", tags=["Admin"])
+async def create_use_case(
+    _: Request,
+    title: str = Form(...),
+    description: str = Form(None),
+    thumbnail: UploadFile = File(None),
+    sample_input_file_csv: UploadFile = File(None),
+    sample_input_file_excel: UploadFile = File(None),
+    prompt_config_file: UploadFile = File(None),
+    credentials: HTTPBasicCredentials = Depends(security)
+):
+    check_admin_credentials(credentials)
+    # user_id is no longer used
+    thumbnail_bytes = await thumbnail.read() if thumbnail else None
+    csv_bytes = await sample_input_file_csv.read() if sample_input_file_csv else None
+    excel_bytes = await sample_input_file_excel.read() if sample_input_file_excel else None
+    prompt_config_bytes = await prompt_config_file.read() if prompt_config_file else None
+    new_id = PublicDemoDbCore.create_use_case(
+        title=title,
+        description=description,
+        thumbnail=thumbnail_bytes,
+        sample_input_file_csv=csv_bytes,
+        sample_input_file_excel=excel_bytes,
+        prompt_config_file=prompt_config_bytes
+    )
+    if not new_id:
+        raise HTTPException(status_code=500, detail="Failed to create use case.")
+    return {"id": new_id}
