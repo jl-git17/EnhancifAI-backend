@@ -170,15 +170,12 @@ class OpenAIConnector:
         #self.temperature = temperature
         #self.top_p = top_p
         # Initialize OpenAI client with API key
-        ai_settings = AISettingsDbCore.get_ai_settings()
         self.rate_limit_manager: RateLimitManager | RateLimitManagerFree = (
             rate_limit_manager_free if free_mode else rate_limit_manager
         )
         self.client = OpenAI(api_key=settings.openai_api_key)
         self.rate_limit = False
         self.free_mode = free_mode
-        self.temperature = ai_settings.openai_temperature
-        self.temperature_batched = ai_settings.openai_temperature_batched
 
     def process_csv_row(self, columns: list, rows: dict, query: str, run_id: int, use_case_id: int = None) -> dict:
         """
@@ -202,6 +199,8 @@ class OpenAIConnector:
         # Check rate limit manager
         engine_to_use = self.rate_limit_manager.can_make_api_call(run_id=run_id)
         logging.debug("Got engine from rlm: %s", engine_to_use)
+
+        ai_settings = AISettingsDbCore.get_ai_settings()
 
         for attempt in range(max_attempts):
             try:
@@ -232,7 +231,7 @@ class OpenAIConnector:
                     model=engine_to_use,
                     messages=messages,
                     response_format=OpenAIResponseFormat,
-                    temperature=self.temperature
+                    temperature=ai_settings['openai_temperature']
                 )
 
                 data = completion.choices[0].message.parsed
@@ -323,6 +322,8 @@ class OpenAIConnector:
 
         engine_to_use = self.rate_limit_manager.can_make_api_call(run_id=run_id)
 
+        ai_settings = AISettingsDbCore.get_ai_settings()
+
         for attempt in range(max_attempts):
             try:
                 # Optimized, lean, and accurate system prompt
@@ -349,7 +350,7 @@ class OpenAIConnector:
                     model=engine_to_use,
                     messages=messages,
                     response_format=OpenAIResponseFormatBatched,
-                    temperature=self.temperature_batched
+                    temperature=ai_settings['openai_temperature_batched']
                 )
 
                 data = completion.choices[0].message.parsed
