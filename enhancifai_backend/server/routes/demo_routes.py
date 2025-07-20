@@ -110,7 +110,7 @@ def _detect_mime(file_bytes):
     return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' if file_bytes[:2] == b'PK' else 'text/csv'
 
 @router.get("/demo/use-cases", tags=["Demo"])
-async def get_use_cases(credentials: HTTPBasicCredentials = Depends(security)):
+async def get_use_cases(_: str = Depends(verify_secret_key)):
     """
     Returns array of { id, title, description, thumbnail }
     """
@@ -141,7 +141,7 @@ async def get_use_cases(credentials: HTTPBasicCredentials = Depends(security)):
     return JSONResponse(content=result)
 
 @router.get("/demo/use-cases/{use_case_id}", tags=["Demo"])
-async def get_use_case(use_case_id: int, credentials: HTTPBasicCredentials = Depends(security)):
+async def get_use_case(use_case_id: int, _: str = Depends(verify_secret_key)):
     """
     Returns a single use case by its ID, including sample input files and prompt config if present.
     """
@@ -179,7 +179,8 @@ async def do_demo_run(
     request: Request,
     use_case_id: int,
     prompt_config: str = Form(..., description="JSON string of prompt configuration"),
-    sample_input_file: UploadFile = File(None, description="Sample input file (CSV/Excel)")
+    sample_input_file: UploadFile = File(None, description="Sample input file (CSV/Excel)"),
+    _: str = Depends(verify_secret_key)
 ):
     """
     Upload a CSV/Excel file or provide JSON data, with prompts payload.
