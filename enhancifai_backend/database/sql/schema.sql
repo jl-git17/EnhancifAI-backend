@@ -336,7 +336,7 @@ CREATE TABLE IF NOT EXISTS enhancifai.demo_run_calls (
 );
 
 CREATE TABLE IF NOT EXISTS enhancifai.global_settings (
-    active PRIMARY KEY BOOLEAN DEFAULT TRUE,
+    active BOOLEAN PRIMARY KEY DEFAULT TRUE,
     openai_temperature FLOAT,
     openai_temperature_batched FLOAT
 );
