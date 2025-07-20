@@ -6,11 +6,13 @@ from typing import Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+import base64
 
 from enhancifai_backend.config import settings
 from enhancifai_backend.ai.openai_api import PI_DEFAULT_AI_ENGINE, PI_DEFAULT_PROMPT
 from enhancifai_backend.database.handlers.admin import AISettingsDbCore, PromptsDbCore, ModelPricesDbCore
 from enhancifai_backend.database.handlers.run_logs import PromptImproverRunLogsDbCore, RunLogsDbCore
+from enhancifai_backend.database.handlers.public_demo import PublicDemoDbCore
 from enhancifai_backend.server.models.admin import AdminAISettings, RunLogsRequest
 from enhancifai_backend.server.utils import STATIC_PAGES_DIRECTORY, get_current_user_id, verify_secret_key, AdminSettings
 
@@ -21,6 +23,9 @@ PASSWORD = settings.admin_password
 
 router = APIRouter()
 security = HTTPBasic()
+
+def _detect_mime(file_bytes):
+    return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' if file_bytes[:2] == b'PK' else 'text/csv'
 
 def seconds_to_hms(seconds):
     """Converts seconds to a formatted string 'hh:mm:ss'."""
@@ -253,3 +258,68 @@ async def get_model_prices_for_month(
 async def admin_public_demo():
     # Serve the page without HTTP Basic Auth
     return FileResponse(os.path.join(STATIC_PAGES_DIRECTORY, "admin_public_demo.html"))
+
+@router.get("/admin/demo/use-cases", tags=["Demo"])
+async def get_use_cases(credentials: HTTPBasicCredentials = Depends(security)):
+    """
+    Returns array of { id, title, description, thumbnail }
+    """
+    use_cases = PublicDemoDbCore.get_all_use_cases() or []
+    result = []
+    for uc in use_cases:
+        item = {
+            "id": uc.get("id"),
+            "title": uc.get("title"),
+            "description": uc.get("description"),
+            "thumbnail": uc.get("thumbnail") and {
+                "data": base64.b64encode(uc["thumbnail"]).decode()
+            }
+        }
+        # sample CSV
+        if uc.get("sample_input_file_csv"):
+            b = uc["sample_input_file_csv"]
+            item["sample_input_file_csv"] = {"data": base64.b64encode(b).decode(), "mime": "text/csv"}
+        # sample Excel
+        if uc.get("sample_input_file_excel"):
+            b = uc["sample_input_file_excel"]
+            item["sample_input_file_excel"] = {"data": base64.b64encode(b).decode(), "mime": _detect_mime(b)}
+        # prompt config (CSV or Excel)
+        if uc.get("prompt_config_file"):
+            b = uc["prompt_config_file"]
+            item["prompt_config_file"] = {"data": base64.b64encode(b).decode(), "mime": _detect_mime(b)}
+        result.append(item)
+    return JSONResponse(content=result)
+
+@router.get("/admin/demo/use-cases/{use_case_id}", tags=["Demo"])
+async def get_use_case(use_case_id: int, credentials: HTTPBasicCredentials = Depends(security)):
+    """
+    Returns a single use case by its ID, including sample input files and prompt config if present.
+    """
+    use_case = PublicDemoDbCore.get_use_case_by_id(use_case_id)
+    if not use_case:
+        return JSONResponse(status_code=404, content={"detail": "Use case not found"})
+    cfg = {}
+    # thumbnail
+    if use_case.get("thumbnail"):
+        cfg["thumbnail"] = {"data": base64.b64encode(use_case["thumbnail"]).decode()}
+    # sample CSV
+    if use_case.get("sample_input_file_csv"):
+        b = use_case["sample_input_file_csv"]
+        cfg["sample_input_file_csv"] = {"data": base64.b64encode(b).decode(), "mime": "text/csv"}
+    # sample Excel
+    if use_case.get("sample_input_file_excel"):
+        b = use_case["sample_input_file_excel"]
+        cfg["sample_input_file_excel"] = {"data": base64.b64encode(b).decode(), "mime": _detect_mime(b)}
+    # prompt config
+    if use_case.get("prompt_config_file"):
+        b = use_case["prompt_config_file"]
+        cfg["prompt_config_file"] = {"data": base64.b64encode(b).decode(), "mime": _detect_mime(b)}
+    resp = {
+        "id": use_case.get("id"),
+        "title": use_case.get("title"),
+        "description": use_case.get("description"),
+        **cfg,
+        "created_at": str(use_case.get("created_at")) if use_case.get("created_at") else None,
+        "updated_at": str(use_case.get("updated_at")) if use_case.get("updated_at") else None
+    }
+    return JSONResponse(content=resp)
