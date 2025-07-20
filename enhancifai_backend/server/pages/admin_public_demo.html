@@ -413,7 +413,7 @@
         async function fetchUseCases() {
             showAlert('table-error', false);
             try {
-                const res = await fetch('/demo/use-cases', {
+                const res = await fetch('/admin/demo/use-cases', {
                     headers: { 'Cache-Control': 'no-cache' },
                     credentials: 'same-origin'
                 });
@@ -500,10 +500,10 @@
             if (csv) formData.append('sample_input_file_csv', csv);
             if (excel) formData.append('sample_input_file_excel', excel);
             if (promptConfig) formData.append('prompt_config_file', promptConfig);
-            let url = '/demo/use-cases';
+            let url = '/admin/demo/use-cases';
             let method = 'POST';
             if (id) {
-                url = `/demo/use-cases/${id}`;
+                url = `/admin/demo/use-cases/${id}`;
                 method = 'PUT';
             }
             try {
@@ -534,7 +534,7 @@
         // Settings AJAX
         async function fetchSettings() {
             try {
-                const res = await fetch('/demo/settings');
+                const res = await fetch('/admin/demo/settings');
                 if (!res.ok) throw new Error('Failed to fetch settings');
                 const data = await res.json();
                 document.getElementById('model_default').value = data.model_default || '';
@@ -551,7 +551,7 @@
             showAlert('settings-error', false);
             const formData = new FormData(this);
             try {
-                const res = await fetch('/demo/settings', {
+                const res = await fetch('/admin/demo/settings', {
                     method: 'PUT',
                     body: formData,
                     headers: { 'Cache-Control': 'no-cache' },
