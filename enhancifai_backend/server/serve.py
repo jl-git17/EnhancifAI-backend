@@ -76,20 +76,20 @@ async def root():
 async def app_version():
     return {"version": APP_VERSION}
 
-# Scheduler setup
-scheduler = BackgroundScheduler()
-scheduler.add_job(delete_old_files, 'interval', hours=1)
-scheduler.add_job(SysDbCore.keep_db_alive, 'interval', seconds=21)
-scheduler.add_job(UsersDbCore.cleanup_timed_out_jobs, 'interval', seconds=13)
-scheduler.add_job(rate_limit_manager.clean_cancelled_jobs, 'interval', minutes=1)
-scheduler.add_job(generate_monthly_invoices, 'interval', minutes=15)
-scheduler.add_job(charge_unpaid_invoices, 'interval', minutes=15)
-#scheduler.add_job(refresh_google_sheets_creds, 'interval', minutes=30) # TODO: check if it is corrupting existing creds
-scheduler.start()
 logging.getLogger('apscheduler.executors.default').setLevel(logging.WARNING)
 
 
 def run_server():
+    # Scheduler setup
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(delete_old_files, 'interval', hours=1)
+    scheduler.add_job(SysDbCore.keep_db_alive, 'interval', seconds=21)
+    scheduler.add_job(UsersDbCore.cleanup_timed_out_jobs, 'interval', seconds=13)
+    scheduler.add_job(rate_limit_manager.clean_cancelled_jobs, 'interval', minutes=1)
+    scheduler.add_job(generate_monthly_invoices, 'interval', minutes=15)
+    scheduler.add_job(charge_unpaid_invoices, 'interval', minutes=15)
+    #scheduler.add_job(refresh_google_sheets_creds, 'interval', minutes=30) # TODO: check if it is corrupting existing creds
+    scheduler.start()
     uvicorn.run(app, host=SERVER_HOST, port=SERVER_PORT)
 
 if __name__ == "__main__":
