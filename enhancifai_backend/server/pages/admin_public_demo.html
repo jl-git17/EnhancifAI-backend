@@ -468,7 +468,7 @@
         document.getElementById('confirm-delete-btn').onclick = async function() {
             if (!deleteId) return;
             try {
-                const res = await fetch(`/demo/use-cases/${deleteId}`, {
+                const res = await fetch(`/admin/demo/use-cases/${deleteId}`, {
                     method: 'DELETE',
                     headers: { 'Cache-Control': 'no-cache' },
                     credentials: 'same-origin'
