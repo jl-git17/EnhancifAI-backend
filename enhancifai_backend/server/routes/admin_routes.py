@@ -255,8 +255,8 @@ async def get_model_prices_for_month(
     return JSONResponse(status_code=200, content={"model_prices": prices})
 
 @router.get("/admin/public-demo", tags=["Admin"])
-async def admin_public_demo():
-    # Serve the page without HTTP Basic Auth
+async def admin_public_demo(credentials: HTTPBasicCredentials = Depends(security)):
+    check_admin_credentials(credentials)
     return FileResponse(os.path.join(STATIC_PAGES_DIRECTORY, "admin_public_demo.html"))
 
 # DEMO USE CASES
