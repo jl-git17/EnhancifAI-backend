@@ -300,19 +300,7 @@
 
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Include shared admin auth helpers -->
     <script>
-        // --- REMOVE custom storage-sync & auth helper functions ---
-
-        // --- AUTH CHECK ON PAGE LOAD ---
-        try {
-            getAuthHeader();
-        } catch (e) {
-            console.warn('Authentication missing—please log in via the dashboard.');
-            // optionally redirect: window.location.href = '/admin/login';
-        }
-
-        // Uses shared auth helpers from admin_dashboard.html
         let useCases = [];
         let deleteId = null;
 
