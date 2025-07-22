@@ -329,7 +329,7 @@ async def get_use_case(use_case_id: int, credentials: HTTPBasicCredentials = Dep
     return JSONResponse(content=resp)
 
 
-@router.put("/demo/use-cases/{use_case_id}", tags=["Admin"])
+@router.put("/admin/demo/use-cases/{use_case_id}", tags=["Admin"])
 async def update_use_case(
     use_case_id: int,
     title: str = Form(...),
@@ -355,7 +355,7 @@ async def update_use_case(
         raise HTTPException(status_code=404, detail="Use case not found or nothing to update.")
     return {"detail": "Use case updated successfully."}
 
-@router.delete("/demo/use-cases/{use_case_id}", tags=["Admin"])
+@router.delete("/admin/demo/use-cases/{use_case_id}", tags=["Admin"])
 async def delete_use_case(
     use_case_id: int,
     credentials: HTTPBasicCredentials = Depends(security)
@@ -367,7 +367,7 @@ async def delete_use_case(
     return {"detail": "Use case deleted successfully."}
 
 
-@router.get("/demo/settings", tags=["Admin"])
+@router.get("/admin/demo/settings", tags=["Admin"])
 async def get_demo_settings(credentials: HTTPBasicCredentials = Depends(security)):
     """
     Get demo settings (model_default, model_fallback).
@@ -379,7 +379,7 @@ async def get_demo_settings(credentials: HTTPBasicCredentials = Depends(security
     return JSONResponse(content=_settings)
 
 
-@router.put("/demo/settings", tags=["Admin"])
+@router.put("/admin/demo/settings", tags=["Admin"])
 async def update_demo_settings(
     model_default: str = Form(None),
     model_fallback: str = Form(None),
@@ -391,7 +391,7 @@ async def update_demo_settings(
         raise HTTPException(status_code=400, detail="Nothing to update.")
     return {"detail": "Settings updated successfully."}
 
-@router.post("/demo/use-cases", tags=["Admin"])
+@router.post("/admin/demo/use-cases", tags=["Admin"])
 async def create_use_case(
     _: Request,
     title: str = Form(...),
