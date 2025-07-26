@@ -304,3 +304,24 @@ CREATE TABLE IF NOT EXISTS enhancifai.global_settings (
 INSERT INTO enhancifai.global_settings (active, openai_temperature, openai_temperature_batched)
 VALUES (TRUE, 0.5, 0.5)
 ON CONFLICT (active) DO NOTHING;
+
+
+-- Microsites
+
+-- Table to store microsite functions and their prompt pairs
+CREATE TABLE IF NOT EXISTS enhancifai.microsite_functions (
+    id SERIAL PRIMARY KEY,
+    function_name VARCHAR(100), -- e.g FixProductTitles
+    prompts JSONB -- JSON ARRAY OF {"prompt": "<prompt_text>", "columns": ["<column1>", "<column2>"]}
+);
+
+-- Table to store microsite function runs (user_id is ip_address)
+CREATE TABLE IF NOT EXISTS enhancifai.microsite_function_runs (
+    id SERIAL PRIMARY KEY,
+    function_id INT REFERENCES enhancifai.microsite_functions(id),
+    ip_address VARCHAR(45),
+    run_timestamp TIMESTAMP DEFAULT now(),
+    source_type source_type
+);
+
+-- 
