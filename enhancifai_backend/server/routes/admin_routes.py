@@ -1,6 +1,7 @@
 import csv
 from datetime import datetime
 import io
+import json
 import os
 from typing import Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, status
@@ -10,6 +11,7 @@ from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from enhancifai_backend.config import settings
 from enhancifai_backend.ai.openai_api import PI_DEFAULT_AI_ENGINE, PI_DEFAULT_PROMPT
 from enhancifai_backend.database.handlers.admin import AISettingsDbCore, PromptsDbCore, ModelPricesDbCore
+from enhancifai_backend.database.handlers.microsites import MicrositeFunctionsDbCore
 from enhancifai_backend.database.handlers.run_logs import PromptImproverRunLogsDbCore, RunLogsDbCore
 from enhancifai_backend.server.models.admin import AdminAISettings, RunLogsRequest
 from enhancifai_backend.server.utils import STATIC_PAGES_DIRECTORY, get_current_user_id, verify_secret_key, AdminSettings
@@ -46,6 +48,97 @@ async def admin_dashboard(credentials: HTTPBasicCredentials = Depends(security))
             headers={"WWW-Authenticate": "Basic"},
         )
 
+# --- Microsite Functions CRUD Endpoints ---
+@router.get("/admin/public-microsites/functions", tags=["Admin"])
+async def get_microsite_functions(credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        functions = MicrositeFunctionsDbCore.get_all_functions()
+        # Convert prompts from JSON string to list if needed
+        for fn in functions:
+            if isinstance(fn.get("prompts"), str):
+                try:
+                    fn["prompts"] = json.loads(fn["prompts"])
+                except Exception:
+                    fn["prompts"] = []
+        return functions
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+@router.get("/admin/public-microsites/functions/{function_id}", tags=["Admin"])
+async def get_microsite_function(function_id: int, credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        fn = MicrositeFunctionsDbCore.get_function_by_id(function_id)
+        if not fn:
+            raise HTTPException(status_code=404, detail="Function not found.")
+        if isinstance(fn.get("prompts"), str):
+            try:
+                fn["prompts"] = json.loads(fn["prompts"])
+            except Exception:
+                fn["prompts"] = []
+        return fn
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+@router.post("/admin/public-microsites/functions", tags=["Admin"])
+async def create_microsite_function(payload: dict = Body(...), credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        function_name = payload.get("function_name")
+        prompts = payload.get("prompts")
+        if not function_name or not prompts:
+            raise HTTPException(status_code=400, detail="Function name and prompts are required.")
+        # Store prompts as JSON string
+        prompts_json = json.dumps(prompts)
+        try:
+            new_id = MicrositeFunctionsDbCore.create_function(function_name, prompts_json)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return {"id": new_id}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+@router.put("/admin/public-microsites/functions/{function_id}", tags=["Admin"])
+async def update_microsite_function(function_id: int, payload: dict = Body(...), credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        function_name = payload.get("function_name")
+        prompts = payload.get("prompts")
+        if not function_name or not prompts:
+            raise HTTPException(status_code=400, detail="Function name and prompts are required.")
+        prompts_json = json.dumps(prompts)
+        try:
+            updated = MicrositeFunctionsDbCore.update_function(function_id, function_name=function_name, prompt=prompts_json)
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return updated
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+@router.delete("/admin/public-microsites/functions/{function_id}", tags=["Admin"])
+async def delete_microsite_function(function_id: int, credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        MicrositeFunctionsDbCore.delete_function(function_id)
+        return {"message": "Function deleted successfully"}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
 
 @router.get("/admin/dashboard/billing", tags=["Admin"])
 async def admin_billing(credentials: HTTPBasicCredentials = Depends(security)):
