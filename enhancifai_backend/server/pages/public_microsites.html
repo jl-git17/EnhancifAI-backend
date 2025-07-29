@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>EnhancifAI - Public Microsites Management</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            padding-top: 56px;
+            background-color: #F8FBFF;
+            color: #1A1A1A;
+        }
+        .navbar {
+            background-color: #0078FF;
+        }
+        .navbar .navbar-brand {
+            color: #fff;
+            margin: 0 auto;
+        }
+        h1 {
+            font-size: 1.5rem;
+            text-align: center;
+            color: #0078FF;
+            margin-top: 20px;
+            margin-bottom: 20px;
+        }
+        .table {
+            background-color: #fff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .btn-primary {
+            background-color: #0078FF;
+            border-color: #0078FF;
+        }
+        .btn-primary:hover, .btn-primary:focus {
+            background-color: #005FCC;
+            border-color: #005FCC;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .alert {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
+        <a class="navbar-brand mx-auto" href="#">EnhancifAI Public Microsites Management</a>
+    </nav>
+    <div class="container mt-4">
+        <h1>Manage Public Microsites Functions</h1>
+        <div id="microsites-alert" class="alert alert-success" role="alert"></div>
+        <div class="mb-3">
+            <button class="btn btn-primary" id="add-function-btn"><i class="bi bi-plus"></i> Add Function</button>
+        </div>
+        <table class="table table-striped" id="functions-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Prompt</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Data will be populated by JS -->
+            </tbody>
+        </table>
+        <!-- Modal for Add/Edit Function -->
+        <div class="modal fade" id="functionModal" tabindex="-1" aria-labelledby="functionModalLabel" aria-hidden="true">
+          <div class="modal-dialog">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title" id="functionModalLabel">Add/Edit Function</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+              </div>
+              <div class="modal-body">
+                <form id="function-form">
+                  <input type="hidden" id="function-id">
+                  <div class="mb-3">
+                    <label for="function-name" class="form-label">Function Name</label>
+                    <input type="text" class="form-control" id="function-name" required>
+                  </div>
+                  <div class="mb-3">
+                    <label for="function-prompt" class="form-label">Prompt</label>
+                    <textarea class="form-control" id="function-prompt" rows="3" required></textarea>
+                  </div>
+                  <button type="submit" class="btn btn-primary">Save</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+    </div>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        function showAlert(message, type = 'success') {
+            const alertDiv = $('#microsites-alert');
+            alertDiv.removeClass('alert-success alert-danger').addClass('alert-' + type).text(message).show();
+            setTimeout(() => alertDiv.hide(), 2500);
+        }
+        function fetchFunctions() {
+            $.get('/admin/public-microsites/functions', function(data) {
+                const tbody = $('#functions-table tbody');
+                tbody.empty();
+                (data || []).forEach(fn => {
+                    tbody.append(`
+                        <tr>
+                            <td>${fn.id}</td>
+                            <td>${fn.function_name}</td>
+                            <td>${fn.prompt}</td>
+                            <td>
+                                <button class="btn btn-sm btn-secondary edit-btn" data-id="${fn.id}"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-sm btn-danger delete-btn" data-id="${fn.id}"><i class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                    `);
+                });
+            });
+        }
+        $(document).ready(function() {
+            fetchFunctions();
+            $('#add-function-btn').click(function() {
+                $('#function-id').val('');
+                $('#function-name').val('');
+                $('#function-prompt').val('');
+                $('#functionModal').modal('show');
+            });
+            $('#functions-table').on('click', '.edit-btn', function() {
+                const id = $(this).data('id');
+                $.get(`/admin/public-microsites/functions/${id}`, function(fn) {
+                    $('#function-id').val(fn.id);
+                    $('#function-name').val(fn.function_name);
+                    $('#function-prompt').val(fn.prompt);
+                    $('#functionModal').modal('show');
+                });
+            });
+            $('#functions-table').on('click', '.delete-btn', function() {
+                const id = $(this).data('id');
+                if (confirm('Are you sure you want to delete this function?')) {
+                    $.ajax({
+                        url: `/admin/public-microsites/functions/${id}`,
+                        type: 'DELETE',
+                        success: function() {
+                            showAlert('Function deleted successfully.');
+                            fetchFunctions();
+                        },
+                        error: function() { showAlert('Failed to delete function.', 'danger'); }
+                    });
+                }
+            });
+            $('#function-form').submit(function(e) {
+                e.preventDefault();
+                const id = $('#function-id').val();
+                const name = $('#function-name').val();
+                const prompt = $('#function-prompt').val();
+                const method = id ? 'PUT' : 'POST';
+                const url = id ? `/admin/public-microsites/functions/${id}` : '/admin/public-microsites/functions';
+                $.ajax({
+                    url: url,
+                    type: method,
+                    contentType: 'application/json',
+                    data: JSON.stringify({ function_name: name, prompt: prompt }),
+                    success: function() {
+                        $('#functionModal').modal('hide');
+                        showAlert('Function saved successfully.');
+                        fetchFunctions();
+                    },
+                    error: function(xhr) {
+                        showAlert(xhr.responseJSON?.detail || 'Failed to save function.', 'danger');
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
