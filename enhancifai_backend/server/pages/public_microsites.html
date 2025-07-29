@@ -123,58 +123,65 @@
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
-        <a class="navbar-brand mx-auto" href="#">EnhancifAI Public Microsites Management</a>
+    <nav class="navbar navbar-expand-lg navbar-dark fixed-top shadow-sm">
+        <a class="navbar-brand mx-auto fs-4" href="#">
+            <i class="bi bi-lightning-charge-fill me-2"></i>EnhancifAI Public Microsites
+        </a>
     </nav>
-    <div class="container mt-4 mb-5">
-        <h1>Public Microsite Functions
-            <span class="help-tip" tabindex="0"><i class="bi bi-info-circle"></i></span>
-            <span class="help-popover">
-                <b>Microsite Functions</b> allow you to define reusable prompt templates for public microsites.<br><br>
-                <b>Prompts</b> are JSON arrays of objects, each with a <code>prompt</code> and <code>columns</code> (array of column names the prompt applies to).<br>
-                <br>Example:<br>
-                <code>[
+    <div class="container mt-5 mb-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background:rgba(255,255,255,0.97);">
+                    <div class="d-flex align-items-center mb-2">
+                        <h1 class="flex-grow-1 mb-0 fs-3 text-primary-emphasis">Public Microsite Functions</h1>
+                        <span class="help-tip ms-2" tabindex="0" aria-label="Microsite Functions Info"><i class="bi bi-info-circle"></i></span>
+                        <span class="help-popover">
+                            <b>Microsite Functions</b> allow you to define reusable prompt templates for public microsites.<br><br>
+                            <b>Prompts</b> are JSON arrays of objects, each with a <code>prompt</code> and <code>columns</code> (array of column names the prompt applies to).<br>
+                            <br>Example:<br>
+                            <code>[
   {"prompt": "Fix product title", "columns": ["title"]},<br>
   {"prompt": "Summarize description", "columns": ["description"]}
 ]</code>
-            </span>
-        </h1>
-        <div id="microsites-alert" class="alert alert-success" role="alert"></div>
-        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
-            <div>
-                <button class="btn btn-primary" id="add-function-btn"><i class="bi bi-plus"></i> Add Function</button>
+                        </span>
+                    </div>
+                    <div id="microsites-alert" class="alert alert-success rounded-3 px-4 py-2" role="alert"></div>
+                    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                        <button class="btn btn-primary px-4 py-2 rounded-pill shadow-sm" id="add-function-btn"><i class="bi bi-plus-lg me-1"></i> Add Function</button>
+                        <div class="text-muted small">Total: <span id="function-count">0</span></div>
+                    </div>
+                    <div class="table-responsive rounded-3">
+                        <table class="table table-hover align-middle mb-0" id="functions-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 60px;">ID</th>
+                                    <th style="min-width: 180px;">Function Name</th>
+                                    <th style="min-width: 320px;">Prompts</th>
+                                    <th style="width: 120px;">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Data will be populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <div class="text-muted small mt-2 mt-md-0">Total: <span id="function-count">0</span></div>
-        </div>
-        <div class="table-responsive">
-            <table class="table table-hover align-middle" id="functions-table">
-                <thead class="table-light">
-                    <tr>
-                        <th style="width: 60px;">ID</th>
-                        <th style="min-width: 180px;">Function Name</th>
-                        <th style="min-width: 320px;">Prompts</th>
-                        <th style="width: 120px;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <!-- Data will be populated by JS -->
-                </tbody>
-            </table>
         </div>
         <!-- Modal for Add/Edit Function -->
         <div class="modal fade" id="functionModal" tabindex="-1" aria-labelledby="functionModalLabel" aria-hidden="true">
           <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-              <div class="modal-header">
-                <h5 class="modal-title" id="functionModalLabel">Add/Edit Microsite Function</h5>
+            <div class="modal-content border-0 shadow rounded-4">
+              <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold" id="functionModalLabel">Add/Edit Microsite Function</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
               </div>
-              <div class="modal-body">
-                <form id="function-form">
+              <div class="modal-body pt-2">
+                <form id="function-form" autocomplete="off">
                   <input type="hidden" id="function-id">
                   <div class="mb-3">
                     <label for="function-name" class="form-label">Function Name <span class="text-danger">*</span></label>
-                    <input type="text" class="form-control" id="function-name" maxlength="100" required placeholder="e.g. FixProductTitles">
+                    <input type="text" class="form-control rounded-3" id="function-name" maxlength="100" required placeholder="e.g. FixProductTitles" autofocus>
                   </div>
                   <div class="mb-3">
                     <label class="form-label">Prompts <span class="text-danger">*</span>
@@ -186,8 +193,8 @@
                             Columns: <code>title</code><br>
                         </span>
                     </label>
-                    <div id="prompts-list" class="prompt-list"></div>
-                    <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="add-prompt-btn"><i class="bi bi-plus"></i> Add Prompt</button>
+                    <div id="prompts-list" class="prompt-list border"></div>
+                    <button type="button" class="btn btn-outline-primary btn-sm mt-2 rounded-pill px-3" id="add-prompt-btn"><i class="bi bi-plus"></i> Add Prompt</button>
                   </div>
                   <button type="submit" class="btn btn-primary w-100">Save Function</button>
                 </form>
@@ -248,13 +255,15 @@
             }
             promptsArr.forEach((p, idx) => {
                 list.append(`
-                    <div class="prompt-item" data-idx="${idx}">
-                        <div class="flex-grow-1">
-                            <input type="text" class="form-control form-control-sm mb-1 prompt-text" placeholder="Prompt text" value="${p.prompt ? p.prompt.replace(/"/g,'&quot;') : ''}" required>
-                            <input type="text" class="form-control form-control-sm prompt-cols" placeholder="Columns (comma separated)" value="${Array.isArray(p.columns) ? p.columns.join(', ') : ''}" required>
+                    <div class="prompt-item row g-2 align-items-center mb-2" data-idx="${idx}">
+                        <div class="col-12 col-md-6">
+                            <input type="text" class="form-control form-control-sm mb-1 prompt-text rounded-2" placeholder="Prompt text" value="${p.prompt ? p.prompt.replace(/"/g,'&quot;') : ''}" required>
                         </div>
-                        <div class="prompt-actions">
-                            <button type="button" class="btn btn-outline-danger btn-sm remove-prompt-btn" title="Remove"><i class="bi bi-x"></i></button>
+                        <div class="col-10 col-md-5">
+                            <input type="text" class="form-control form-control-sm prompt-cols rounded-2" placeholder="Columns (comma separated)" value="${Array.isArray(p.columns) ? p.columns.join(', ') : ''}" required>
+                        </div>
+                        <div class="col-2 col-md-1 prompt-actions text-end">
+                            <button type="button" class="btn btn-outline-danger btn-sm rounded-circle remove-prompt-btn" title="Remove"><i class="bi bi-x"></i></button>
                         </div>
                     </div>
                 `);
