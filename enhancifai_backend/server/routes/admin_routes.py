@@ -46,10 +46,23 @@ async def admin_dashboard(credentials: HTTPBasicCredentials = Depends(security))
             headers={"WWW-Authenticate": "Basic"},
         )
 
+
 @router.get("/admin/dashboard/billing", tags=["Admin"])
 async def admin_billing(credentials: HTTPBasicCredentials = Depends(security)):
     if credentials.username == USERNAME and credentials.password == PASSWORD:
         return FileResponse(os.path.join(STATIC_PAGES_DIRECTORY, "admin_billing.html"))
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+# New: Public Microsites Management Page
+@router.get("/admin/dashboard/public-microsites", tags=["Admin"])
+async def admin_public_microsites(credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        return FileResponse(os.path.join(STATIC_PAGES_DIRECTORY, "public_microsites.html"))
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
