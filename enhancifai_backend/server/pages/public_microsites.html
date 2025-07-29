@@ -6,43 +6,119 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.5.0/font/bootstrap-icons.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
         body {
-            padding-top: 56px;
-            background-color: #F8FBFF;
+            font-family: 'Inter', Arial, sans-serif;
+            padding-top: 64px;
+            background: linear-gradient(135deg, #F8FBFF 0%, #E3F0FF 100%);
             color: #1A1A1A;
         }
         .navbar {
-            background-color: #0078FF;
+            background: linear-gradient(90deg, #0078FF 60%, #00C6FB 100%);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
         }
         .navbar .navbar-brand {
             color: #fff;
+            font-weight: 600;
+            letter-spacing: 0.5px;
             margin: 0 auto;
         }
         h1 {
-            font-size: 1.5rem;
+            font-size: 2rem;
             text-align: center;
             color: #0078FF;
             margin-top: 20px;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
+            font-weight: 600;
         }
         .table {
             background-color: #fff;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .table th, .table td {
+            vertical-align: middle;
         }
         .btn-primary {
-            background-color: #0078FF;
-            border-color: #0078FF;
+            background: linear-gradient(90deg, #0078FF 60%, #00C6FB 100%);
+            border: none;
+            font-weight: 600;
         }
         .btn-primary:hover, .btn-primary:focus {
-            background-color: #005FCC;
-            border-color: #005FCC;
+            background: linear-gradient(90deg, #005FCC 60%, #00A6D6 100%);
         }
-        .form-group {
-            margin-bottom: 20px;
+        .btn-secondary {
+            font-weight: 500;
+        }
+        .btn-danger {
+            font-weight: 500;
+        }
+        .form-label {
+            font-weight: 500;
         }
         .alert {
             display: none;
+            font-size: 1rem;
+        }
+        .modal-content {
+            border-radius: 16px;
+        }
+        .modal-title {
+            font-weight: 600;
+        }
+        .prompt-list {
+            background: #F4F8FB;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 8px;
+        }
+        .prompt-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+        .prompt-item:last-child {
+            margin-bottom: 0;
+        }
+        .prompt-columns {
+            font-size: 0.95em;
+            color: #0078FF;
+        }
+        .prompt-actions {
+            margin-left: auto;
+        }
+        .help-tip {
+            display: inline-block;
+            margin-left: 6px;
+            color: #0078FF;
+            cursor: pointer;
+        }
+        .help-popover {
+            display: none;
+            position: absolute;
+            background: #fff;
+            border: 1px solid #0078FF;
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 0.98em;
+            color: #222;
+            z-index: 1000;
+            width: 320px;
+            box-shadow: 0 2px 8px rgba(0,120,255,0.08);
+        }
+        .help-tip:hover + .help-popover {
+            display: block;
+        }
+        @media (max-width: 600px) {
+            .table {
+                font-size: 0.95em;
+            }
+            .modal-content {
+                padding: 0 2px;
+            }
         }
     </style>
 </head>
@@ -50,45 +126,70 @@
     <nav class="navbar navbar-expand-lg navbar-dark fixed-top">
         <a class="navbar-brand mx-auto" href="#">EnhancifAI Public Microsites Management</a>
     </nav>
-    <div class="container mt-4">
-        <h1>Manage Public Microsites Functions</h1>
+    <div class="container mt-4 mb-5">
+        <h1>Public Microsite Functions
+            <span class="help-tip" tabindex="0"><i class="bi bi-info-circle"></i></span>
+            <span class="help-popover">
+                <b>Microsite Functions</b> allow you to define reusable prompt templates for public microsites.<br><br>
+                <b>Prompts</b> are JSON arrays of objects, each with a <code>prompt</code> and <code>columns</code> (array of column names the prompt applies to).<br>
+                <br>Example:<br>
+                <code>[
+  {"prompt": "Fix product title", "columns": ["title"]},<br>
+  {"prompt": "Summarize description", "columns": ["description"]}
+]</code>
+            </span>
+        </h1>
         <div id="microsites-alert" class="alert alert-success" role="alert"></div>
-        <div class="mb-3">
-            <button class="btn btn-primary" id="add-function-btn"><i class="bi bi-plus"></i> Add Function</button>
+        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+            <div>
+                <button class="btn btn-primary" id="add-function-btn"><i class="bi bi-plus"></i> Add Function</button>
+            </div>
+            <div class="text-muted small mt-2 mt-md-0">Total: <span id="function-count">0</span></div>
         </div>
-        <table class="table table-striped" id="functions-table">
-            <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Name</th>
-                    <th>Prompt</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <!-- Data will be populated by JS -->
-            </tbody>
-        </table>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle" id="functions-table">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 60px;">ID</th>
+                        <th style="min-width: 180px;">Function Name</th>
+                        <th style="min-width: 320px;">Prompts</th>
+                        <th style="width: 120px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Data will be populated by JS -->
+                </tbody>
+            </table>
+        </div>
         <!-- Modal for Add/Edit Function -->
         <div class="modal fade" id="functionModal" tabindex="-1" aria-labelledby="functionModalLabel" aria-hidden="true">
-          <div class="modal-dialog">
+          <div class="modal-dialog modal-lg">
             <div class="modal-content">
               <div class="modal-header">
-                <h5 class="modal-title" id="functionModalLabel">Add/Edit Function</h5>
+                <h5 class="modal-title" id="functionModalLabel">Add/Edit Microsite Function</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
               </div>
               <div class="modal-body">
                 <form id="function-form">
                   <input type="hidden" id="function-id">
                   <div class="mb-3">
-                    <label for="function-name" class="form-label">Function Name</label>
-                    <input type="text" class="form-control" id="function-name" required>
+                    <label for="function-name" class="form-label">Function Name <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="function-name" maxlength="100" required placeholder="e.g. FixProductTitles">
                   </div>
                   <div class="mb-3">
-                    <label for="function-prompt" class="form-label">Prompt</label>
-                    <textarea class="form-control" id="function-prompt" rows="3" required></textarea>
+                    <label class="form-label">Prompts <span class="text-danger">*</span>
+                        <span class="help-tip" tabindex="0"><i class="bi bi-info-circle"></i></span>
+                        <span class="help-popover">
+                            Add one or more prompt/column pairs. Each prompt applies to the specified columns.<br><br>
+                            <b>Example:</b><br>
+                            Prompt: <code>Fix product title</code><br>
+                            Columns: <code>title</code><br>
+                        </span>
+                    </label>
+                    <div id="prompts-list" class="prompt-list"></div>
+                    <button type="button" class="btn btn-outline-primary btn-sm mt-2" id="add-prompt-btn"><i class="bi bi-plus"></i> Add Prompt</button>
                   </div>
-                  <button type="submit" class="btn btn-primary">Save</button>
+                  <button type="submit" class="btn btn-primary w-100">Save Function</button>
                 </form>
               </div>
             </div>
@@ -98,36 +199,94 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
+        // --- UI/UX helpers ---
         function showAlert(message, type = 'success') {
             const alertDiv = $('#microsites-alert');
-            alertDiv.removeClass('alert-success alert-danger').addClass('alert-' + type).text(message).show();
-            setTimeout(() => alertDiv.hide(), 2500);
+            alertDiv.removeClass('alert-success alert-danger').addClass('alert-' + type).text(message).fadeIn(200);
+            setTimeout(() => alertDiv.fadeOut(300), 2500);
+        }
+        function renderPromptsCell(prompts) {
+            if (!prompts) return '<span class="text-muted">None</span>';
+            let arr = prompts;
+            if (typeof prompts === 'string') {
+                try { arr = JSON.parse(prompts); } catch { arr = []; }
+            }
+            if (!Array.isArray(arr) || arr.length === 0) return '<span class="text-muted">None</span>';
+            return arr.map(p =>
+                `<div class="mb-1"><span class="fw-semibold">${p.prompt || ''}</span><br><span class="prompt-columns">Columns: ${(p.columns||[]).join(', ')}</span></div>`
+            ).join('');
         }
         function fetchFunctions() {
             $.get('/admin/public-microsites/functions', function(data) {
                 const tbody = $('#functions-table tbody');
                 tbody.empty();
+                let count = 0;
                 (data || []).forEach(fn => {
+                    count++;
                     tbody.append(`
                         <tr>
                             <td>${fn.id}</td>
-                            <td>${fn.function_name}</td>
-                            <td>${fn.prompt}</td>
+                            <td><span class="fw-semibold">${fn.function_name}</span></td>
+                            <td>${renderPromptsCell(fn.prompts)}</td>
                             <td>
-                                <button class="btn btn-sm btn-secondary edit-btn" data-id="${fn.id}"><i class="bi bi-pencil"></i></button>
-                                <button class="btn btn-sm btn-danger delete-btn" data-id="${fn.id}"><i class="bi bi-trash"></i></button>
+                                <button class="btn btn-sm btn-secondary edit-btn" data-id="${fn.id}" title="Edit"><i class="bi bi-pencil"></i></button>
+                                <button class="btn btn-sm btn-danger delete-btn" data-id="${fn.id}" title="Delete"><i class="bi bi-trash"></i></button>
                             </td>
                         </tr>
                     `);
                 });
+                $('#function-count').text(count);
             });
         }
+        // --- Modal prompt editor logic ---
+        function renderPromptsList(promptsArr) {
+            const list = $('#prompts-list');
+            list.empty();
+            if (!Array.isArray(promptsArr) || promptsArr.length === 0) {
+                list.append('<div class="text-muted">No prompts added yet.</div>');
+                return;
+            }
+            promptsArr.forEach((p, idx) => {
+                list.append(`
+                    <div class="prompt-item" data-idx="${idx}">
+                        <div class="flex-grow-1">
+                            <input type="text" class="form-control form-control-sm mb-1 prompt-text" placeholder="Prompt text" value="${p.prompt ? p.prompt.replace(/"/g,'&quot;') : ''}" required>
+                            <input type="text" class="form-control form-control-sm prompt-cols" placeholder="Columns (comma separated)" value="${Array.isArray(p.columns) ? p.columns.join(', ') : ''}" required>
+                        </div>
+                        <div class="prompt-actions">
+                            <button type="button" class="btn btn-outline-danger btn-sm remove-prompt-btn" title="Remove"><i class="bi bi-x"></i></button>
+                        </div>
+                    </div>
+                `);
+            });
+        }
+        function getPromptsFromUI() {
+            const arr = [];
+            $('#prompts-list .prompt-item').each(function() {
+                const prompt = $(this).find('.prompt-text').val().trim();
+                const columns = $(this).find('.prompt-cols').val().split(',').map(s => s.trim()).filter(Boolean);
+                if (prompt && columns.length) arr.push({ prompt, columns });
+            });
+            return arr;
+        }
+        function setPromptsToUI(promptsArr) {
+            renderPromptsList(promptsArr);
+        }
         $(document).ready(function() {
+            // Help popover logic
+            $(document).on('focus mouseenter', '.help-tip', function() {
+                $(this).next('.help-popover').fadeIn(120);
+            });
+            $(document).on('blur mouseleave', '.help-tip', function() {
+                $(this).next('.help-popover').fadeOut(120);
+            });
             fetchFunctions();
+            let promptsArr = [];
             $('#add-function-btn').click(function() {
                 $('#function-id').val('');
                 $('#function-name').val('');
-                $('#function-prompt').val('');
+                promptsArr = [];
+                setPromptsToUI(promptsArr);
                 $('#functionModal').modal('show');
             });
             $('#functions-table').on('click', '.edit-btn', function() {
@@ -135,7 +294,12 @@
                 $.get(`/admin/public-microsites/functions/${id}`, function(fn) {
                     $('#function-id').val(fn.id);
                     $('#function-name').val(fn.function_name);
-                    $('#function-prompt').val(fn.prompt);
+                    let arr = fn.prompts;
+                    if (typeof arr === 'string') {
+                        try { arr = JSON.parse(arr); } catch { arr = []; }
+                    }
+                    promptsArr = Array.isArray(arr) ? arr : [];
+                    setPromptsToUI(promptsArr);
                     $('#functionModal').modal('show');
                 });
             });
@@ -153,18 +317,45 @@
                     });
                 }
             });
+            // Add prompt row
+            $('#add-prompt-btn').click(function() {
+                promptsArr.push({ prompt: '', columns: [] });
+                setPromptsToUI(promptsArr);
+            });
+            // Remove prompt row
+            $('#prompts-list').on('click', '.remove-prompt-btn', function() {
+                const idx = $(this).closest('.prompt-item').data('idx');
+                promptsArr.splice(idx, 1);
+                setPromptsToUI(promptsArr);
+            });
+            // Update prompt/columns on input
+            $('#prompts-list').on('input', '.prompt-text, .prompt-cols', function() {
+                $('#prompts-list .prompt-item').each(function(i) {
+                    promptsArr[i].prompt = $(this).find('.prompt-text').val();
+                    promptsArr[i].columns = $(this).find('.prompt-cols').val().split(',').map(s => s.trim()).filter(Boolean);
+                });
+            });
+            // Form submit
             $('#function-form').submit(function(e) {
                 e.preventDefault();
                 const id = $('#function-id').val();
-                const name = $('#function-name').val();
-                const prompt = $('#function-prompt').val();
+                const name = $('#function-name').val().trim();
+                const prompts = getPromptsFromUI();
+                if (!name) {
+                    showAlert('Function name is required.', 'danger');
+                    return;
+                }
+                if (!prompts.length) {
+                    showAlert('At least one prompt is required.', 'danger');
+                    return;
+                }
                 const method = id ? 'PUT' : 'POST';
                 const url = id ? `/admin/public-microsites/functions/${id}` : '/admin/public-microsites/functions';
                 $.ajax({
                     url: url,
                     type: method,
                     contentType: 'application/json',
-                    data: JSON.stringify({ function_name: name, prompt: prompt }),
+                    data: JSON.stringify({ function_name: name, prompts: prompts }),
                     success: function() {
                         $('#functionModal').modal('hide');
                         showAlert('Function saved successfully.');
