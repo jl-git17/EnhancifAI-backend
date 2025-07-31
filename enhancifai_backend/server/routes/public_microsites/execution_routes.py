@@ -169,6 +169,7 @@ def json_to_excel(json_data, output_path):
 
 @router.post("/execution/direct", tags=["Microsites - Execution"])
 async def upload_direct_prompt(
+    function_name: str = Form(...),
     data_file: UploadFile = File(None),
     _: str = Depends(verify_secret_key)
 ):
