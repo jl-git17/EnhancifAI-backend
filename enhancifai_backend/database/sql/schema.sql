@@ -315,13 +315,23 @@ CREATE TABLE IF NOT EXISTS enhancifai.microsite_functions (
     prompts JSONB -- JSON ARRAY OF {"prompt": "<prompt_text>", "columns": ["<column1>", "<column2>"]}
 );
 
+DROP TABLE IF EXISTS enhancifai.microsite_function_runs;
 -- Table to store microsite function runs (user_id is ip_address)
 CREATE TABLE IF NOT EXISTS enhancifai.microsite_function_runs (
     id SERIAL PRIMARY KEY,
     function_id INT REFERENCES enhancifai.microsite_functions(id),
     ip_address VARCHAR(45),
-    run_timestamp TIMESTAMP DEFAULT now(),
-    source_type source_type
+    source_type source_type,
+    run_details JSONB NOT NULL DEFAULT '{}',
+    created_at TIMESTAMP DEFAULT now(),
+    check_in FLOAT,
+    cancelled BOOLEAN
 );
 
--- 
+-- Table to store microsite function run calls
+CREATE TABLE IF NOT EXISTS enhancifai.microsite_function_runs_calls (
+    id SERIAL PRIMARY KEY,
+    run_id INT REFERENCES enhancifai.microsite_function_runs(id),
+    prompt TEXT,
+    tokens_used INT
+);

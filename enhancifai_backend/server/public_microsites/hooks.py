@@ -7,7 +7,7 @@ from fastapi import HTTPException
 from enhancifai_backend.config import settings
 from enhancifai_backend.ai.openai_api import OpenAIConnector
 from enhancifai_backend.ai.gemini import GeminiConnector
-from enhancifai_backend.database.handlers.runs import RunsDbCore
+from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
 from enhancifai_backend.engine.csv_handler import CSVHandler
 from enhancifai_backend.engine.excel_handler import ExcelHandler
 from enhancifai_backend.server.utils import AdminSettings
@@ -51,8 +51,8 @@ async def handle_csv_file(csv_file, prompts, max_recs, run_id, user_id, filename
     loaded = csv_handler.load_csv()
     if loaded is True:
         results = csv_handler.process_csv(prompts, max_records=max_recs)
-        if RunsDbCore.is_run_cancelled(run_id):
-            RunsDbCore.cancel_run(run_id)
+        if MicrositesRunsDbCore.is_run_cancelled(run_id):
+            MicrositesRunsDbCore.cancel_run(run_id)
     else:
         if os.path.exists(temp_csv_file_path):
             os.remove(temp_csv_file_path)
@@ -100,8 +100,8 @@ async def handle_excel_file(excel_file, prompts, max_recs, run_id, user_id, file
 
     if excel_handler.load_excel():
         results = excel_handler.process_excel(prompts, max_records=max_recs)
-        if RunsDbCore.is_run_cancelled(run_id):
-            RunsDbCore.cancel_run(run_id)
+        if MicrositesRunsDbCore.is_run_cancelled(run_id):
+            MicrositesRunsDbCore.cancel_run(run_id)
     else:
         if os.path.exists(temp_excel_file_path):
             os.remove(temp_excel_file_path)

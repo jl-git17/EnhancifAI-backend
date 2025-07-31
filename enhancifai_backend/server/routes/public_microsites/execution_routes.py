@@ -11,10 +11,11 @@ from enum import Enum
 import json
 import logging
 from tempfile import NamedTemporaryFile
-from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile, status
 
 from enhancifai_backend.config import settings
-from enhancifai_backend.engine.public_microsites import runs_progress
+from enhancifai_backend.engine.public_microsites.runs_progress import runs_progress
+from enhancifai_backend.server.models.execution import RunProgressRequest
 from enhancifai_backend.server.public_microsites.hooks import handle_csv_file, handle_excel_file
 from enhancifai_backend.server.utils import verify_secret_key
 
@@ -165,6 +166,63 @@ def cleanup_temp_files(prompt_file_path, data_file_path):
 def json_to_excel(json_data, output_path):
     df = pd.DataFrame(json_data)
     df.to_excel(output_path, index=False)
+
+
+
+@router.post("/execution/progress", tags=["Execution"])
+async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verify_secret_key)):
+    """Check the progress of a given Run ID."""
+    retries = 3  # Number of retries
+    for attempt in range(retries):
+        try:
+            _status = runs_progress.check_status(req_run.run_id)
+            if _status:
+                # Modify payload if status is 'new'
+                if _status.get("status") == "new":
+                    _status = {
+                        "status": "pending",
+                        "progress": "1",
+                        "remark": "1% completed."
+                    }
+                # Ensure progress is not below 1% for 'pending'
+                elif _status.get("status") == "pending" and int(_status.get("progress", "0").replace("%", "")) < 1:
+                    _status["progress"] = "1"
+                    _status["remark"] = "1% completed."
+                elif _status.get("status") == "completed":
+                    # Only return completed if results are present
+                    if "results" not in _status or not _status["results"]:
+                        # If results are not yet available, keep status as pending
+                        return JSONResponse(status_code=status.HTTP_200_OK, content={
+                            "status": "pending",
+                            "progress": "100",
+                            "remark": "Finalizing results..."
+                        })
+                    logging.info("Status: %s", _status)
+                    input_tokens = _status.get("results", {}).get("input_tokens_sum", 0)
+                    output_tokens = _status.get("results", {}).get("output_tokens_sum", 0)
+                    total_tokens_sum = input_tokens + output_tokens
+                    _status['results']['total_tokens_sum'] = total_tokens_sum
+                return JSONResponse(status_code=status.HTTP_200_OK, content=_status)
+            else:
+                raise HTTPException(status_code=400, detail=f"Run ID '{req_run.run_id}' not found.")
+        except HTTPException as e:
+            logging.error(e)
+            if attempt < retries - 1:
+                await asyncio.sleep(0.5)  # wait for 0.5 seconds before retrying
+                continue
+            else:
+                return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
+        except Exception as e:
+            # Catch-all for unexpected errors
+            logging.error(e)
+            return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
+    # If we get here, it means all retries have failed
+    return JSONResponse(
+        status_code=400,
+        content={
+            "detail": f"Run ID '{req_run.run_id}' not found after {retries} attempts."
+        }
+    )
 
 
 @router.post("/execution/direct", tags=["Microsites - Execution"])
