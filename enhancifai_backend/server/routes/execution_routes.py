@@ -262,7 +262,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
             logging.debug("User is uncapped, setting max records to 0")
             max_recs = 0
         else:
-            logging.debug(f"User is capped, setting max records to {GLOBAL_MAX_ROWS}")
+            logging.debug("User is capped, setting max records to %s", GLOBAL_MAX_ROWS)
             max_recs = GLOBAL_MAX_ROWS
 
     temp_data_file_path = None
@@ -347,7 +347,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
     is_subscribed = StripeDbCore.is_user_subscribed(user_id)
     is_cancelled_active = StripeDbCore.is_user_subscribed_cancelled(user_id)
     uncapped = is_subscribed or is_cancelled_active
-    logging.debug(f"User {user_id} is uncapped: {uncapped}", user_id, uncapped)
+    logging.debug("User %s is uncapped: %s", user_id, uncapped)
     if max_records:
         max_recs = TEST_MAX_RECORDS
     else:
@@ -381,7 +381,7 @@ async def upload_files(data_file: UploadFile = File(None), prompt_file: UploadFi
             )
         ).start()
     except Exception as e:
-        logging.error(f"Error starting async run: {str(e)}")
+        logging.error("Error starting async run: %s", str(e))
         time.sleep(1)
         cleanup_temp_files(temp_prompt_file_path, temp_data_file_path)
         raise HTTPException(status_code=500, detail="Failed to start the asynchronous process.") from e
