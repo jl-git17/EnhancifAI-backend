@@ -169,7 +169,7 @@ def json_to_excel(json_data, output_path):
 
 
 
-@router.post("/execution/progress", tags=["Microsites - Execution"])
+@router.post("/microsites/execution/progress", tags=["Microsites - Execution"])
 async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verify_secret_key)):
     """Check the progress of a given Run ID."""
     retries = 3  # Number of retries
@@ -225,7 +225,7 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
     )
 
 
-@router.post("/execution/direct", tags=["Microsites - Execution"])
+@router.post("/microsites/execution/direct", tags=["Microsites - Execution"])
 async def upload_direct_prompt(
     function_name: str = Form(...),
     data_file: UploadFile = File(None),
