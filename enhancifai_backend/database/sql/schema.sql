@@ -315,7 +315,6 @@ CREATE TABLE IF NOT EXISTS enhancifai.microsite_functions (
     prompts JSONB -- JSON ARRAY OF {"prompt": "<prompt_text>", "columns": ["<column1>", "<column2>"]}
 );
 
-DROP TABLE IF EXISTS enhancifai.microsite_function_runs;
 -- Table to store microsite function runs (user_id is ip_address)
 CREATE TABLE IF NOT EXISTS enhancifai.microsite_function_runs (
     id SERIAL PRIMARY KEY,

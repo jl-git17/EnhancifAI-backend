@@ -5,6 +5,7 @@ import asyncio
 import csv
 import mimetypes
 import os
+from threading import Thread
 from fastapi.responses import JSONResponse
 import pandas as pd
 from enum import Enum
@@ -14,9 +15,12 @@ from tempfile import NamedTemporaryFile
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile, status
 
 from enhancifai_backend.config import settings
+from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
+from enhancifai_backend.engine.prompts import PromptsProcessor
 from enhancifai_backend.engine.public_microsites.runs_progress import runs_progress
-from enhancifai_backend.server.models.execution import RunProgressRequest
+from enhancifai_backend.server.models.execution import PromptObject, RunProgressRequest
 from enhancifai_backend.server.public_microsites.hooks import handle_csv_file, handle_excel_file
+from enhancifai_backend.server.routes.files_routes import save_to_cache
 from enhancifai_backend.server.utils import verify_secret_key
 
 TEST_MAX_RECORDS = 10
@@ -107,7 +111,7 @@ def extract_columns_from_file(file_path):
     return extracted_columns
 
 def start_async_run(
-        run_id, data_file, prompts, max_recs, user_id,
+        run_id, data_file, prompts, max_recs,
         file_name, batched_processing=False, performance_optimization=False
 ):
     coro = process_run(
@@ -115,14 +119,13 @@ def start_async_run(
         data_file,
         prompts,
         max_recs,
-        user_id,
         file_name,
         batched_processing=batched_processing,
         performance_optimization=performance_optimization
     )
     asyncio.run(coro)
 
-async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name,
+async def process_run(run_id, data_file, prompts, max_recs, file_name,
                         batched_processing=False, performance_optimization=False):
 
     # Guess the MIME type based on the file extension
@@ -134,7 +137,6 @@ async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name,
             csv_file=data_file,
             prompts=prompts,
             max_recs=max_recs,
-            user_id=user_id,
             filename=file_name,
             batched_processing=batched_processing,
             performance_optimization=performance_optimization
@@ -145,7 +147,6 @@ async def process_run(run_id, data_file, prompts, max_recs, user_id, file_name,
             excel_file=data_file,
             prompts=prompts,
             max_recs=max_recs,
-            user_id=user_id,
             filename=file_name,
             batched_processing=batched_processing,
             performance_optimization=performance_optimization
@@ -259,11 +260,6 @@ async def upload_direct_prompt(
 
     logging.debug("Received data file '%s' with content type: %s", file_name, data_file.content_type)
 
-    return JSONResponse(
-        status_code=200,
-        content={"message": "Data file received successfully", "file_name": file_name}
-    )
-
     if not data_file_suffix:
         logging.error("Invalid data file type: %s", data_file.content_type)
         raise HTTPException(status_code=400, detail="Invalid data file type")
@@ -296,7 +292,7 @@ async def upload_direct_prompt(
         raise HTTPException(status_code=500, detail="Failed to process uploaded data file.") from e
 
     # Check if data file exceeds max_recs when max_recs > 0
-    if max_recs > 0 and not max_records:
+    if max_recs > 0:
         if data_file_suffix == '.csv':
             df = pd.read_csv(temp_data_file_path)
         else:
@@ -315,33 +311,13 @@ async def upload_direct_prompt(
         logging.exception("Error processing prompt file")
         raise HTTPException(status_code=500, detail="Failed to process prompt file.") from e
 
-    # Handle Prompts from 'prompts' Form Field
-    if uncapped:
-        logging.debug("User is uncapped, setting max prompts to 0")
-        max_prompts = 0
-    else:
-        logging.debug(f"User is capped, setting max prompts to {GLOBAL_MAX_PROMPTS}")
-        max_prompts = GLOBAL_MAX_PROMPTS
-    try:
-        logging.debug("Parsing prompts payload: %s", prompts)
-        prompt_list = json.loads(prompts)
-        logging.debug("Parsed prompts list: %s", prompt_list)
-    except json.JSONDecodeError as e:
-        logging.exception("Invalid JSON in prompts payload")
-        raise HTTPException(status_code=400, detail="Invalid prompts payload.") from e
-
-    try:
-        read_prompts = PromptsProcessor.read_prompt_objects(
-            [PromptObject(**prompt) for prompt in prompt_list],
-            max_prompts
-        )
-        logging.info("Read %s prompts successfully", len(read_prompts))
-    except HTTPException as e:
-        logging.exception("Error reading prompt objects: %s", e)
-        raise e
-    except Exception as e:
-        logging.exception("Error reading prompt objects")
-        raise HTTPException(status_code=400, detail="Invalid prompts format.") from e
+    
+    max_prompts = GLOBAL_MAX_PROMPTS
+    read_prompts = [PromptObject(
+        prompt="Please provide your prompt here.",
+        columns="*",
+        output_heading="New Title"
+    )]
 
     logging.debug("Max records set to: %s", max_recs)
 
@@ -360,7 +336,7 @@ async def upload_direct_prompt(
     logging.debug("Run type: %s, Source filename: %s", run_type, source_filename)
 
     try:
-        run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
+        run_id = MicrositesRunsDbCore.new_run(run_type, source_filename)
         if not run_id:
             raise HTTPException(status_code=500, detail="Failed to created new run.")
         logging.info("Created new run with ID: %s", run_id)
@@ -372,7 +348,7 @@ async def upload_direct_prompt(
         raise HTTPException(status_code=500, detail="Failed to create new run.") from e
 
     try:
-        save_to_cache(temp_data_file_path, user_id, file_name)
+        save_to_cache(temp_data_file_path, "public", file_name)
         logging.debug("Saved data file to cache for run %s", run_id)
     except Exception as e:
         logging.exception("Error saving data file to cache")
@@ -389,12 +365,11 @@ async def upload_direct_prompt(
                 temp_data_file_path,
                 read_prompts,
                 max_recs,
-                user_id,
                 file_name
             ),
             kwargs={
-                "batched_processing": batched_processing,
-                "performance_optimization": performance_optimization,
+                "batched_processing": True,
+                "performance_optimization": True,
             },
         ).start()
         logging.debug("Asynchronous run thread started successfully")

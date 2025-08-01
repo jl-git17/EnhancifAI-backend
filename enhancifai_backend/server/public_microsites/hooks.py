@@ -8,8 +8,8 @@ from enhancifai_backend.config import settings
 from enhancifai_backend.ai.openai_api import OpenAIConnector
 from enhancifai_backend.ai.gemini import GeminiConnector
 from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
-from enhancifai_backend.engine.csv_handler import CSVHandler
-from enhancifai_backend.engine.excel_handler import ExcelHandler
+from enhancifai_backend.engine.public_microsites.csv_handler import CSVHandler
+from enhancifai_backend.engine.public_microsites.excel_handler import ExcelHandler
 from enhancifai_backend.server.utils import AdminSettings
 
 pi_ai_connection = OpenAIConnector("gpt-4.1-nano")  # TODO env var
@@ -20,7 +20,7 @@ def get_ai_connection(engine):
     else:
         return OpenAIConnector(engine)
 
-async def handle_csv_file(csv_file, prompts, max_recs, run_id, user_id, filename,
+async def handle_csv_file(csv_file, prompts, max_recs, run_id, filename,
                           batched_processing=False, performance_optimization=False):
     """
     Handle CSV file processing, including new 'batched_processing' and
@@ -42,7 +42,6 @@ async def handle_csv_file(csv_file, prompts, max_recs, run_id, user_id, filename
         output_file=processed_csv_path,
         ai_connector=get_ai_connection(engine),
         engine=engine,
-        user_id=user_id,
         filename=filename,
         batched_processing=batched_processing,
         performance_optimization=performance_optimization
@@ -70,7 +69,7 @@ async def handle_csv_file(csv_file, prompts, max_recs, run_id, user_id, filename
     }
     return response_data
 
-async def handle_excel_file(excel_file, prompts, max_recs, run_id, user_id, filename,
+async def handle_excel_file(excel_file, prompts, max_recs, run_id, filename,
                             batched_processing=False, performance_optimization=False):
     """
     Handle Excel file processing, including 'batched_processing' and
@@ -92,7 +91,6 @@ async def handle_excel_file(excel_file, prompts, max_recs, run_id, user_id, file
         output_file=processed_excel_path,
         ai_connector=get_ai_connection(engine),
         engine=engine,
-        user_id=user_id,
         filename=filename,
         batched_processing=batched_processing,
         performance_optimization=performance_optimization

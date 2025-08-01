@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 
 from enhancifai_backend.database.handlers.run_logs import RunLogsDbCore
-from enhancifai_backend.database.handlers.runs import RunsDbCore
+from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.runs_progress import runs_progress
 
@@ -25,7 +25,6 @@ class ExcelHandler:
         ai_connector,
         run_id,
         engine,
-        user_id,
         filename,
         batched_processing=False,
         performance_optimization=False
@@ -41,7 +40,6 @@ class ExcelHandler:
         self.row_completion = {}
         self.run_id = run_id
         self.engine = engine
-        self.user_id = user_id
         self.errors = []
         self.overflow = False
         self.batched_processing = batched_processing
@@ -51,7 +49,7 @@ class ExcelHandler:
         self.output_tokens = 0
 
     def _is_run_cancelled(self):
-        return RunsDbCore.is_run_cancelled(self.run_id)
+        return MicrositesRunsDbCore.is_run_cancelled(self.run_id)
 
     def load_excel(self):
         try:
@@ -192,7 +190,7 @@ class ExcelHandler:
     def process_row(self, idx, row, prompt_config):
         if self._is_run_cancelled():
             return None
-        RunsDbCore.set_run_checkin(self.run_id)
+        MicrositesRunsDbCore.set_run_checkin(self.run_id)
 
         result = {
             "row_index": idx,
@@ -376,8 +374,8 @@ class ExcelHandler:
 
     def _handle_cancel(self, start_time):
         end_time = time.time()
-        if not RunsDbCore.is_run_cancelled(self.run_id):
-            RunsDbCore.cancel_run(self.run_id)
+        if not MicrositesRunsDbCore.is_run_cancelled(self.run_id):
+            MicrositesRunsDbCore.cancel_run(self.run_id)
         self._insert_log(end_time - start_time)
         return {
             "total_records": len(self.data),
@@ -390,7 +388,7 @@ class ExcelHandler:
         }
 
     def _insert_log(self, time_elapsed):
-        _name = UsersDbCore.get_user_by_id(self.user_id)['name'] or f"user_{self.user_id}"
+        _name = "public_microsites"
         RunLogsDbCore.insert_log(
             run_id=self.run_id,
             user_name=_name,

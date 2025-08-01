@@ -8,7 +8,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from enhancifai_backend.database.handlers.run_logs import RunLogsDbCore
-from enhancifai_backend.database.handlers.runs import RunsDbCore
+from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.runs_progress import runs_progress
 
@@ -24,7 +24,6 @@ class CSVHandler:
         ai_connector,
         run_id,
         engine,
-        user_id,
         filename,
         batched_processing=False,
         performance_optimization=False
@@ -40,7 +39,6 @@ class CSVHandler:
         self.row_completion = {}
         self.run_id = run_id
         self.engine = engine
-        self.user_id = user_id
         self.errors = []
         self.overflow = False
         self.num_prompts_total = 0
@@ -50,7 +48,7 @@ class CSVHandler:
         self.performance_optimization = performance_optimization
 
     def _is_run_cancelled(self):
-        return RunsDbCore.is_run_cancelled(self.run_id)
+        return MicrositesRunsDbCore.is_run_cancelled(self.run_id)
 
     def load_csv(self):
         encodings = ['utf-8', 'ISO-8859-1', 'Windows-1252']
@@ -214,7 +212,7 @@ class CSVHandler:
         """
         if self._is_run_cancelled():
             return None
-        RunsDbCore.set_run_checkin(self.run_id)
+        MicrositesRunsDbCore.set_run_checkin(self.run_id)
 
         result = {
             "row_index": idx,
@@ -399,8 +397,8 @@ class CSVHandler:
         Mark the run as cancelled, log, and return partial results.
         """
         end_time = time.time()
-        if not RunsDbCore.is_run_cancelled(self.run_id):
-            RunsDbCore.cancel_run(self.run_id)
+        if not MicrositesRunsDbCore.is_run_cancelled(self.run_id):
+            MicrositesRunsDbCore.cancel_run(self.run_id)
         self._insert_log(end_time - start_time)
         return {
             "total_records": len(self.data),
@@ -413,7 +411,7 @@ class CSVHandler:
         }
 
     def _insert_log(self, time_elapsed):
-        _name = UsersDbCore.get_user_by_id(self.user_id)['name'] or f"user_{self.user_id}"
+        _name = "public_microsites"
         RunLogsDbCore.insert_log(
             run_id=self.run_id,
             user_name=_name,
