@@ -9,14 +9,12 @@ from threading import Thread
 from fastapi.responses import JSONResponse
 import pandas as pd
 from enum import Enum
-import json
 import logging
 from tempfile import NamedTemporaryFile
-from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 
 from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
-from enhancifai_backend.engine.prompts import PromptsProcessor
 from enhancifai_backend.engine.public_microsites.runs_progress import runs_progress
 from enhancifai_backend.server.models.execution import PromptObject, RunProgressRequest
 from enhancifai_backend.server.public_microsites.hooks import handle_csv_file, handle_excel_file
@@ -228,15 +226,18 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
 
 @router.post("/microsites/execution/direct", tags=["Microsites - Execution"])
 async def upload_direct_prompt(
+    req: Request,
     function_name: str = Form(...),
     data_file: UploadFile = File(None),
-    _: str = Depends(verify_secret_key)
+    _: str = Depends(verify_secret_key),
 ):
     """
     Upload a CSV/Excel file or provide JSON data, with prompts payload.
     """
     logging.debug("Entered upload_direct_prompt endpoint")
     logging.debug("Data file provided: %s", "Yes" if data_file else "No")
+
+    ip_address = req.client.host
 
     max_recs = 0
 
@@ -336,7 +337,7 @@ async def upload_direct_prompt(
     logging.debug("Run type: %s, Source filename: %s", run_type, source_filename)
 
     try:
-        run_id = MicrositesRunsDbCore.new_run(run_type, source_filename)
+        run_id = MicrositesRunsDbCore.new_run(ip_address=ip_address, source_type=run_type)
         if not run_id:
             raise HTTPException(status_code=500, detail="Failed to created new run.")
         logging.info("Created new run with ID: %s", run_id)

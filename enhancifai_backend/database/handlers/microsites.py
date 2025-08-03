@@ -105,20 +105,20 @@ class MicrositesRunsDbCore:
     """
 
     @classmethod
-    def new_run(cls, user_id, source_type):
+    def new_run(cls, ip_address, source_type):
         """
         Insert a new run into the database.
         
         Parameters:
-            user_id (str): The identifier for the user.
+            ip_address (str): The IP address of the user.
             source_type (str): The type/category of the source.
             source_filename (str): Filename of the source.
         
         Returns:
             The newly created run's id if successful, otherwise None.
         """
-        sql = schemafy("INSERT INTO enhancifai.microsite_function_runs (user_id, source_type) VALUES (%s,%s) RETURNING id;")
-        result = write_db.do('execute', sql=sql, data=(user_id, source_type))
+        sql = schemafy("INSERT INTO enhancifai.microsite_function_runs (ip_address, source_type) VALUES (%s,%s) RETURNING id;")
+        result = write_db.do('execute', sql=sql, data=(ip_address, source_type))
         if result:
             return result['id']
         return None
@@ -235,36 +235,6 @@ class MicrositesRunsDbCore:
         sql = schemafy("SELECT COALESCE(cancelled, FALSE) AS cancelled FROM enhancifai.microsite_function_runs WHERE id = %s;")
         result = read_db.do('select_one', sql=sql, data=(run_id,))
         return result['cancelled'] if result else False
-
-    @classmethod
-    def check_run_ownership(cls, user_id, run_id) -> bool:
-        """
-        Verify if a user owns the specified run.
-        
-        Parameters:
-            user_id (str): The user's identifier.
-            run_id (str): The run's identifier.
-        
-        Returns:
-            True if the user is the owner, otherwise False.
-        """
-        sql = schemafy("SELECT * FROM enhancifai.microsite_function_runs WHERE user_id = %s AND id = %s")
-        return read_db.do('select_exists', sql=sql, data=(user_id, run_id))
-
-    @classmethod
-    def get_user_id(cls, run_id):
-        """
-        Retrieve the user ID associated with a run.
-        
-        Parameters:
-            run_id (str): The run's identifier.
-        
-        Returns:
-            The user ID if found, otherwise None.
-        """
-        sql = schemafy("SELECT user_id FROM enhancifai.microsite_function_runs WHERE id = %s;")
-        result = read_db.do('select_one', sql=sql, data=(run_id,))
-        return result['user_id'] if result else None
 
     @classmethod
     def get_run_file_url(cls, run_id):
