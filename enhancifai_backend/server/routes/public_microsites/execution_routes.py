@@ -315,7 +315,7 @@ async def upload_direct_prompt(
     
     max_prompts = GLOBAL_MAX_PROMPTS
     read_prompts = [PromptObject(
-        prompt="Please provide your prompt here.",
+        prompt="Write an improved product title.",
         columns="*",
         output_heading="New Title"
     )]

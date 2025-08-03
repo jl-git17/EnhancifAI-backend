@@ -63,6 +63,9 @@ async def handle_csv_file(csv_file, prompts, max_recs, run_id, filename,
     host_address = settings.backend_url
     file_url = f"{host_address}/downloads/{unique_filename}"
 
+    if results:
+        results['new_data'] = csv_handler.data
+
     response_data = {
         "file_url": file_url,
         "results": results
@@ -110,6 +113,9 @@ async def handle_excel_file(excel_file, prompts, max_recs, run_id, filename,
 
     host_address = settings.backend_url
     file_url = f"{host_address}/downloads/{unique_filename}"
+
+    if results:
+        results['new_data'] = excel_handler.data
 
     response_data = {
         "file_url": file_url,
