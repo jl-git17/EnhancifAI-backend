@@ -3,9 +3,11 @@
 
 import asyncio
 import csv
+import json
 import mimetypes
 import os
 from threading import Thread
+from typing import Any, Dict
 from fastapi.responses import JSONResponse
 import pandas as pd
 from enum import Enum
@@ -228,14 +230,27 @@ async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verif
 async def upload_direct_prompt(
     req: Request,
     function_name: str = Form(...),
+    function_params: str = Form('{}'),
     data_file: UploadFile = File(None),
     _: str = Depends(verify_secret_key),
 ):
     """
     Upload a CSV/Excel file or provide JSON data, with prompts payload.
+
+    This endpoint processes the uploaded file, extracts columns, and starts an asynchronous run.
+
+    Params:
+    - `function_name`: Name of the function to execute.
+    - `function_params`: JSON string containing parameters for the function. For example. `{"include_descriptions": true}`
+    - `data_file`: The file to be processed (CSV or Excel).
     """
     logging.debug("Entered upload_direct_prompt endpoint")
     logging.debug("Data file provided: %s", "Yes" if data_file else "No")
+
+    try:
+        function_params_dict: Dict[str, Any] = json.loads(function_params)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Invalid JSON for function_params: {e}")
 
     ip_address = req.client.host
 
