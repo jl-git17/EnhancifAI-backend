@@ -329,20 +329,29 @@ async def upload_direct_prompt(
 
     
     max_prompts = GLOBAL_MAX_PROMPTS
-    read_prompts = [
-        {
-            'prompt_number': '1',
-            'columns': '*',
-            'prompt': "Rewrite the product title to be clean, descriptive, and shopper-friendly. Fix grammar, add missing context if necessary, and keep it under 60 characters. Remove filler words and ensure it’s ready for eCommerce listing.",
-            'output_heading': 'New Title'
-        },
-        {
-            'prompt_number': '2',
-            'columns': '*',
-            'prompt': "Write a short, compelling product description based on the title. Highlight key features and use cases in 1–2 sentences. Use clear, professional language suitable for an online store.",
-            'output_heading': 'New Description'
-        },
-    ]
+
+    if function_name == 'fix-product-titles':
+        read_prompts = [
+            {
+                'prompt_number': '1',
+                'columns': '*',
+                'prompt': "Rewrite the product title to be clean, descriptive, and shopper-friendly. Fix grammar, add missing context if necessary, and keep it under 60 characters. Remove filler words and ensure it’s ready for eCommerce listing.",
+                'output_heading': 'New Title'
+            }
+        ]
+        if 'descriptions' in function_params_dict:
+            read_prompts.append(
+                {
+                    'prompt_number': '2',
+                    'columns': '*',
+                    'prompt': "Write a short, compelling product description based on the title. Highlight key features and use cases in 1–2 sentences. Use clear, professional language suitable for an online store.",
+                    'output_heading': 'New Description'
+                }
+            )
+    else:
+        # unsupported function_name
+        logging.error("Unsupported function_name: %s", function_name)
+        raise HTTPException(status_code=400, detail=f"Unsupported function_name: {function_name}")
 
     logging.debug("Max records set to: %s", max_recs)
 
