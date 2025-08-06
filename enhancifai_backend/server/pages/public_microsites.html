@@ -271,7 +271,7 @@
                     <input type="text" class="form-control form-control-sm prompt-cols rounded-2" placeholder="Columns (comma separated)" value="${Array.isArray(p.columns) ? p.columns.join(', ') : ''}" required aria-label="Columns">
                 </div>
                 <div class="col-4 col-md-3">
-                    <input type="text" class="form-control form-control-sm prompt-heading rounded-2" placeholder="Output Heading (optional)" value="${p.output_heading ? p.output_heading.replace(/"/g,'&quot;') : ''}" aria-label="Output Heading">
+                    <input type="text" class="form-control form-control-sm prompt-heading rounded-2" placeholder="Output Heading" value="${p.output_heading ? p.output_heading.replace(/"/g,'&quot;') : ''}" required aria-label="Output Heading">
                 </div>
                 <div class="col-2 col-md-1 prompt-actions text-end d-flex flex-column gap-1 align-items-end">
                     <button type="button" class="btn btn-outline-danger btn-sm rounded-circle remove-prompt-btn mb-1" title="Remove"><i class="bi bi-x"></i></button>
@@ -288,7 +288,7 @@
                 const prompt = $(this).find('.prompt-text').val().trim();
                 const columns = $(this).find('.prompt-cols').val().split(',').map(s => s.trim()).filter(Boolean);
         const output_heading = $(this).find('.prompt-heading').val().trim();
-        if (prompt && columns.length) arr.push({ prompt, columns, output_heading });
+        if (prompt && columns.length && output_heading) arr.push({ prompt, columns, output_heading });
             });
             return arr;
         }
@@ -400,7 +400,7 @@ function renderPromptsPreview(promptsArr) {
                     return;
                 }
                 if (!prompts.length) {
-                    showAlert('At least one prompt is required.', 'danger');
+                    showAlert('At least one prompt (with output heading) is required.', 'danger');
                     return;
                 }
                 const method = id ? 'PUT' : 'POST';
