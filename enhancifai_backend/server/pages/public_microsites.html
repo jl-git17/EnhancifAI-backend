@@ -228,7 +228,11 @@
             }
             if (!Array.isArray(arr) || arr.length === 0) return '<span class="text-muted">None</span>';
             return arr.map(p =>
-                `<div class="mb-1"><span class="fw-semibold">${p.prompt || ''}</span><br><span class="prompt-columns">Columns: ${(p.columns||[]).join(', ')}</span></div>`
+                `<div class="mb-1">
+                    <span class="fw-semibold">${p.prompt || ''}</span><br>
+                    <span class="prompt-columns">Columns: ${(p.columns||[]).join(', ')}</span>
+                    ${p.output_heading ? `<br><span class='text-info'>Output Heading: ${p.output_heading}</span>` : ''}
+                </div>`
             ).join('');
         }
         function fetchFunctions() {
