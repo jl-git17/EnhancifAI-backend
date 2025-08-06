@@ -329,11 +329,12 @@ async def upload_direct_prompt(
 
     
     max_prompts = GLOBAL_MAX_PROMPTS
-    read_prompts = [PromptObject(
-        prompt="Write an improved product title.",
-        columns="*",
-        output_heading="New Title"
-    )]
+    read_prompts = [{
+        'prompt_number': '1',
+        'columns': '*',
+        'prompt': 'Write an improved product title.',
+        'output_heading': 'New Title'
+    }]
 
     logging.debug("Max records set to: %s", max_recs)
 
