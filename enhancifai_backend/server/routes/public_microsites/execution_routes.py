@@ -330,6 +330,8 @@ async def upload_direct_prompt(
     
     max_prompts = GLOBAL_MAX_PROMPTS
 
+    function_name = 'fix-product-titles'  # Default function name
+
     if function_name == 'fix-product-titles':
         read_prompts = [
             {
