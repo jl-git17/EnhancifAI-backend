@@ -42,16 +42,16 @@ class MicrositeFunctionsDbCore:
         return read_db.do('select_one', sql=sql, data=(function_name,))
 
     @classmethod
-    def create_function(cls, function_name, prompt):
+    def create_function(cls, function_name, prompts):
         """
         Create a new microsite function.
         """
         sql = schemafy("""
-            INSERT INTO enhancifai.microsite_functions (function_name, prompt)
+            INSERT INTO enhancifai.microsite_functions (function_name, prompts)
             VALUES (%s, %s)
             RETURNING id;
         """)
-        return write_db.do('execute', sql=sql, data=(function_name, prompt))
+        return write_db.do('execute', sql=sql, data=(function_name, prompts))
 
     @classmethod
     def update_function(cls, function_id, function_name=None, prompt=None, output_heading=None):

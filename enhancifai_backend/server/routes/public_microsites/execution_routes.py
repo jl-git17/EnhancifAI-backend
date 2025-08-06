@@ -335,7 +335,7 @@ async def upload_direct_prompt(
             {
                 'prompt_number': '1',
                 'columns': '*',
-                'prompt': "Rewrite the product title to be clean, descriptive, and shopper-friendly. Fix grammar, add missing context if necessary, and keep it under 60 characters. Remove filler words and ensure it’s ready for eCommerce listing.",
+                'prompt': "Rewrite the product title to be clean, descriptive, and shopper-friendly. Fix grammar, add missing context if necessary, and keep it under 60 characters. Remove filler words and ensure it's ready for eCommerce listing.",
                 'output_heading': 'New Title'
             }
         ]
@@ -345,7 +345,7 @@ async def upload_direct_prompt(
                     {
                         'prompt_number': '2',
                         'columns': '*',
-                        'prompt': "Write a short, compelling product description based on the title. Highlight key features and use cases in 1–2 sentences. Use clear, professional language suitable for an online store.",
+                        'prompt': "Write a short, compelling product description based on the title. Highlight key features and use cases in 1 to 2 sentences. Use clear, professional language suitable for an online store.",
                         'output_heading': 'New Description'
                     }
                 )
