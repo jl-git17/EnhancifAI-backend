@@ -330,8 +330,6 @@ async def upload_direct_prompt(
     
     max_prompts = GLOBAL_MAX_PROMPTS
 
-    function_name = 'fix-product-titles'  # Default function name
-
     if function_name == 'fix-product-titles':
         read_prompts = [
             {
@@ -341,15 +339,16 @@ async def upload_direct_prompt(
                 'output_heading': 'New Title'
             }
         ]
-        if 'descriptions' in function_params_dict:
-            read_prompts.append(
-                {
-                    'prompt_number': '2',
-                    'columns': '*',
-                    'prompt': "Write a short, compelling product description based on the title. Highlight key features and use cases in 1–2 sentences. Use clear, professional language suitable for an online store.",
-                    'output_heading': 'New Description'
-                }
-            )
+        if 'include_descriptions' in function_params_dict:
+            if function_params_dict['include_descriptions'] is True:
+                read_prompts.append(
+                    {
+                        'prompt_number': '2',
+                        'columns': '*',
+                        'prompt': "Write a short, compelling product description based on the title. Highlight key features and use cases in 1–2 sentences. Use clear, professional language suitable for an online store.",
+                        'output_heading': 'New Description'
+                    }
+                )
     else:
         # unsupported function_name
         logging.error("Unsupported function_name: %s", function_name)
