@@ -312,7 +312,7 @@ ON CONFLICT (active) DO NOTHING;
 CREATE TABLE IF NOT EXISTS enhancifai.microsite_functions (
     id SERIAL PRIMARY KEY,
     function_name VARCHAR(100), -- e.g FixProductTitles
-    prompts JSONB -- JSON ARRAY OF {"prompt": "<prompt_text>", "columns": ["<column1>", "<column2>"]}
+    prompts JSONB -- JSON ARRAY OF {"prompt": "<prompt_text>", "columns": ["<column1>", "<column2>"], "output_heading": "<output_heading>"}
 );
 
 -- Table to store microsite function runs (user_id is ip_address)

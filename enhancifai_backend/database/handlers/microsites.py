@@ -54,12 +54,12 @@ class MicrositeFunctionsDbCore:
         return write_db.do('execute', sql=sql, data=(function_name, prompt))
 
     @classmethod
-    def update_function(cls, function_id, function_name=None, prompt=None):
+    def update_function(cls, function_id, function_name=None, prompt=None, output_heading=None):
         """
         Update fields of a microsite function by id.
         """
         # Ensure at least one field to update
-        if function_name is None and prompt is None:
+        if function_name is None and prompt is None and output_heading is None:
             raise ValueError("No fields provided for update.")
         # Prevent duplicate function names
         if function_name is not None:
@@ -74,6 +74,9 @@ class MicrositeFunctionsDbCore:
         if prompt is not None:
             set_clauses.append("prompt = %s")
             values.append(prompt)
+        if output_heading is not None:
+            set_clauses.append("output_heading = %s")
+            values.append(output_heading)
         if not set_clauses:
             # Should not happen due to initial check
             raise ValueError("No valid fields to update.")

@@ -270,6 +270,9 @@
                 <div class="col-10 col-md-5">
                     <input type="text" class="form-control form-control-sm prompt-cols rounded-2" placeholder="Columns (comma separated)" value="${Array.isArray(p.columns) ? p.columns.join(', ') : ''}" required aria-label="Columns">
                 </div>
+                <div class="col-4 col-md-3">
+                    <input type="text" class="form-control form-control-sm prompt-heading rounded-2" placeholder="Output Heading (optional)" value="${p.output_heading ? p.output_heading.replace(/"/g,'&quot;') : ''}" aria-label="Output Heading">
+                </div>
                 <div class="col-2 col-md-1 prompt-actions text-end d-flex flex-column gap-1 align-items-end">
                     <button type="button" class="btn btn-outline-danger btn-sm rounded-circle remove-prompt-btn mb-1" title="Remove"><i class="bi bi-x"></i></button>
                     <button type="button" class="btn btn-outline-secondary btn-sm rounded-circle move-up-btn" title="Move Up" ${idx === 0 ? 'disabled' : ''}><i class="bi bi-arrow-up"></i></button>
@@ -284,7 +287,8 @@
             $('#prompts-list .prompt-item').each(function() {
                 const prompt = $(this).find('.prompt-text').val().trim();
                 const columns = $(this).find('.prompt-cols').val().split(',').map(s => s.trim()).filter(Boolean);
-                if (prompt && columns.length) arr.push({ prompt, columns });
+        const output_heading = $(this).find('.prompt-heading').val().trim();
+        if (prompt && columns.length) arr.push({ prompt, columns, output_heading });
             });
             return arr;
         }
@@ -299,7 +303,7 @@ function renderPromptsPreview(promptsArr) {
         preview.html('<span class="text-muted">No prompts to preview.</span>');
         return;
     }
-    preview.html('<ol class="mb-0">' + promptsArr.map(p => `<li><b>${p.prompt || ''}</b> <span class="text-secondary">[Columns: ${(p.columns||[]).join(', ')}]</span></li>`).join('') + '</ol>');
+    preview.html('<ol class="mb-0">' + promptsArr.map(p => `<li><b>${p.prompt || ''}</b> <span class="text-secondary">[Columns: ${(p.columns||[]).join(', ')}]</span>${p.output_heading ? ` <span class=\"text-info\">[Output Heading: ${p.output_heading}]</span>` : ''}</li>`).join('') + '</ol>');
 }
         $(document).ready(function() {
             // Help popover logic
@@ -377,10 +381,11 @@ function renderPromptsPreview(promptsArr) {
         }
     });
     // Update prompt/columns on input
-    $('#prompts-list').on('input', '.prompt-text, .prompt-cols', function() {
+    $('#prompts-list').on('input', '.prompt-text, .prompt-cols, .prompt-heading', function() {
         $('#prompts-list .prompt-item').each(function(i) {
             promptsArr[i].prompt = $(this).find('.prompt-text').val();
             promptsArr[i].columns = $(this).find('.prompt-cols').val().split(',').map(s => s.trim()).filter(Boolean);
+            promptsArr[i].output_heading = $(this).find('.prompt-heading').val();
         });
         renderPromptsPreview(promptsArr);
     });
