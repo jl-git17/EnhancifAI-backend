@@ -13,6 +13,7 @@ class PromptObject(BaseModel):
     prompt: str
     columns: str
     output_heading: str
+    param_name: str = None  # Optional, used for conditional prompts
 
 class ExportSheetsRequest(BaseModel):
     run_id: int
