@@ -101,6 +101,17 @@ class MicrositeFunctionsDbCore:
         """)
         return write_db.do('execute', sql=sql, data=(function_id,))
 
+    @classmethod
+    def get_function_config(cls, function_name):
+        """
+        Retrieve the configuration for a microsite function by its name.
+        """
+        sql = schemafy("""
+            SELECT prompts FROM enhancifai.microsite_functions
+            WHERE function_name = %s;
+        """)
+        return read_db.do('select_one', sql=sql, data=(function_name,))
+
 
 class MicrositesRunsDbCore:
     """
