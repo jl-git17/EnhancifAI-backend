@@ -45,6 +45,7 @@ class MicrositeFunctionsDbCore:
     def create_function(cls, function_name, prompts):
         """
         Create a new microsite function.
+        prompts: should be a JSON array of prompt objects, each supporting keys: prompt, columns, output_heading, and optional param_name.
         """
         sql = schemafy("""
             INSERT INTO enhancifai.microsite_functions (function_name, prompts)
@@ -57,6 +58,7 @@ class MicrositeFunctionsDbCore:
     def update_function(cls, function_id, function_name=None, prompt=None, output_heading=None):
         """
         Update fields of a microsite function by id.
+        prompt: should be a JSON array of prompt objects, each supporting keys: prompt, columns, output_heading, and optional param_name.
         """
         # Ensure at least one field to update
         if function_name is None and prompt is None and output_heading is None:
