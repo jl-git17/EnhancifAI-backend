@@ -28,7 +28,7 @@ async def handle_csv_file(csv_file, prompts, max_recs, run_id, filename,
     """
     temp_csv_file_path = csv_file
 
-    unique_filename = f"processed_{uuid.uuid4()}_{int(time.time()*1000)}.csv"
+    unique_filename = f"enhancifai_processed_{uuid.uuid4()}_{int(time.time()*1000)}.csv"
     processed_csv_path = os.path.join('/tmp', unique_filename)
 
     if performance_optimization:
@@ -61,7 +61,7 @@ async def handle_csv_file(csv_file, prompts, max_recs, run_id, filename,
         os.remove(temp_csv_file_path)
 
     host_address = settings.backend_url
-    file_url = f"{host_address}/downloads/{unique_filename}"
+    file_url = f"{host_address}/microsites/downloads/{unique_filename}"
 
     if results:
         results['new_data'] = csv_handler.data
@@ -81,7 +81,7 @@ async def handle_excel_file(excel_file, prompts, max_recs, run_id, filename,
     temp_excel_file_path = excel_file
     file_extension = os.path.splitext(temp_excel_file_path)[1]
 
-    unique_filename = f"processed_{uuid.uuid4()}_{int(time.time()*1000)}{file_extension}"
+    unique_filename = f"enhancifai_processed_{uuid.uuid4()}_{int(time.time()*1000)}{file_extension}"
     processed_excel_path = os.path.join('/tmp', unique_filename)
 
     if performance_optimization:
@@ -112,7 +112,7 @@ async def handle_excel_file(excel_file, prompts, max_recs, run_id, filename,
         os.remove(temp_excel_file_path)
 
     host_address = settings.backend_url
-    file_url = f"{host_address}/downloads/{unique_filename}"
+    file_url = f"{host_address}/microsites/downloads/{unique_filename}"
 
     if results:
         results['new_data'] = excel_handler.data

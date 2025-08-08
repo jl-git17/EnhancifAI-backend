@@ -58,5 +58,9 @@ TAGS_METADATA = [
     {
         "name": "Microsites - Execution",
         "description": "Microsites Execution endpoints."
+    },
+    {
+        "name": "Microsites - Downloads",
+        "description": "Microsites Downloads endpoints."
     }
 ]
