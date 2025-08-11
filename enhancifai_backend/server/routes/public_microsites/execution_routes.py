@@ -280,11 +280,7 @@ async def upload_direct_prompt(
         logging.error("Invalid data file type: %s", data_file.content_type)
         raise HTTPException(status_code=400, detail="Invalid data file type")
 
-    prompt_file_suffix = file_suffix_map.get(data_file.content_type, None)  # Assuming prompt_file has similar types
-    if not prompt_file_suffix:
-        logging.error("Invalid prompt file type for content type: %s", data_file.content_type)
-        raise HTTPException(status_code=400, detail="Invalid prompt file type")
-
+    
     # Handling Data File with empty content check
     try:
         with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
@@ -347,7 +343,10 @@ async def upload_direct_prompt(
 
     # Filter prompts by param_name if present
     filtered_prompts = []
+    i = 1
     for prompt in prompts:
+        prompt['prompt_number'] = i
+        i += 1
         param_name = prompt.get('param_name')
         if param_name:
             if function_params_dict.get(param_name):
