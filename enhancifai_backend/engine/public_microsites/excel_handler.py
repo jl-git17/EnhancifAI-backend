@@ -293,16 +293,49 @@ class ExcelHandler:
         return results_for_chunk
 
     def get_selected_columns(self, prompt_config, letter_to_column):
-        selected_columns = prompt_config['columns']
-        if selected_columns == '*':
-            return list(self.data[0].keys())
-        else:
-            selected_columns_letters = selected_columns.split('+')
-            return [
-                letter_to_column.get(letter)
-                for letter in selected_columns_letters
-                if letter in letter_to_column
-            ]
+        selected_columns = prompt_config.get('columns', '*')
+        
+        # All columns wildcard
+        if isinstance(selected_columns, str) and selected_columns.strip() == '*':
+            return list(self.data[0].keys()) if self.data else []
+
+        def _resolve_token(token: str):
+            token = token.strip()
+            if not token:
+                return None
+            # If single-letter, map via letter_to_column
+            if len(token) == 1:
+                col = letter_to_column.get(token.upper())
+                return col
+            # Otherwise treat as a column name
+            if self.data and token in self.data[0]:
+                return token
+            return None
+
+        resolved = []
+        # Columns provided as list (names or letters)
+        if isinstance(selected_columns, list):
+            for col in selected_columns:
+                if isinstance(col, str):
+                    mapped = _resolve_token(col)
+                    if mapped:
+                        resolved.append(mapped)
+            # Deduplicate preserving order
+            seen = set()
+            return [c for c in resolved if not (c in seen or seen.add(c))]
+
+        # Columns provided as string like "A+B" or "title+price"
+        if isinstance(selected_columns, str):
+            parts = [p for p in selected_columns.split('+') if p.strip()]
+            for p in parts:
+                mapped = _resolve_token(p)
+                if mapped:
+                    resolved.append(mapped)
+            seen = set()
+            return [c for c in resolved if not (c in seen or seen.add(c))]
+
+        # Fallback
+        return []
 
     def create_column_mapping(self):
         if not self.data:

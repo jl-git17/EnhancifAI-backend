@@ -9,7 +9,6 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from enhancifai_backend.database.handlers.run_logs import RunLogsDbCore
 from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
-from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.runs_progress import runs_progress
 
 # Default concurrency
@@ -63,10 +62,10 @@ class CSVHandler:
                         return False
                     return True
             except UnicodeDecodeError as e:
-                logging.error(f"Error with encoding {encoding}: {e}")
+                logging.error("Error with encoding %s: %s", encoding, e)
             except Exception as e:
                 errors.append(str(e))
-                logging.error(f"Error loading CSV: {e}")
+                logging.error("Error loading CSV: %s", e)
                 return '\n'.join(errors)
         logging.error("Failed to read CSV with all attempted encodings.")
         return False
@@ -94,7 +93,7 @@ class CSVHandler:
         )
 
         # Log size of row in bytes
-        logging.debug(f"Average row size: {avg_row_size} bytes")
+        logging.debug("Average row size: %s bytes", avg_row_size)
 
         # Compute chunk size to target ~128KB per chunk
         est_chunk_size = int(TARGET_CHUNK_BYTES // max(avg_row_size, 1))
@@ -161,7 +160,7 @@ class CSVHandler:
             else:
                 # Dynamically compute chunk size
                 chunk_size = self._compute_dynamic_chunk_size(max_records)
-                logging.debug(f"Using chunk size: {chunk_size} for performance optimization")
+                logging.debug("Using chunk size: %s for performance optimization", chunk_size)
                 for prompt_config in prompts:
                     for start_idx in range(0, total_records, chunk_size):
                         if self._is_run_cancelled():
@@ -270,7 +269,7 @@ class CSVHandler:
             query=prompt_config['prompt'],
             run_id=self.run_id
         )
-        logging.debug(f"Batch data: {batch_data}")
+        logging.debug("Batch data: %s", batch_data)
         # 'batch_data' should be a list of dicts, one per row in 'to_send'
 
         output_heading = prompt_config['output_heading']
@@ -307,16 +306,49 @@ class CSVHandler:
 
 
     def get_selected_columns(self, prompt_config, letter_to_column):
-        selected_columns = prompt_config['columns']
-        if selected_columns == '*':
-            return list(self.data[0].keys())
-        else:
-            selected_columns_letters = selected_columns.split('+')
-            return [
-                letter_to_column.get(letter)
-                for letter in selected_columns_letters
-                if letter in letter_to_column
-            ]
+        selected_columns = prompt_config.get('columns', '*')
+
+        # All columns wildcard
+        if isinstance(selected_columns, str) and selected_columns.strip() == '*':
+            return list(self.data[0].keys()) if self.data else []
+
+        def _resolve_token(token: str):
+            token = token.strip()
+            if not token:
+                return None
+            # If single-letter, map via letter_to_column
+            if len(token) == 1:
+                col = letter_to_column.get(token.upper())
+                return col
+            # Otherwise treat as a column name
+            if self.data and token in self.data[0]:
+                return token
+            return None
+
+        resolved = []
+        # Columns provided as list (names or letters)
+        if isinstance(selected_columns, list):
+            for col in selected_columns:
+                if isinstance(col, str):
+                    mapped = _resolve_token(col)
+                    if mapped:
+                        resolved.append(mapped)
+            # Deduplicate preserving order
+            seen = set()
+            return [c for c in resolved if not (c in seen or seen.add(c))]
+
+        # Columns provided as string like "A+B" or "title+price"
+        if isinstance(selected_columns, str):
+            parts = [p for p in selected_columns.split('+') if p.strip()]
+            for p in parts:
+                mapped = _resolve_token(p)
+                if mapped:
+                    resolved.append(mapped)
+            seen = set()
+            return [c for c in resolved if not (c in seen or seen.add(c))]
+
+        # Fallback
+        return []
 
     def update_rows_with_results(self, results):
         updated_data = []
