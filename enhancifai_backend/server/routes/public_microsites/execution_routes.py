@@ -16,7 +16,7 @@ from tempfile import NamedTemporaryFile
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 
 from enhancifai_backend.config import settings
-from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
+from enhancifai_backend.database.handlers.microsites import MicrositeFunctionsDbCore, MicrositesRunsDbCore
 from enhancifai_backend.engine.public_microsites.runs_progress import runs_progress
 from enhancifai_backend.server.models.execution import PromptObject, RunProgressRequest
 from enhancifai_backend.server.public_microsites.hooks import handle_csv_file, handle_excel_file
@@ -330,29 +330,36 @@ async def upload_direct_prompt(
     
     max_prompts = GLOBAL_MAX_PROMPTS
 
-    if function_name == 'fix-product-titles':
-        read_prompts = [
-            {
-                'prompt_number': '1',
-                'columns': '*',
-                'prompt': "Rewrite the product title to be clean, descriptive, and shopper-friendly. Fix grammar, add missing context if necessary, and keep it under 60 characters. Remove filler words and ensure it's ready for eCommerce listing.",
-                'output_heading': 'New Title'
-            }
-        ]
-        if 'include_descriptions' in function_params_dict:
-            if function_params_dict['include_descriptions'] is True:
-                read_prompts.append(
-                    {
-                        'prompt_number': '2',
-                        'columns': '*',
-                        'prompt': "Write a short, compelling product description based on the title. Highlight key features and use cases in 1 to 2 sentences. Use clear, professional language suitable for an online store.",
-                        'output_heading': 'New Description'
-                    }
-                )
-    else:
-        # unsupported function_name
-        logging.error("Unsupported function_name: %s", function_name)
-        raise HTTPException(status_code=400, detail=f"Unsupported function_name: {function_name}")
+    funct_config = MicrositeFunctionsDbCore.get_function_by_name(function_name)
+    if not funct_config:
+        logging.error("Function '%s' not found in database", function_name)
+        raise HTTPException(status_code=404, detail=f"Function '{function_name}' not found.")
+
+    prompts = funct_config.get('prompts', [])
+    if not prompts:
+        logging.error("No prompts found for function '%s'", function_name)
+        raise HTTPException(status_code=400, detail=f"No prompts configured for function '{function_name}'.")
+
+    if len(prompts) > max_prompts or len(prompts) < 1:
+        msg = f"Too many prompts configured: {len(prompts)} (max allowed: {max_prompts})" if len(prompts) > max_prompts else "No prompts configured."
+        logging.error(msg)
+        raise HTTPException(status_code=400, detail=msg)
+
+    # Filter prompts by param_name if present
+    filtered_prompts = []
+    for prompt in prompts:
+        param_name = prompt.get('param_name')
+        if param_name:
+            if function_params_dict.get(param_name):
+                filtered_prompts.append(prompt)
+        else:
+            filtered_prompts.append(prompt)
+
+    if not filtered_prompts:
+        logging.error("No prompts passed param_name filtering for function '%s'", function_name)
+        raise HTTPException(status_code=400, detail=f"No prompts available after filtering for function '{function_name}'.")
+
+    read_prompts = filtered_prompts
 
     logging.debug("Max records set to: %s", max_recs)
 

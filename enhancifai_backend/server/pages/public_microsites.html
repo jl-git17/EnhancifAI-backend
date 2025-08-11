@@ -232,6 +232,7 @@
                     <span class="fw-semibold">${p.prompt || ''}</span><br>
                     <span class="prompt-columns">Columns: ${(p.columns||[]).join(', ')}</span>
                     ${p.output_heading ? `<br><span class='text-info'>Output Heading: ${p.output_heading}</span>` : ''}
+                    ${p.param_name ? `<br><span class='text-warning'>Param Name: ${p.param_name}</span>` : ''}
                 </div>`
             ).join('');
         }
@@ -268,14 +269,18 @@
     promptsArr.forEach((p, idx) => {
         list.append(`
             <div class="prompt-item row g-2 align-items-center mb-2" data-idx="${idx}">
-                <div class="col-12 col-md-6">
+                <div class="col-12 col-md-4">
                     <input type="text" class="form-control form-control-sm mb-1 prompt-text rounded-2" placeholder="Prompt text" value="${p.prompt ? p.prompt.replace(/"/g,'&quot;') : ''}" required aria-label="Prompt text">
                 </div>
-                <div class="col-10 col-md-5">
+                <div class="col-10 col-md-3">
                     <input type="text" class="form-control form-control-sm prompt-cols rounded-2" placeholder="Columns (comma separated)" value="${Array.isArray(p.columns) ? p.columns.join(', ') : ''}" required aria-label="Columns">
                 </div>
                 <div class="col-4 col-md-3">
                     <input type="text" class="form-control form-control-sm prompt-heading rounded-2" placeholder="Output Heading" value="${p.output_heading ? p.output_heading.replace(/"/g,'&quot;') : ''}" required aria-label="Output Heading">
+                </div>
+                <div class="col-6 col-md-2">
+                    <input type="text" class="form-control form-control-sm prompt-param-name rounded-2" placeholder="Param Name (optional)" value="${p.param_name ? p.param_name.replace(/"/g,'&quot;') : ''}" aria-label="Param Name">
+                    <div class="form-text">Show only if param is true</div>
                 </div>
                 <div class="col-2 col-md-1 prompt-actions text-end d-flex flex-column gap-1 align-items-end">
                     <button type="button" class="btn btn-outline-danger btn-sm rounded-circle remove-prompt-btn mb-1" title="Remove"><i class="bi bi-x"></i></button>
@@ -291,8 +296,9 @@
             $('#prompts-list .prompt-item').each(function() {
                 const prompt = $(this).find('.prompt-text').val().trim();
                 const columns = $(this).find('.prompt-cols').val().split(',').map(s => s.trim()).filter(Boolean);
-        const output_heading = $(this).find('.prompt-heading').val().trim();
-        if (prompt && columns.length && output_heading) arr.push({ prompt, columns, output_heading });
+                const output_heading = $(this).find('.prompt-heading').val().trim();
+                const param_name = $(this).find('.prompt-param-name').val().trim();
+                if (prompt && columns.length && output_heading) arr.push({ prompt, columns, output_heading, param_name });
             });
             return arr;
         }
