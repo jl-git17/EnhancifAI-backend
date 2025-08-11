@@ -74,7 +74,7 @@ class MicrositeFunctionsDbCore:
             set_clauses.append("function_name = %s")
             values.append(function_name)
         if prompt is not None:
-            set_clauses.append("prompt = %s")
+            set_clauses.append("prompts = %s")
             values.append(prompt)
         if output_heading is not None:
             set_clauses.append("output_heading = %s")
