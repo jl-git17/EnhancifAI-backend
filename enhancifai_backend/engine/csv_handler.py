@@ -339,7 +339,12 @@ class CSVHandler:
             logging.error("No data to save.")
             return
         with open(self.output_file, 'w', newline='', encoding='utf-8') as file:
-            writer = csv.DictWriter(file, fieldnames=self.data[0].keys())
+            writer = csv.DictWriter(
+                file,
+                fieldnames=self.data[0].keys(),
+                quoting=csv.QUOTE_MINIMAL,
+                escapechar='\\'
+            )
             writer.writeheader()
             for row in self.data:
                 writer.writerow(row)
