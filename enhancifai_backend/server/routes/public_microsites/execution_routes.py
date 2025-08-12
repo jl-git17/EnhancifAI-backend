@@ -13,7 +13,7 @@ import pandas as pd
 from enum import Enum
 import logging
 from tempfile import NamedTemporaryFile
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Request, UploadFile, status
 
 from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.microsites import MicrositeFunctionsDbCore, MicrositesRunsDbCore
@@ -169,7 +169,6 @@ def json_to_excel(json_data, output_path):
     df.to_excel(output_path, index=False)
 
 
-
 @router.post("/microsites/execution/progress", tags=["Microsites - Execution"])
 async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verify_secret_key)):
     """Check the progress of a given Run ID."""
@@ -232,6 +231,7 @@ async def upload_direct_prompt(
     function_name: str = Form(...),
     function_params: str = Form('{}'),
     data_file: UploadFile = File(None),
+    json_data: str = Body(None),
     _: str = Depends(verify_secret_key),
 ):
     """
@@ -245,6 +245,18 @@ async def upload_direct_prompt(
     - `data_file`: The file to be processed (CSV or Excel).
     """
     logging.debug("Entered upload_direct_prompt endpoint")
+    if data_file and json_data:
+        logging.error("Both data_file and json_data provided. This is not allowed.")
+        raise HTTPException(
+            status_code=400,
+            detail="Cannot upload both a file and JSON data. Provide either one."
+        )
+    if not data_file and not json_data:
+        logging.error("No data file or JSON data provided.")
+        raise HTTPException(
+            status_code=400,
+            detail="Either a data file or JSON data must be provided."
+        )
     logging.debug("Data file provided: %s", "Yes" if data_file else "No")
 
     try:
@@ -261,67 +273,62 @@ async def upload_direct_prompt(
     file_name = None
     sheet_name = None
 
-    if not data_file:
-        logging.error("No data file provided")
-        raise HTTPException(status_code=400, detail="Data file is required.")
+    if json_data:
+        logging.info("Processing JSON data input")
+    elif data_file:
+        logging.info("Processing uploaded data file")
+        file_suffix_map = {
+            'text/csv': '.csv',
+            'application/vnd.ms-excel': '.xls',
+            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx'
+        }
+        data_file_suffix = file_suffix_map.get(data_file.content_type, None)
+        file_name = data_file.filename
 
-    logging.info("Processing uploaded data file")
-    file_suffix_map = {
-        'text/csv': '.csv',
-        'application/vnd.ms-excel': '.xls',
-        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx'
-    }
-    data_file_suffix = file_suffix_map.get(data_file.content_type, None)
-    file_name = data_file.filename
+        logging.debug("Received data file '%s' with content type: %s", file_name, data_file.content_type)
 
-    logging.debug("Received data file '%s' with content type: %s", file_name, data_file.content_type)
+        if not data_file_suffix:
+            logging.error("Invalid data file type: %s", data_file.content_type)
+            raise HTTPException(status_code=400, detail="Invalid data file type")
 
-    if not data_file_suffix:
-        logging.error("Invalid data file type: %s", data_file.content_type)
-        raise HTTPException(status_code=400, detail="Invalid data file type")
+        
+        # Handling Data File with empty content check
+        try:
+            with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
+                temp_data_file_path = temp_data_file.name
+                logging.debug("Created temporary data file at %s", temp_data_file_path)
+                data_contents = await data_file.read()
+                if not data_contents:
+                    raise HTTPException(status_code=400, detail="Data file is empty.")
+                logging.debug("Read %s bytes from data file", len(data_contents))
+                temp_data_file.write(data_contents)
+                temp_data_file.flush()
+                logging.debug("Data file written to temporary storage")
 
-    
-    # Handling Data File with empty content check
-    try:
-        with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
-            temp_data_file_path = temp_data_file.name
-            logging.debug("Created temporary data file at %s", temp_data_file_path)
-            data_contents = await data_file.read()
-            if not data_contents:
-                raise HTTPException(status_code=400, detail="Data file is empty.")
-            logging.debug("Read %s bytes from data file", len(data_contents))
-            temp_data_file.write(data_contents)
-            temp_data_file.flush()
-            logging.debug("Data file written to temporary storage")
+            if os.path.exists(temp_data_file_path):
+                logging.info("Temporary data file exists at %s", temp_data_file_path)
+            else:
+                logging.error("Temporary data file not found at %s", temp_data_file_path)
+                raise HTTPException(status_code=500, detail="Failed to create temporary data file.")
+        except Exception as e:
+            logging.exception("Error handling uploaded data file")
+            raise HTTPException(status_code=500, detail="Failed to process uploaded data file.") from e
 
-        if os.path.exists(temp_data_file_path):
-            logging.info("Temporary data file exists at %s", temp_data_file_path)
-        else:
-            logging.error("Temporary data file not found at %s", temp_data_file_path)
-            raise HTTPException(status_code=500, detail="Failed to create temporary data file.")
-    except Exception as e:
-        logging.exception("Error handling uploaded data file")
-        raise HTTPException(status_code=500, detail="Failed to process uploaded data file.") from e
+        # Check if data file exceeds max_recs when max_recs > 0
+        if max_recs > 0:
+            if data_file_suffix == '.csv':
+                df = pd.read_csv(temp_data_file_path)
+            else:
+                df = pd.read_excel(temp_data_file_path)
+            if df.shape[0] > max_recs:
+                raise HTTPException(status_code=400, detail="Trial User maximum exceeded - Maximum 20 rows per file allowed")
+    else:
+        logging.error("No data file or JSON data provided.")
+        raise HTTPException(
+            status_code=400,
+            detail="Either a data file or JSON data must be provided."
+        )
 
-    # Check if data file exceeds max_recs when max_recs > 0
-    if max_recs > 0:
-        if data_file_suffix == '.csv':
-            df = pd.read_csv(temp_data_file_path)
-        else:
-            df = pd.read_excel(temp_data_file_path)
-        if df.shape[0] > max_recs:
-            raise HTTPException(status_code=400, detail="Trial User maximum exceeded - Maximum 20 rows per file allowed")
-
-    # Handle Prompts
-    try:
-        if data_file:
-            logging.info("Processing uploaded prompt file")
-            #prompt_file = data_file  # Adjust if prompt_file is different
-            # Implement prompt file handling if necessary
-            # For now, assuming prompt_file_suffix and temp_prompt_file_path are handled elsewhere
-    except Exception as e:
-        logging.exception("Error processing prompt file")
-        raise HTTPException(status_code=500, detail="Failed to process prompt file.") from e
 
     
     max_prompts = GLOBAL_MAX_PROMPTS
