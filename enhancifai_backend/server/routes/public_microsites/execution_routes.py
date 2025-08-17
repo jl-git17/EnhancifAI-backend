@@ -1,30 +1,29 @@
-
-
-
+# Standard library
 import asyncio
 import csv
 import json
+import logging
 import mimetypes
 import os
+from enum import Enum
+from tempfile import NamedTemporaryFile
 from threading import Thread
 from typing import Any, Dict
+
+# Third-party
+from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import JSONResponse
 import pandas as pd
-from enum import Enum
-import logging
-from tempfile import NamedTemporaryFile
-from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Request, UploadFile, status
 
+# Local application
 from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.microsites import MicrositeFunctionsDbCore, MicrositesRunsDbCore
 from enhancifai_backend.engine.public_microsites.runs_progress import runs_progress
-from enhancifai_backend.server.models.execution import PromptObject, RunProgressRequest
+from enhancifai_backend.server.models.execution import RunProgressRequest
 from enhancifai_backend.server.public_microsites.hooks import handle_csv_file, handle_excel_file
 from enhancifai_backend.server.routes.files_routes import save_to_cache
 from enhancifai_backend.server.utils import verify_secret_key
 
-TEST_MAX_RECORDS = 10
-GLOBAL_MAX_ROWS = settings.global_max_rows
 GLOBAL_MAX_PROMPTS = settings.global_max_prompts
 EXCEL_MIME_TYPES = ['application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet']
@@ -311,7 +310,7 @@ async def upload_direct_prompt(
             logging.error("Invalid data file type: %s", data_file.content_type)
             raise HTTPException(status_code=400, detail="Invalid data file type")
 
-        
+
         # Handling Data File with empty content check
         try:
             with NamedTemporaryFile(delete=False, dir='/tmp', suffix=data_file_suffix) as temp_data_file:
@@ -362,7 +361,13 @@ async def upload_direct_prompt(
         raise HTTPException(status_code=400, detail=f"No prompts configured for function '{function_name}'.")
 
     if len(prompts) > max_prompts or len(prompts) < 1:
-        msg = f"Too many prompts configured: {len(prompts)} (max allowed: {max_prompts})" if len(prompts) > max_prompts else "No prompts configured."
+        if len(prompts) > max_prompts:
+            msg = (
+            f"Too many prompts configured: {len(prompts)} "
+            f"(max allowed: {max_prompts})"
+            )
+        else:
+            msg = "No prompts configured."
         logging.error(msg)
         raise HTTPException(status_code=400, detail=msg)
 
@@ -449,6 +454,3 @@ async def upload_direct_prompt(
         status_code=200,
         content={'run_id': run_id, "data_columns": extracted_columns}
     )
-
-
-
