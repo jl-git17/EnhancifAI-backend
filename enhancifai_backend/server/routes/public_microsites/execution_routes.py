@@ -277,14 +277,10 @@ async def upload_direct_prompt(
         try:
             logging.debug("JSON data received: %s", json_data)
             _json_data = json.loads(json_data)
-            logging.debug("Parsed JSON data: %s", _json_data)
-            sheet_name = _json_data['sheet_name']
-            logging.debug("Sheet name extracted: %s", sheet_name)
-            data_json = _json_data['data']
             with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx') as temp_data_file:
                 temp_data_file_path = temp_data_file.name
                 logging.debug("Created temporary data file at %s", temp_data_file_path)
-                json_to_excel(data_json, temp_data_file_path)
+                json_to_excel(_json_data, temp_data_file_path)
             file_name = f"{sheet_name}.xlsx"
             data_file_suffix = '.xlsx'
             logging.info("JSON data converted to Excel: %s", file_name)
