@@ -9,8 +9,9 @@ from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
 from enhancifai_backend.engine.import_google_sheets import GoogleSheetsHandler
 from enhancifai_backend.server.models.execution import ExportSheetsRequest
-from enhancifai_backend.server.utils import get_current_user_id, verify_secret_key
-from enhancifai_backend.engine.export_google_sheets import export_to_google_sheets
+from enhancifai_backend.server.utils import get_current_user_id, get_microsite_session_id, verify_secret_key
+from enhancifai_backend.engine.public_microsites.export_google_sheets_public_microsites import export_to_google_sheets_public_microsites
+from enhancifai_backend.engine.public_microsites.sheets_creds_mem import sheets_creds_memory
 
 router = APIRouter()
 
@@ -31,71 +32,6 @@ if REDIRECT_URI is None:
     raise ValueError("GOOGLE_SHEETS_REDIRECT_URI environment variable not set")
 
 
-class SheetsCredsMemory:
-    """
-    A class to manage Google Sheets credentials in memory.
-    Grouped by provided session ID.
-    """
-    def __init__(self):
-        self.creds = {}
-        self.states = {}
-
-    # CREDS
-
-    def set_creds(self, session_id: str, credentials):
-        """
-        Set the credentials for a given session ID.
-        """
-        self.creds[session_id] = credentials
-
-    def get_creds(self, session_id: str):
-        """
-        Get the credentials for a given session ID.
-        """
-        return self.creds.get(session_id)
-
-    def clear_creds(self, session_id: str):
-        """
-        Clear the credentials for a given session ID.
-        """
-        if session_id in self.creds:
-            del self.creds[session_id]
-    def has_creds(self, session_id: str):
-        """
-        Check if credentials exist for a given session ID.
-        """
-        return session_id in self.creds
-    
-    # STATES
-    
-    def set_state(self, session_id: str, state: str):
-        """
-        Set the state for a given session ID.
-        """
-        self.states[session_id] = state
-
-    def get_state_by_session_id(self, session_id: str):
-        """
-        Get the state for a given session ID.
-        """
-        return self.states.get(session_id)
-
-    def get_session_id_of_state(self, state: str):
-        """
-        Get the session ID for a given state.
-        """
-        for session_id, s in self.states.items():
-            if s == state:
-                return session_id
-        return None
-
-    def clear_state(self, session_id: str):
-        """
-        Clear the state for a given session ID.
-        """
-        if session_id in self.states:
-            del self.states[session_id]
-
 def get_flow(state=None):
     return Flow.from_client_config(
         client_secrets,
@@ -104,7 +40,7 @@ def get_flow(state=None):
         redirect_uri=REDIRECT_URI
     )
 
-@router.get("/microsites/sheets/login", tags=["Google Sheets"], operation_id="login_sheets_operation")
+@router.get("/microsites/sheets/login", tags=["Microsites - Google Sheets"], operation_id="login_sheets_operation")
 async def login_sheets(session_id: str):
     """
     Initiate Google Sheets login and authorization process.
@@ -121,7 +57,7 @@ async def login_sheets(session_id: str):
     - **401**: User not authenticated.
       - **detail**: `{"detail": "User not authenticated"}`
     """
-    already_logged_in = SheetsCredsMemory.has_creds(session_id)
+    already_logged_in = sheets_creds_memory.has_creds(session_id)
     if already_logged_in:
         raise HTTPException(
             status_code=status.HTTP_202_ACCEPTED,
@@ -132,21 +68,20 @@ async def login_sheets(session_id: str):
     authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
 
     # Store state in the database
-    SheetsCredsMemory.set_state(session_id, state)
+    sheets_creds_memory.set_state(session_id, state)
 
 
     return JSONResponse(status_code=200, content={"status": "success", "url": authorization_url})
 
 
-@router.get("/microsites/callback/google/sheets", tags=["Google Sheets"], operation_id="oauth2callback_google_sheets_operation")
+@router.get("/microsites/callback/google/sheets", tags=["Microsites - Google Sheets"], operation_id="oauth2callback_google_sheets_operation")
 async def oauth2callback(request: Request):
     state = request.query_params.get("state")
     if not state:
         raise HTTPException(status_code=400, detail="Missing state parameter")
 
-    user_id = SheetsDbCore.get_oauth_state(state)
-    session_id = SheetsCredsMemory.get_state(state)
-    if not user_id:
+    session_id = sheets_creds_memory.get_session_id_of_state(state)
+    if not session_id:
         raise HTTPException(status_code=400, detail="Invalid state parameter")
 
     _url = str(request.url).replace("http://", "https://")
@@ -158,16 +93,15 @@ async def oauth2callback(request: Request):
 
     creds = flow.credentials
 
-    SheetsDbCore.update_user_google_credentials(user_id, creds)
-    SheetsDbCore.delete_oauth_state(state)
+    sheets_creds_memory.set_creds(session_id, creds)
+    sheets_creds_memory.clear_state(session_id)
 
-    #return RedirectResponse(url="/")
     return "Authentication successful. You can close this window."
 
-@router.post("/microsites/sheets/export", tags=["Google Sheets"], operation_id="export_to_sheets_operation")
+@router.post("/microsites/sheets/export", tags=["Microsites - Google Sheets"], operation_id="export_to_sheets_operation")
 async def export_to_sheets(
     req_sheets: ExportSheetsRequest,
-    user_id: int = Depends(get_current_user_id),
+    session_id: str = Depends(get_microsite_session_id),
     _: str = Depends(verify_secret_key)
 ):
     """
@@ -195,21 +129,13 @@ async def export_to_sheets(
       - **detail**: Error message detailing what went wrong.
     """
 
-    # Check AI consent
-    ai_consent = UsersDbCore.check_ai_consent(user_id)
-    if ai_consent is False:
-        raise HTTPException(
-            status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
-            detail="User has not consented for AI usage."
-        )
-
-    file_path = RunsDbCore.get_run_file_url(req_sheets.run_id)
-    source_filename = RunsDbCore.get_source_filename(req_sheets.run_id)
+    file_path = MicrositesRunsDbCore.get_run_file_url(req_sheets.run_id)
+    source_filename = MicrositesRunsDbCore.get_source_filename(req_sheets.run_id)
     if not file_path:
         raise HTTPException(status_code=404, detail="Run not found or file path not available")
 
     try:
-        result = await export_to_google_sheets(user_id, file_path, source_filename)
+        result = await export_to_google_sheets_public_microsites(session_id, file_path, source_filename)
         if isinstance(result, dict):
             sheet_url = f"https://docs.google.com/spreadsheets/d/{result['spreadsheetId']}"
             return JSONResponse(status_code=200, content={"status": "success", "url": sheet_url})
@@ -226,11 +152,11 @@ async def export_to_sheets(
         logging.error(f"Error exporting to Google Sheets: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
-@router.get("/microsites/sheets/list", tags=["Google Sheets"], operation_id="list_sheets_operation")
+@router.get("/microsites/sheets/list", tags=["Microsites - Google Sheets"], operation_id="list_sheets_operation")
 async def list_sheets(
     search_name: Optional[str] = "",
     page: Optional[int] = 1,
-    user_id: int = Depends(get_current_user_id),
+    session_id: str = Depends(get_microsite_session_id),
     _: str = Depends(verify_secret_key)
 ):
     """
@@ -256,23 +182,16 @@ async def list_sheets(
             }
         ```
     """
-    # Check AI consent
-    ai_consent = UsersDbCore.check_ai_consent(user_id)
-    if ai_consent is False:
-        raise HTTPException(
-            status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
-            detail="User has not consented for AI usage."
-        )
 
-    handler = GoogleSheetsHandler(user_id)
+    handler = GoogleSheetsHandler(session_id)
     page_token = None if page == 1 else page
     result = handler.find_sheet(search_name, page_token)
     return JSONResponse(status_code=200, content=result)
 
-@router.get("/microsites/sheets/data", tags=["Google Sheets"], operation_id="get_data_sheets_operation")
+@router.get("/microsites/sheets/data", tags=["Microsites - Google Sheets"], operation_id="get_data_sheets_operation")
 async def get_sheet_data(
     sheet_id: str, worksheet_name: str = None,
-    user_id: int = Depends(get_current_user_id),
+    session_id: str = Depends(get_microsite_session_id),
     _: str = Depends(verify_secret_key)
 ):
     """
@@ -288,15 +207,8 @@ async def get_sheet_data(
     - **200**: Successfully retrieved the Google Sheet's data.
       - **content**: ``
     """
-    # Check AI consent
-    ai_consent = UsersDbCore.check_ai_consent(user_id)
-    if ai_consent is False:
-        raise HTTPException(
-            status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
-            detail="User has not consented for AI usage."
-        )
 
-    handler = GoogleSheetsHandler(user_id)
+    handler = GoogleSheetsHandler(session_id)
     try:
         result = handler.get_sheet_as_dataframe(sheet_id, worksheet_name)
         # Convert DataFrame to JSON-compatible format
