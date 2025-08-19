@@ -66,5 +66,9 @@ TAGS_METADATA = [
     {
         "name": "Microsites - Google Sheets",
         "description": "Microsites Google Sheets endpoints."
+    },
+    {
+        "name": "Microsites - Common",
+        "description": "Microsites Common endpoints."
     }
 ]
