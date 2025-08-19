@@ -13,19 +13,19 @@ from enhancifai_backend.database.handlers.sheets import SheetsDbCore
 def authenticate_google_sheets_public_microsites(session_id):
     creds = SheetsDbCore.get_user_google_credentials(session_id)
     if not creds:
-        logging.error(f"User {session_id} does not have Google credentials")
+        logging.error("User %s does not have Google credentials", session_id)
         return HTTPException(status_code=403, detail="User is not authenticated with Google")
 
     if not creds.valid:
         if creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            logging.error(f"Google credentials for user {session_id} are invalid or expired")
+            logging.error("Google credentials for user %s are invalid or expired", session_id)
             return HTTPException(status_code=403, detail="Google credentials are invalid or expired")
     return creds
 
 async def export_to_google_sheets(session_id: str, file_url: str, source_filename: str):
-    logging.debug(f"Starting export_to_google_sheets with session_id: {session_id} and file_url: {file_url}")
+    logging.debug("Starting export_to_google_sheets with session_id: %s and file_url: %s", session_id, file_url)
 
     if source_filename is None:
         source_filename = "Your File"
@@ -42,7 +42,7 @@ async def export_to_google_sheets(session_id: str, file_url: str, source_filenam
     # Extract filename from URL and construct the file path in /tmp directory
     filename = file_url.split('/')[-1]
     file_path = os.path.join('/tmp', filename)
-    logging.debug(f"Resolved file path: {file_path}")
+    logging.debug("Resolved file path: %s", file_path)
 
     try:
         if filename.endswith('.csv'):
@@ -88,7 +88,7 @@ async def export_to_google_sheets(session_id: str, file_url: str, source_filenam
     return {'spreadsheetId': sheet_id}
 
 async def export_to_google_sheets_public_microsites(session_id: str, file_url: str, source_filename: str):
-    logging.debug(f"Starting export_to_google_sheets with session_id: {session_id} and file_url: {file_url}")
+    logging.debug("Starting export_to_google_sheets with session_id: %s and file_url: %s", session_id, file_url)
 
     if source_filename is None:
         source_filename = "Your File"
@@ -105,7 +105,7 @@ async def export_to_google_sheets_public_microsites(session_id: str, file_url: s
     # Extract filename from URL and construct the file path in /tmp directory
     filename = file_url.split('/')[-1]
     file_path = os.path.join('/tmp', filename)
-    logging.debug(f"Resolved file path: {file_path}")
+    logging.debug("Resolved file path: %s", file_path)
 
     try:
         if filename.endswith('.csv'):
