@@ -4,7 +4,7 @@ import uuid
 router = APIRouter()
 
 
-@router.get("/microsites/session_id")
+@router.get("/microsites/common/session_id")
 def get_session_id(ip: str = Query(..., description="Client IP address"), tags=["Microsites - Common"]):
     """
     Generate a deterministic UUID (v5) session id from the provided IP address.
