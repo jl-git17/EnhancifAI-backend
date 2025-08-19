@@ -26,6 +26,7 @@ from enhancifai_backend.server.routes.billing_routes import router as router_bil
 from enhancifai_backend.server.routes.public_microsites.execution_routes import router as router_microsites_execution
 from enhancifai_backend.server.routes.public_microsites.downloads_routes import router as router_microsites_downloads
 from enhancifai_backend.server.routes.public_microsites.common import router as router_microsites_common
+from enhancifai_backend.server.routes.public_microsites.google_sheets_routes import router as router_google_sheets
 
 from enhancifai_backend.server.utils import STATIC_FILES_DIRECTORY
 
@@ -60,6 +61,7 @@ app.include_router(router_billing)
 app.include_router(router_microsites_execution)
 app.include_router(router_microsites_downloads)
 app.include_router(router_microsites_common)
+app.include_router(router_google_sheets)
 
 security = HTTPBasic()
 
