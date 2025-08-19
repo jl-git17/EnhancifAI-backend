@@ -22,7 +22,7 @@ from enhancifai_backend.engine.public_microsites.runs_progress import runs_progr
 from enhancifai_backend.server.models.execution import RunProgressRequest
 from enhancifai_backend.server.public_microsites.hooks import handle_csv_file, handle_excel_file
 from enhancifai_backend.server.routes.files_routes import save_to_cache
-from enhancifai_backend.server.utils import verify_secret_key
+from enhancifai_backend.server.utils import get_microsite_session_id, verify_secret_key
 
 GLOBAL_MAX_PROMPTS = settings.global_max_prompts
 EXCEL_MIME_TYPES = ['application/vnd.ms-excel',
@@ -169,7 +169,11 @@ def json_to_excel(json_data, output_path):
 
 
 @router.post("/microsites/execution/progress", tags=["Microsites - Execution"])
-async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verify_secret_key)):
+async def check_run_progress(
+    req_run: RunProgressRequest,
+    _: str = Depends(verify_secret_key),
+    session_id: str = Depends(get_microsite_session_id)
+):
     """Check the progress of a given Run ID."""
     retries = 3  # Number of retries
     for attempt in range(retries):
@@ -232,6 +236,7 @@ async def upload_direct_prompt(
     data_file: UploadFile = File(None),
     json_data: str = Body(None),
     _: str = Depends(verify_secret_key),
+    session_id: str = Depends(get_microsite_session_id)
 ):
     """
     Upload a CSV/Excel file or provide JSON data, with prompts payload.
