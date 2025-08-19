@@ -1,11 +1,13 @@
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Depends, Request
 import uuid
+
+from enhancifai_backend.server.utils import verify_secret_key
 
 router = APIRouter()
 
 
 @router.get("/microsites/common/session_id", tags=["Microsites - Common"])
-async def get_session_id(request: Request):
+async def get_session_id(request: Request, _: str = Depends(verify_secret_key)):
     """
     Generate a deterministic UUID (v5) session id from the client's IP address.
 

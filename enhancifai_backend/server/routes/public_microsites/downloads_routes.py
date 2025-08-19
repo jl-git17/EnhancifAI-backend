@@ -7,7 +7,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.server.utils import (
     STATIC_FILES_DIRECTORY,
-    get_current_user_id,
+    get_microsite_session_id,
     verify_secret_key
 )
 
@@ -15,7 +15,11 @@ from enhancifai_backend.server.utils import (
 router = APIRouter()
 
 @router.get("/microsites/downloads/{filename}", tags=["Microsites - Downloads"])
-async def download_file(filename: str, _: str = Depends(verify_secret_key)):
+async def download_file(
+    filename: str, 
+    _: str = Depends(verify_secret_key),
+    session_id: str = Depends(get_microsite_session_id)
+):
     try:
         file_path = os.path.join('/tmp', filename)
         if os.path.exists(file_path):
