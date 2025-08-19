@@ -22,6 +22,7 @@ from enhancifai_backend.engine.public_microsites.runs_progress import runs_progr
 from enhancifai_backend.server.models.execution import RunProgressRequest
 from enhancifai_backend.server.public_microsites.hooks import handle_csv_file, handle_excel_file
 from enhancifai_backend.server.routes.files_routes import save_to_cache
+from enhancifai_backend.server.routes.public_microsites.common import verify_session_id
 from enhancifai_backend.server.utils import get_microsite_session_id, verify_secret_key
 
 GLOBAL_MAX_PROMPTS = settings.global_max_prompts
@@ -175,6 +176,8 @@ async def check_run_progress(
     session_id: str = Depends(get_microsite_session_id)
 ):
     """Check the progress of a given Run ID."""
+    if verify_session_id(session_id) is not True:
+        return JSONResponse(status_code=403, content={"detail": "Invalid session ID"})
     retries = 3  # Number of retries
     for attempt in range(retries):
         try:
@@ -248,6 +251,8 @@ async def upload_direct_prompt(
     - `function_params`: JSON string containing parameters for the function. For example. `{"include_descriptions": true}`
     - `data_file`: The file to be processed (CSV or Excel).
     """
+    if verify_session_id(session_id) is not True:
+        return JSONResponse(status_code=403, content={"detail": "Invalid session ID"})
     logging.debug("Entered upload_direct_prompt endpoint")
     if data_file and json_data:
         logging.error("Both data_file and json_data provided. This is not allowed.")

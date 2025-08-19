@@ -6,17 +6,17 @@ from fastapi import HTTPException
 import gspread
 from gspread_dataframe import get_as_dataframe
 
-from enhancifai_backend.database.handlers.sheets import SheetsDbCore
+from enhancifai_backend.engine.public_microsites.sheets_creds_mem import sheets_creds_memory
 
 PAGE_SIZE = 10
 
 class GoogleSheetsHandler:
-    def __init__(self, user_id):
-        self.user_id = user_id
+    def __init__(self, session_id):
+        self.session_id = session_id
         self.creds = self.authenticate_google_sheets()
 
     def authenticate_google_sheets(self):
-        creds = SheetsDbCore.get_user_google_credentials(self.user_id)
+        creds = sheets_creds_memory.get_creds(self.session_id)
         if not creds:
             raise HTTPException(status_code=403, detail="User is not authenticated with Google")
 
@@ -25,16 +25,16 @@ class GoogleSheetsHandler:
                 try:
                     creds.refresh(Request())
                     # Update the refreshed credentials in the database
-                    SheetsDbCore.update_user_google_credentials(self.user_id, creds)
+                    sheets_creds_memory.set_creds(self.session_id, creds)
                 except RefreshError:
-                    logging.error(f"Failed to refresh Google credentials for user {self.user_id}")
-                    SheetsDbCore.delete_user_google_credentials(self.user_id)
+                    logging.error(f"Failed to refresh Google credentials for user {self.session_id}")
+                    sheets_creds_memory.clear_creds(self.session_id)
                     raise HTTPException(
                         status_code=403,
                         detail="Google credentials are invalid or expired, re-authentication required."
                     )
             else:
-                logging.error(f"Google credentials for user {self.user_id} are invalid or expired")
+                logging.error(f"Google credentials for user {self.session_id} are invalid or expired")
                 raise HTTPException(status_code=403, detail="Google credentials are invalid or expired")
         return creds
 
