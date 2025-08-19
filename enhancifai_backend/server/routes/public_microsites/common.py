@@ -1,13 +1,28 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Request
 import uuid
 
 router = APIRouter()
 
 
 @router.get("/microsites/common/session_id", tags=["Microsites - Common"])
-def get_session_id(ip: str = Query(..., description="Client IP address")):
+async def get_session_id(request: Request):
     """
-    Generate a deterministic UUID (v5) session id from the provided IP address.
+    Generate a deterministic UUID (v5) session id from the client's IP address.
+
+    IP extraction priority:
+    - X-Forwarded-For header (first value) — for proxies/load balancers
+    - request.client.host fallback
     """
+    xff = request.headers.get("x-forwarded-for")
+    if xff:
+        # X-Forwarded-For may contain multiple comma-separated IPs; take the first one
+        ip = xff.split(",")[0].strip()
+    else:
+        client = request.client
+        ip = client.host if client else None
+
+    if not ip:
+        return {"error": "Could not determine client IP"}
+
     session_id = uuid.uuid5(uuid.NAMESPACE_DNS, ip)
-    return {"ip": ip, "session_id": str(session_id)}
+    return {"session_id": str(session_id)}
