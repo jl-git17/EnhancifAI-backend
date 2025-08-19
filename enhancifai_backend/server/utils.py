@@ -160,6 +160,19 @@ def get_current_user_id(token: str = Header(None, alias="token")) -> Optional[in
     user_details = UsersDbCore.get_user_by_email(user_email)
     return user_details.get("user_id")
 
+def get_microsite_session_id(token: str = Header(None, alias="x-microsite-session-id")) -> Optional[str]:
+    """
+    Get the microsite session ID from the request headers.
+
+    Args:
+        token (str): The token to extract the microsite session ID from.
+
+    Returns:
+        Optional[str]: The microsite session ID.
+    """
+    if not token:
+        return None
+    return token
 
 def get_current_user_id_unverified(token: str = Header(None, alias="token")) -> Optional[int]:
     """

@@ -328,8 +328,13 @@ CREATE TABLE IF NOT EXISTS enhancifai.microsite_function_runs (
     run_details JSONB NOT NULL DEFAULT '{}',
     created_at TIMESTAMP DEFAULT now(),
     check_in FLOAT,
-    cancelled BOOLEAN
+    cancelled BOOLEAN,
+    source_filename VARCHAR
 );
+
+-- temp
+ALTER TABLE enhancifai.microsite_function_runs
+    ADD COLUMN IF NOT EXISTS source_filename VARCHAR;
 
 -- Table to store microsite function run calls
 CREATE TABLE IF NOT EXISTS enhancifai.microsite_function_runs_calls (
