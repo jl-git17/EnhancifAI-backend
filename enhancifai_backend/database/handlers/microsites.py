@@ -272,4 +272,19 @@ class MicrositesRunsDbCore:
             return file_url
 
         return None
+    
+    @classmethod
+    def get_source_filename(cls, run_id):
+        """
+        Retrieve the source filename for the specified run.
+        
+        Parameters:
+            run_id (str): The run's identifier.
+        
+        Returns:
+            The source filename if found, otherwise None.
+        """
+        sql = schemafy("SELECT source_filename FROM enhancifai.microsite_function_runs WHERE id = %s;")
+        result = read_db.do('select_one', sql=sql, data=(run_id,))
+        return result['source_filename'] if result else None
 
