@@ -65,10 +65,10 @@ class CSVHandler:
                         return False
                     return True
             except UnicodeDecodeError as e:
-                logging.error(f"Error with encoding {encoding}: {e}")
+                logging.error("Error with encoding %s: %s", encoding, e)
             except Exception as e:
                 errors.append(str(e))
-                logging.error(f"Error loading CSV: {e}")
+                logging.error("Error loading CSV: %s", e)
                 return '\n'.join(errors)
         logging.error("Failed to read CSV with all attempted encodings.")
         return False
@@ -120,9 +120,9 @@ class CSVHandler:
         total_tasks = total_records * len(prompts)
         runs_progress.add_run(self.run_id, total_tasks)
 
-        # Duplicate-check start
+        # Duplicate-check start (limit to the subset we actually process to reduce memory usage)
         seen_rows = set()
-        for row in self.data:
+        for row in self.data[:total_records]:
             row_tuple = tuple(sorted(row.items()))
             if row_tuple in seen_rows:
                 raise ValueError("Duplicate row found in CSV data.")
@@ -272,7 +272,11 @@ class CSVHandler:
             query=prompt_config['prompt'],
             run_id=self.run_id
         )
-        logging.debug(f"Batch data: {batch_data}")
+        # Avoid logging entire payloads to keep memory footprint small
+        try:
+            logging.debug("Batch returned %d items.", len(batch_data) if hasattr(batch_data, '__len__') else -1)
+        except Exception:
+            pass
         # 'batch_data' should be a list of dicts, one per row in 'to_send'
 
         output_heading = prompt_config['output_heading']
@@ -321,10 +325,20 @@ class CSVHandler:
             ]
 
     def update_rows_with_results(self, results):
+        # Group results by row_index to avoid repeated full scans (reduces memory churn)
+        grouped = {}
+        for res in results or []:
+            if not res:
+                continue
+            idx = res.get('row_index')
+            if idx is None:
+                continue
+            grouped.setdefault(idx, []).append(res)
+
         updated_data = []
         for idx, row in enumerate(self.data):
             new_row = dict(row)
-            row_results = [res for res in results if res and res.get('row_index') == idx]
+            row_results = grouped.get(idx, [])
             row_results_sorted = sorted(row_results, key=lambda x: int(x['prompt_number']))
 
             for result in row_results_sorted:

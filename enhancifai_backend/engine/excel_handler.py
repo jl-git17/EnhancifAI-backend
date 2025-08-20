@@ -61,7 +61,7 @@ class ExcelHandler:
                 return False
             return True
         except Exception as e:
-            logging.error(f"Error loading Excel file: {e}")
+            logging.error("Error loading Excel file: %s", e)
             return False
 
     def _compute_dynamic_chunk_size(self, max_records):
@@ -115,9 +115,9 @@ class ExcelHandler:
         elif self.performance_optimization:
             max_workers = 2
 
-        # Duplicate-check start
+        # Duplicate-check start (limit to processed subset to reduce memory usage)
         seen_rows = set()
-        for row in self.data:
+        for row in self.data[:total_records]:
             row_tuple = tuple(sorted((str(k), str(v)) for k, v in row.items()))
             if row_tuple in seen_rows:
                 raise ValueError("Duplicate row found in Excel data.")
@@ -323,10 +323,20 @@ class ExcelHandler:
             return self.column_index_to_letter(index // 26 - 1) + string.ascii_uppercase[index % 26]
 
     def update_rows_with_results(self, results):
+        # Group results by row_index to avoid repeated scans
+        grouped = {}
+        for res in results or []:
+            if not res:
+                continue
+            idx = res.get('row_index')
+            if idx is None:
+                continue
+            grouped.setdefault(idx, []).append(res)
+
         updated_data = []
         for idx, row in enumerate(self.data):
             new_row = dict(row)
-            row_results = [res for res in results if res and res.get('row_index') == idx]
+            row_results = grouped.get(idx, [])
             row_results_sorted = sorted(row_results, key=lambda x: int(x['prompt_number']))
             for result in row_results_sorted:
                 for key, value in result.items():
