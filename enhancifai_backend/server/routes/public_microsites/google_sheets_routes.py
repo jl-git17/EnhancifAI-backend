@@ -1,5 +1,6 @@
 import json
 import logging
+import secrets
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
@@ -64,11 +65,21 @@ async def login_sheets(session_id: str):
             detail="User has already logged in for Google Sheets usage."
         )
 
-    flow = get_flow()
-    authorization_url, state = flow.authorization_url(access_type='offline', include_granted_scopes='true')
+    # Create a stateless state value that embeds the session_id so callback
+    # requests can determine the originating session without relying on
+    # in-memory process-local storage (avoids load-balancer instance issues).
+    random_token = secrets.token_urlsafe(24)
+    state_value = f"{session_id}|{random_token}"
 
-    # Store state in the database
-    sheets_creds_memory.set_state(session_id, state)
+    # Pass our generated state into the flow so the same value is round-tripped
+    flow = get_flow(state=state_value)
+    authorization_url, returned_state = flow.authorization_url(
+        access_type='offline', include_granted_scopes='true'
+    )
+
+    # Sanity check: ensure returned_state matches what we set
+    if returned_state != state_value:
+        logging.warning("OAuth returned state does not match generated state")
 
 
     return JSONResponse(status_code=200, content={"status": "success", "url": authorization_url})
@@ -80,11 +91,16 @@ async def oauth2callback(request: Request):
     if not state:
         raise HTTPException(status_code=400, detail="Missing state parameter")
 
-    session_id = sheets_creds_memory.get_session_id_of_state(state)
-    if not session_id:
+    # Expect the state to be in the format: "<session_id>|<random_token>"
+    try:
+        session_id_parsed, _token = state.split("|", 1)
+    except Exception:
         raise HTTPException(status_code=400, detail="Invalid state parameter")
 
+    session_id = session_id_parsed
+
     _url = str(request.url).replace("http://", "https://")
+    # Recreate the flow with the same state value so token exchange validates
     flow = get_flow(state)
     try:
         flow.fetch_token(authorization_response=_url)
@@ -94,7 +110,6 @@ async def oauth2callback(request: Request):
     creds = flow.credentials
 
     sheets_creds_memory.set_creds(session_id, creds)
-    sheets_creds_memory.clear_state(session_id)
 
     return "Authentication successful. You can close this window."
 
