@@ -27,14 +27,14 @@ class GoogleSheetsHandler:
                     # Update the refreshed credentials in the database
                     sheets_creds_memory.set_creds(self.session_id, creds)
                 except RefreshError:
-                    logging.error(f"Failed to refresh Google credentials for user {self.session_id}")
+                    logging.error("Failed to refresh Google credentials for user %s", self.session_id)
                     sheets_creds_memory.clear_creds(self.session_id)
                     raise HTTPException(
                         status_code=403,
                         detail="Google credentials are invalid or expired, re-authentication required."
                     )
             else:
-                logging.error(f"Google credentials for user {self.session_id} are invalid or expired")
+                logging.error("Google credentials for user %s are invalid or expired", self.session_id)
                 raise HTTPException(status_code=403, detail="Google credentials are invalid or expired")
         return creds
 
