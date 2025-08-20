@@ -27,7 +27,7 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/drive",
 ]
-REDIRECT_URI = settings.google_sheets_redirect_uri
+REDIRECT_URI = str(settings.google_sheets_redirect_uri).replace('/callback/google/sheets', '/microsites/callback/google/sheets')
 if REDIRECT_URI is None:
     raise ValueError("GOOGLE_SHEETS_REDIRECT_URI environment variable not set")
 
