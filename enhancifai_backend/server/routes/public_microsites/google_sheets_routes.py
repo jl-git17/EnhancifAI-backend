@@ -4,13 +4,14 @@ import secrets
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
+from starlette.concurrency import run_in_threadpool
 from google_auth_oauthlib.flow import Flow
 
 from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
 from enhancifai_backend.engine.import_google_sheets import GoogleSheetsHandler
 from enhancifai_backend.server.models.execution import ExportSheetsRequest
-from enhancifai_backend.server.utils import get_current_user_id, get_microsite_session_id, verify_secret_key
+from enhancifai_backend.server.utils import get_microsite_session_id, verify_secret_key
 from enhancifai_backend.engine.public_microsites.export_google_sheets_public_microsites import export_to_google_sheets_public_microsites
 from enhancifai_backend.engine.public_microsites.sheets_creds_mem import sheets_creds_memory
 
@@ -164,13 +165,13 @@ async def export_to_sheets(
                 }
             )
     except Exception as e:
-        logging.error(f"Error exporting to Google Sheets: {str(e)}")
+        logging.error("Error exporting to Google Sheets: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 @router.get("/microsites/sheets/list", tags=["Microsites - Google Sheets"], operation_id="list_sheets_operation")
 async def list_sheets(
     search_name: Optional[str] = "",
-    page: Optional[int] = 1,
+    page: int = 1,
     session_id: str = Depends(get_microsite_session_id),
     _: str = Depends(verify_secret_key)
 ):
@@ -199,8 +200,13 @@ async def list_sheets(
     """
 
     handler = GoogleSheetsHandler(session_id)
+    # keep the behavior that page==1 => no page token, otherwise pass page through
     page_token = None if page == 1 else page
-    result = handler.find_sheet(search_name, page_token)
+
+    # find_sheet is a blocking (I/O) operation; run it in a threadpool so the
+    # FastAPI event loop isn't blocked. This improves throughput for concurrent
+    # callers and reduces latency under load.
+    result = await run_in_threadpool(handler.find_sheet, search_name, page_token)
     return JSONResponse(status_code=200, content=result)
 
 @router.get("/microsites/sheets/data", tags=["Microsites - Google Sheets"], operation_id="get_data_sheets_operation")
@@ -235,5 +241,5 @@ async def get_sheet_data(
     except HTTPException as e:
         raise e
     except Exception as e:
-        logging.error(f"Error retrieving Google Sheet data: {str(e)}")
+        logging.error("Error retrieving Google Sheet data: %s", e)
         raise HTTPException(status_code=500, detail="An unexpected error occurred")
