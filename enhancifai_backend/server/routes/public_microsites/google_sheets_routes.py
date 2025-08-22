@@ -9,7 +9,7 @@ from google_auth_oauthlib.flow import Flow
 
 from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
-from enhancifai_backend.engine.import_google_sheets import GoogleSheetsHandler
+from enhancifai_backend.engine.public_microsites.import_google_sheets_public_microsites import GoogleSheetsHandler
 from enhancifai_backend.server.models.execution import ExportSheetsRequest
 from enhancifai_backend.server.utils import get_microsite_session_id, verify_secret_key
 from enhancifai_backend.engine.public_microsites.export_google_sheets_public_microsites import export_to_google_sheets_public_microsites
