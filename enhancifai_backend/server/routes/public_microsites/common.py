@@ -29,19 +29,31 @@ class SessionManager:
         self._cleanup_thread = threading.Thread(target=self._cleanup_loop, daemon=True)
         self._cleanup_thread.start()
 
-    def generate_session_id(self, ip: str) -> str:
-        """Return deterministic UUID v5 (as string) for the given IP."""
-        return str(uuid.uuid5(uuid.NAMESPACE_DNS, ip))
+    def generate_session_id(self, *_ ) -> str:
+        """Return a new unique UUID (v4) as string.
+
+        Note: the IP is accepted for compatibility with the previous API but is
+        not used to deterministically derive the UUID. This ensures every
+        generated session id is unique (random) even for the same IP.
+        """
+        return str(uuid.uuid4())
 
     def get_or_create_session_from_ip(self, ip: str) -> str:
-        """Return existing session id for IP or create a new session entry."""
+        """Create a new session entry for the given IP and return its session id.
+
+        This method always creates a fresh, unique session id (see
+        `generate_session_id`) rather than returning a deterministic id based
+        on the IP. The IP is stored in the session metadata to allow optional
+        lookup or auditing later.
+        """
         sid = self.generate_session_id(ip)
         now = time.time()
         with self._lock:
-            if sid not in self._sessions:
-                self._sessions[sid] = {"data": {}, "created": now, "last_access": now}
-            else:
-                self._sessions[sid]["last_access"] = now
+            # Always create a new session with a unique id. We keep older
+            # sessions (they will be cleaned up by the background thread when
+            # they expire) so callers should explicitly delete if they want to
+            # remove previous sessions for the same IP.
+            self._sessions[sid] = {"data": {}, "created": now, "last_access": now, "ip": ip}
         return sid
 
     def get(self, session_id: str) -> Optional[Dict[str, Any]]:
