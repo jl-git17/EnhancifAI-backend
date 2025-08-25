@@ -111,11 +111,13 @@ def extract_columns_from_file(file_path):
     return extracted_columns
 
 def start_async_run(
-        run_id, data_file, prompts, max_recs,
+        run_id, language, style, data_file, prompts, max_recs,
         file_name, batched_processing=False, performance_optimization=False
 ):
     coro = process_run(
         run_id,
+        language,
+        style,
         data_file,
         prompts,
         max_recs,
@@ -125,7 +127,7 @@ def start_async_run(
     )
     asyncio.run(coro)
 
-async def process_run(run_id, data_file, prompts, max_recs, file_name,
+async def process_run(run_id, language, style, data_file, prompts, max_recs, file_name,
                         batched_processing=False, performance_optimization=False):
 
     # Guess the MIME type based on the file extension
@@ -134,6 +136,8 @@ async def process_run(run_id, data_file, prompts, max_recs, file_name,
     if mime_type == 'text/csv':
         results = await handle_csv_file(
             run_id=run_id,
+            language=language,
+            style=style,
             csv_file=data_file,
             prompts=prompts,
             max_recs=max_recs,
@@ -144,6 +148,8 @@ async def process_run(run_id, data_file, prompts, max_recs, file_name,
     elif mime_type in EXCEL_MIME_TYPES:
         results = await handle_excel_file(
             run_id=run_id,
+            language=language,
+            style=style,
             excel_file=data_file,
             prompts=prompts,
             max_recs=max_recs,
@@ -234,6 +240,8 @@ async def check_run_progress(
 @router.post("/microsites/execution/direct", tags=["Microsites - Execution"])
 async def upload_direct_prompt(
     req: Request,
+    language: str,
+    style: str,
     function_name: str = Form(...),
     function_params: str = Form('{}'),
     data_file: UploadFile = File(None),
@@ -439,6 +447,8 @@ async def upload_direct_prompt(
             target=start_async_run,
             args=(
                 run_id,
+                language,
+                style,
                 temp_data_file_path,
                 read_prompts,
                 max_recs,

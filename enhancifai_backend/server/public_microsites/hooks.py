@@ -5,8 +5,8 @@ import uuid
 from fastapi import HTTPException
 
 from enhancifai_backend.config import settings
-from enhancifai_backend.ai.openai_api import OpenAIConnector
-from enhancifai_backend.ai.gemini import GeminiConnector
+from enhancifai_backend.ai.public_microsites.openai_api import OpenAIConnector
+from enhancifai_backend.ai.public_microsites.gemini import GeminiConnector
 from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
 from enhancifai_backend.engine.public_microsites.csv_handler import CSVHandler
 from enhancifai_backend.engine.public_microsites.excel_handler import ExcelHandler
@@ -14,13 +14,13 @@ from enhancifai_backend.server.utils import AdminSettings
 
 pi_ai_connection = OpenAIConnector("gpt-4.1-nano")  # TODO env var
 
-def get_ai_connection(engine):
+def get_ai_connection(engine, language, style):
     if engine == 'gemini':
         return GeminiConnector()
     else:
-        return OpenAIConnector(engine)
+        return OpenAIConnector(engine, language, style)
 
-async def handle_csv_file(csv_file, prompts, max_recs, run_id, filename,
+async def handle_csv_file(csv_file, prompts, max_recs, run_id, filename, language, style,
                           batched_processing=False, performance_optimization=False):
     """
     Handle CSV file processing, including new 'batched_processing' and
@@ -40,7 +40,7 @@ async def handle_csv_file(csv_file, prompts, max_recs, run_id, filename,
         run_id=run_id,
         file_path=temp_csv_file_path,
         output_file=processed_csv_path,
-        ai_connector=get_ai_connection(engine),
+        ai_connector=get_ai_connection(engine, language, style),
         engine=engine,
         filename=filename,
         batched_processing=batched_processing,
@@ -72,7 +72,7 @@ async def handle_csv_file(csv_file, prompts, max_recs, run_id, filename,
     }
     return response_data
 
-async def handle_excel_file(excel_file, prompts, max_recs, run_id, filename,
+async def handle_excel_file(excel_file, prompts, max_recs, run_id, filename, language, style,
                             batched_processing=False, performance_optimization=False):
     """
     Handle Excel file processing, including 'batched_processing' and
@@ -92,7 +92,7 @@ async def handle_excel_file(excel_file, prompts, max_recs, run_id, filename,
         run_id=run_id,
         file_path=temp_excel_file_path,
         output_file=processed_excel_path,
-        ai_connector=get_ai_connection(engine),
+        ai_connector=get_ai_connection(engine, language, style),
         engine=engine,
         filename=filename,
         batched_processing=batched_processing,
