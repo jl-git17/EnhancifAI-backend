@@ -1,7 +1,7 @@
 import uuid
 import threading
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
 from http.client import HTTPException
 from fastapi import APIRouter, Depends, Request
 
@@ -114,6 +114,98 @@ def verify_session_id(session_id: str) -> str:
         raise HTTPException(status_code=404, detail="Session not found or expired")
 
     return True
+
+
+# List of supported languages exposed to the frontend. Keep order as provided.
+SUPPORTED_LANGUAGES: List[str] = [
+    "Afrikaans",
+    "Albanian",
+    "Amharic",
+    "Arabic",
+    "Armenian",
+    "Assamese",
+    "Azerbaijani",
+    "Basque",
+    "Belarusian",
+    "Bengali",
+    "Bosnian",
+    "Bulgarian",
+    "Catalan",
+    "Chinese (Simplified)",
+    "Chinese (Traditional)",
+    "Croatian",
+    "Czech",
+    "Danish",
+    "Dutch",
+    "English",
+    "Estonian",
+    "Filipino",
+    "Finnish",
+    "French",
+    "Galician",
+    "Georgian",
+    "German",
+    "Greek",
+    "Gujarati",
+    "Haitian Creole",
+    "Hebrew",
+    "Hindi",
+    "Hungarian",
+    "Icelandic",
+    "Indonesian",
+    "Italian",
+    "Japanese",
+    "Kannada",
+    "Kazakh",
+    "Khmer",
+    "Korean",
+    "Kyrgyz",
+    "Lao",
+    "Latvian",
+    "Lithuanian",
+    "Macedonian",
+    "Malay",
+    "Malayalam",
+    "Marathi",
+    "Mongolian",
+    "Nepali",
+    "Norwegian",
+    "Persian (Farsi)",
+    "Polish",
+    "Portuguese",
+    "Punjabi",
+    "Romanian",
+    "Russian",
+    "Serbian",
+    "Sinhala",
+    "Slovak",
+    "Slovenian",
+    "Spanish",
+    "Swahili",
+    "Swedish",
+    "Tamil",
+    "Telugu",
+    "Thai",
+    "Turkish",
+    "Ukrainian",
+    "Urdu",
+    "Uzbek",
+    "Vietnamese",
+    "Welsh",
+    "Xhosa",
+    "Yoruba",
+    "Zulu",
+]
+
+
+@router.get("/microsites/common/languages", tags=["Microsites - Common"])
+async def get_supported_languages():
+    """
+    Return the list of supported languages for the frontend.
+    This is intentionally read-only and public (no secret dependency) so
+    the frontend can fetch it directly.
+    """
+    return {"languages": SUPPORTED_LANGUAGES}
 
 
 @router.get("/microsites/common/session_id", tags=["Microsites - Common"])
