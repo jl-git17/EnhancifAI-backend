@@ -258,6 +258,25 @@ async def upload_direct_prompt(
     - `function_name`: Name of the function to execute.
     - `function_params`: JSON string containing parameters for the function. For example. `{"include_descriptions": true}`
     - `data_file`: The file to be processed (CSV or Excel).
+    - `json_data`: A JSON string representing the dataset to process instead of uploading a file.
+
+    json_data accepted formats:
+    - A list of row objects (recommended):
+            [{"col1": "value1", "col2": "value2"},
+                {"col1": "value3", "col2": "value4"}]
+        This will be converted to an Excel sheet with two rows and columns `col1`, `col2`.
+
+    - A dictionary of columns to lists (also supported):
+            {"col1": ["value1", "value3"], "col2": ["value2", "value4"]}
+        This will be converted to the same DataFrame/Excel layout as the list-of-objects form.
+
+    Notes:
+    - `json_data` should be sent as a JSON-encoded string in the request body (the endpoint receives it as a string
+        and internally calls `json.loads`).
+    - The code uses `pandas.DataFrame(json_data)` to convert the payload to a DataFrame, so any structure accepted by
+        pandas DataFrame constructors (commonly a list of dicts or dict-of-lists) will work.
+    - When using `json_data`, the endpoint creates a temporary `.xlsx` file (stored under `/tmp`) which is used for
+        processing in the same way an uploaded Excel file would be.
     """
     if verify_session_id(session_id) is not True:
         return JSONResponse(status_code=403, content={"detail": "Invalid session ID"})
