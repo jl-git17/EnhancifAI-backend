@@ -55,6 +55,7 @@ DEFAULT_PROMPT = (
     "  {{\"response\": \"<answer for row>\"}}\n"
     "- Never add explanations, apologies, or commentary.\n"
     "- Language: {language}\n"
+    "- Important (Hebrew/Arabic): If the language is Hebrew or Arabic, prefix the answer string with the Unicode RIGHT-TO-LEFT MARK (U+200F) so the text is rendered right-to-left. You may either insert the actual U+200F character at the start of the string value or use the escape sequence '\\u200F'. Do not add any other characters outside the JSON shape.\n"
     "- Style: {style}"
 )
 
@@ -71,6 +72,7 @@ DEFAULT_PROMPT_BATCHED = (
     "- The length of the `response` array **must equal** the number of input rows.\n"
     "- Never add explanations, apologies, or commentary.\n"
     "- Language: {language}\n"
+    "- Important (Hebrew/Arabic): If the language is Hebrew or Arabic, prefix each answer string in the `response` array with the Unicode RIGHT-TO-LEFT MARK (U+200F) so the text is rendered right-to-left. You may either insert the actual U+200F character at the start of each string value or use the escape sequence '\\u200F'. Do not add any other characters outside the JSON shape.\n"
     "- Style: {style}"
 )
 
