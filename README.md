@@ -28,10 +28,3 @@ EnhancifAI Backend is a Python-based service designed for processing CSV and Exc
 
 ## Usage
 Refer to the [Usage Guide](Usage.md) for detailed instructions on how to use the application, including formatting prompt files and processing data.
-
-## Contributing
-Contributions are welcome! Please fork the repository and submit a pull request for review.
-
-## License
-This project is licensed under the MIT License.
-
