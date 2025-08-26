@@ -1,6 +1,7 @@
 import json
 import logging
 import secrets
+import ast
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import JSONResponse
@@ -232,12 +233,50 @@ async def get_sheet_data(
     handler = GoogleSheetsHandler(session_id)
     try:
         result = handler.get_sheet_as_dataframe(sheet_id, worksheet_name)
-        # Convert DataFrame to JSON-compatible format
-        records = result.astype(str).to_dict(orient='records')
-        return JSONResponse(status_code=200, content={
-            "message": "Google Sheet data processed successfully.",
-            "records": records
-        })
+
+        records = []
+        # If result is a pandas DataFrame, convert directly to list of dicts
+        try:
+            import pandas as _pd
+            if isinstance(result, _pd.DataFrame):
+                records = result.astype(str).to_dict(orient='records')
+            else:
+                # Handle list/dict responses coming from older handlers
+                if isinstance(result, list):
+                    for item in result:
+                        # Case: item has "data" which is a stringified dict (single quotes) or a dict
+                        if isinstance(item, dict) and 'data' in item:
+                            data = item['data']
+                            parsed = None
+                            if isinstance(data, str):
+                                # Try JSON first (double quotes), then ast.literal_eval for single-quoted dicts
+                                try:
+                                    parsed = json.loads(data)
+                                except Exception:
+                                    try:
+                                        parsed = ast.literal_eval(data)
+                                    except Exception:
+                                        parsed = {'data': data}
+                            elif isinstance(data, dict):
+                                parsed = data
+                            else:
+                                parsed = {'data': data}
+                            records.append(parsed)
+                        elif isinstance(item, dict):
+                            # Already a dict mapping columns -> values
+                            records.append(item)
+                        else:
+                            records.append({'value': item})
+                elif isinstance(result, dict):
+                    records = [result]
+                else:
+                    records = [{'value': str(result)}]
+        except Exception:
+            logging.exception("Error while normalizing sheet data")
+            raise HTTPException(status_code=500, detail="Failed to normalize sheet data")
+
+        # Return the normalized list of row-dictionaries directly
+        return JSONResponse(status_code=200, content=records)
     except HTTPException as e:
         raise e
     except Exception as e:
