@@ -413,6 +413,7 @@ async def upload_direct_prompt(
     i = 1
     for prompt in prompts:
         prompt['prompt_number'] = i
+        prompt['prompt'] += f"\n (Language: {language}, Writing Style: {style})"
         i += 1
         param_name = prompt.get('param_name')
         if param_name:
