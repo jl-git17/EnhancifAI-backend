@@ -171,9 +171,6 @@ class OpenAIConnector:
         self.client = OpenAI(api_key=settings.openai_api_key)
         self.rate_limit = False
     
-    def fill_prompt_in(self, prompt: str) -> str:
-        return prompt.format(language=self.language, style=self.style)
-
     def process_csv_row(self, columns: list, rows: dict, query: str, run_id: int) -> dict:
         """
         Process a CSV row with specified columns and query using OpenAI API.
@@ -205,7 +202,7 @@ class OpenAIConnector:
                 messages = [
                     {
                         "role": "system",
-                        "content": self.fill_prompt_in(DEFAULT_PROMPT)
+                        "content": DEFAULT_PROMPT
                     }
                 ]
 
@@ -318,7 +315,7 @@ class OpenAIConnector:
                 messages = [
                     {
                         "role": "system",
-                        "content": self.fill_prompt_in(DEFAULT_PROMPT_BATCHED)
+                        "content": DEFAULT_PROMPT_BATCHED
                     },
                     {
                         "role": "user",
