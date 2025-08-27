@@ -314,11 +314,15 @@ async def upload_direct_prompt(
         try:
             logging.debug("JSON data received: %s", json_data)
             _json_data = json.loads(json_data)
+            _sheet_name = _json_data.get("sheet_name", "Sheet1")
+            _data = _json_data.get("data", None)
+            if not _data:
+                raise HTTPException(status_code=400, detail="Missing 'data' key in JSON input.")
             with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx') as temp_data_file:
                 temp_data_file_path = temp_data_file.name
                 logging.debug("Created temporary data file at %s", temp_data_file_path)
-                json_to_excel(_json_data, temp_data_file_path)
-            file_name = f"{sheet_name}.xlsx"
+                json_to_excel(_data, temp_data_file_path)
+            file_name = f"{_sheet_name}.xlsx"
             data_file_suffix = '.xlsx'
             logging.info("JSON data converted to Excel: %s", file_name)
         except KeyError as e:
