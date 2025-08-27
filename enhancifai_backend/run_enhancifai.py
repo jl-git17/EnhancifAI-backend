@@ -2,6 +2,7 @@
 import os
 import sys
 import logging
+import signal
 from typing import NoReturn
 
 from enhancifai_backend.config import settings
@@ -49,6 +50,13 @@ def prepare_database(db: DbSession) -> None:
 def run() -> NoReturn:
     """Main entrypoint that sets up the database and runs the server."""
     db = DbSession('setup')
+
+    def handle_sigterm(signum, frame):
+        logging.info("Received SIGTERM, shutting down gracefully...")
+        sys.exit(0)
+
+    signal.signal(signal.SIGTERM, handle_sigterm)
+
     try:
         prepare_database(db)
         run_server()

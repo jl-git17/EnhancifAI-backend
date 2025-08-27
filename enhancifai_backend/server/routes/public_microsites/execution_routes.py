@@ -8,6 +8,7 @@ import os
 from enum import Enum
 from tempfile import NamedTemporaryFile
 from threading import Thread
+from time import time
 from typing import Any, Dict
 
 # Third-party
@@ -281,6 +282,10 @@ async def upload_direct_prompt(
     if verify_session_id(session_id) is not True:
         return JSONResponse(status_code=403, content={"detail": "Invalid session ID"})
     logging.debug("Entered upload_direct_prompt endpoint")
+    if language == 'Hebrew':
+        language = "Hebrew (right-to-left)"
+    elif language == 'Arabic':
+        language = "Arabic (right-to-left)"
     if data_file and json_data:
         logging.error("Both data_file and json_data provided. This is not allowed.")
         raise HTTPException(
@@ -314,10 +319,15 @@ async def upload_direct_prompt(
         try:
             logging.debug("JSON data received: %s", json_data)
             _json_data = json.loads(json_data)
-            _sheet_name = _json_data.get("sheet_name", "Sheet1")
-            _data = _json_data.get("data", None)
-            if not _data:
-                raise HTTPException(status_code=400, detail="Missing 'data' key in JSON input.")
+            if 'sheet_name' in _json_data:
+                _sheet_name = _json_data.get("sheet_name", "Sheet1")
+                _data = _json_data.get("data", None)
+                if not _data:
+                    raise HTTPException(status_code=400, detail="Missing 'data' key in JSON input.")
+            else:
+                _data = _json_data
+                from datetime import datetime
+                _sheet_name = f"EnhancifAI_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
             with NamedTemporaryFile(delete=False, dir='/tmp', suffix='.xlsx') as temp_data_file:
                 temp_data_file_path = temp_data_file.name
                 logging.debug("Created temporary data file at %s", temp_data_file_path)
