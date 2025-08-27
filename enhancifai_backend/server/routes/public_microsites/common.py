@@ -2,8 +2,7 @@ import uuid
 import threading
 import time
 from typing import Any, Dict, Optional, List
-from http.client import HTTPException
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, HTTPException
 
 from enhancifai_backend.server.utils import verify_secret_key
 
