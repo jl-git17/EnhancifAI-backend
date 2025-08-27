@@ -45,7 +45,7 @@ DEFAULT_PROMPT_OLD = (
 
 DEFAULT_PROMPT = (
     "- You are an assistant with expertise in data analysis and can use your general knowledge to answer.\n"
-    "- Translate your output to: {language}\n"
+    "- Translate all your output to: {language}\n"
     "- Important (Hebrew/Arabic): If the language is Hebrew or Arabic, prefix the answer string with the Unicode RIGHT-TO-LEFT MARK (U+200F) so the text is rendered right-to-left. You may either insert the actual U+200F character at the start of the string value or use the escape sequence '\\u200F'. Do not add any other characters outside the JSON shape.\n"
     "- Style you must use: {style}.\n"
     "- The user provides a JSON object with:\n"
@@ -61,7 +61,7 @@ DEFAULT_PROMPT = (
 
 DEFAULT_PROMPT_BATCHED = (
     "- You are an assistant with expertise in data analysis and can use your general knowledge to answer.\n"
-    "- Translate your output to: {language}.\n"
+    "- Translate all your output to: {language}.\n"
     "- Important (Hebrew/Arabic): If the language is Hebrew or Arabic, prefix each answer string in the `response` array with the Unicode RIGHT-TO-LEFT MARK (U+200F) so the text is rendered right-to-left. You may either insert the actual U+200F character at the start of each string value or use the escape sequence '\\u200F'. Do not add any other characters outside the JSON shape.\n"
     "- Style you must use: {style}.\n"
     "- The user provides a JSON object with:\n"
