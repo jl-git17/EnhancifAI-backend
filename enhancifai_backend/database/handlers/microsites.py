@@ -182,7 +182,15 @@ class MicrositesRunsDbCore:
             The run details if found, otherwise None.
         """
         sql = schemafy("SELECT run_details FROM enhancifai.microsite_function_runs WHERE id = %s;")
-        return read_db.do('select_one', sql=sql, data=(run_id,))
+        result = read_db.do('select_one', sql=sql, data=(run_id,))
+        if result and result.get('run_details'):
+            try:
+                import json
+                run_details = json.loads(result['run_details']) if isinstance(result['run_details'], str) else result['run_details']
+                return {'run_details': run_details}
+            except Exception:
+                return {'run_details': result['run_details']}
+        return None
 
     @classmethod
     def set_run_checkin(cls, run_id):
@@ -196,8 +204,12 @@ class MicrositesRunsDbCore:
             The result from the database operation.
         """
         current_time = time.time()
-        sql = schemafy("UPDATE enhancifai.microsite_function_runs SET check_in = %s WHERE id = %s AND cancelled IS NOT TRUE;")
-        return write_db.do('execute', sql=sql, data=(current_time, run_id))
+        sql = schemafy("""
+            UPDATE enhancifai.microsite_function_runs
+            SET last_checkin = NOW()
+            WHERE id = %s;
+        """)
+        return write_db.do('execute', sql=sql, data=(run_id,))
 
     @classmethod
     def cancel_run(cls, run_id):
@@ -250,7 +262,9 @@ class MicrositesRunsDbCore:
         """
         sql = schemafy("SELECT COALESCE(cancelled, FALSE) AS cancelled FROM enhancifai.microsite_function_runs WHERE id = %s;")
         result = read_db.do('select_one', sql=sql, data=(run_id,))
-        return result['cancelled'] if result else False
+        if result and 'cancelled' in result:
+            return bool(result['cancelled'])
+        return False
 
     @classmethod
     def get_run_file_url(cls, run_id):
