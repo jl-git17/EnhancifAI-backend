@@ -10,8 +10,7 @@ from openai import OpenAI
 from pydantic import BaseModel
 
 from enhancifai_backend.config import settings
-from enhancifai_backend.database.handlers.runs import RunsDbCore
-from enhancifai_backend.database.handlers.users import UsersDbCore
+from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
 from enhancifai_backend.database.handlers.admin import AISettingsDbCore, PromptsDbCore
 from enhancifai_backend.engine.rate_limit_manager import rate_limit_manager
 
@@ -180,12 +179,8 @@ class OpenAIConnector:
         :param query: String containing specific processing directives.
         :return: Dictionary with processed content and token usage.
         """
-        if RunsDbCore.is_run_cancelled(run_id):
+        if MicrositesRunsDbCore.is_run_cancelled(run_id):
             raise RuntimeError("Job cancelled.")
-        payload = {
-            'columns': columns,
-            'rows': rows,
-        }
 
         max_attempts = 3
         _err = None
@@ -246,11 +241,7 @@ class OpenAIConnector:
                 
                 #if 'SYS:NONE' in data:
                     #data = data.replace('SYS:NONE', '').strip()
-
-                # Save token usage entry
-                user_id = RunsDbCore.get_user_id(run_id)
-                UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
-
+                # TODO: save token usage (IP address)
                 return {
                     "content": response,
                     "input_tokens": input_tokens,
@@ -297,7 +288,7 @@ class OpenAIConnector:
         run_id: int
     ) -> List[Dict[str, object]]:
 
-        if RunsDbCore.is_run_cancelled(run_id):
+        if MicrositesRunsDbCore.is_run_cancelled(run_id):
             raise RuntimeError("Job cancelled.")
 
         max_attempts = 3
@@ -361,10 +352,7 @@ class OpenAIConnector:
                 output_tokens = tokens_used - input_tokens
 
                 rate_limit_manager.update_make_api_call(self.engine, tokens_used=tokens_used)
-
-                user_id = RunsDbCore.get_user_id(run_id)
-                UsersDbCore.add_user_token_usage(user_id, run_id, self.engine, tokens_used)
-
+                # TODO: save token usage (IP address)
                 results = []
                 for line in response:
                     results.append({
@@ -448,7 +436,7 @@ class OpenAIConnector:
                 output_tokens = tokens_used - input_tokens
 
                 new_prompt = data.replace("```", "").strip()
-                UsersDbCore.add_user_token_usage_pi(user_id, self.engine, tokens_used)
+                # TODO: save token usage (IP address)
                 return {
                     "content": new_prompt,
                     "input_tokens": input_tokens,
