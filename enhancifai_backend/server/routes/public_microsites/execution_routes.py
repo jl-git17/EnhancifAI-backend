@@ -489,8 +489,8 @@ async def upload_direct_prompt(
                 file_name
             ),
             kwargs={
-                "batched_processing": True,
-                "performance_optimization": True,
+                "batched_processing": False,
+                "performance_optimization": False,
             },
         ).start()
         logging.debug("Asynchronous run thread started successfully")
