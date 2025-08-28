@@ -37,7 +37,6 @@ class ExcelHandler:
         self.row_completion = {}
         self.run_id = run_id
         self.engine = engine
-        self.user_id = user_id
         self.errors = []
         self.overflow = False
         self.batched_processing = batched_processing

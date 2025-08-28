@@ -37,7 +37,6 @@ class CSVHandler:
         self.row_completion = {}
         self.run_id = run_id
         self.engine = engine
-        self.user_id = user_id
         self.errors = []
         self.overflow = False
         self.num_prompts_total = 0
