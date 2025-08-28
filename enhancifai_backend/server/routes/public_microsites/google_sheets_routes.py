@@ -8,12 +8,16 @@ from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 from google_auth_oauthlib.flow import Flow
 
+import pandas as _pd
+
 from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
 from enhancifai_backend.engine.public_microsites.import_google_sheets_public_microsites import GoogleSheetsHandler
 from enhancifai_backend.server.models.execution import ExportSheetsRequest
 from enhancifai_backend.server.utils import get_microsite_session_id, verify_secret_key
-from enhancifai_backend.engine.public_microsites.export_google_sheets_public_microsites import export_to_google_sheets_public_microsites
+from enhancifai_backend.engine.public_microsites.export_google_sheets_public_microsites import (
+    export_to_google_sheets_public_microsites
+)
 from enhancifai_backend.engine.public_microsites.sheets_creds_mem import sheets_creds_memory
 
 router = APIRouter()
@@ -30,7 +34,9 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive.file",
     "https://www.googleapis.com/auth/drive",
 ]
-REDIRECT_URI = str(settings.google_sheets_redirect_uri).replace('/callback/google/sheets', '/microsites/callback/google/sheets')
+REDIRECT_URI = str(settings.google_sheets_redirect_uri).replace(
+    '/callback/google/sheets', '/microsites/callback/google/sheets'
+)
 if REDIRECT_URI is None:
     raise ValueError("GOOGLE_SHEETS_REDIRECT_URI environment variable not set")
 
@@ -76,7 +82,8 @@ async def login_sheets(session_id: str):
     # Pass our generated state into the flow so the same value is round-tripped
     flow = get_flow(state=state_value)
     authorization_url, returned_state = flow.authorization_url(
-        access_type='offline', include_granted_scopes='true'
+        access_type='offline',
+        include_granted_scopes='true'
     )
 
     # Sanity check: ensure returned_state matches what we set
@@ -87,7 +94,11 @@ async def login_sheets(session_id: str):
     return JSONResponse(status_code=200, content={"status": "success", "url": authorization_url})
 
 
-@router.get("/microsites/callback/google/sheets", tags=["Microsites - Google Sheets"], operation_id="oauth2callback_google_sheets_operation")
+@router.get(
+    "/microsites/callback/google/sheets",
+    tags=["Microsites - Google Sheets"],
+    operation_id="oauth2callback_google_sheets_operation"
+)
 async def oauth2callback(request: Request):
     state = request.query_params.get("state")
     if not state:
@@ -154,8 +165,16 @@ async def export_to_sheets(
     try:
         result = await export_to_google_sheets_public_microsites(session_id, file_path, source_filename)
         if isinstance(result, dict):
-            sheet_url = f"https://docs.google.com/spreadsheets/d/{result['spreadsheetId']}"
-            return JSONResponse(status_code=200, content={"status": "success", "url": sheet_url})
+            sheet_url = (
+                f"https://docs.google.com/spreadsheets/d/{result['spreadsheetId']}"
+            )
+            return JSONResponse(
+                status_code=200,
+                content={
+                    "status": "success",
+                    "url": sheet_url
+                }
+            )
         elif isinstance(result, HTTPException):
             return JSONResponse(
                 status_code=200,
@@ -237,7 +256,6 @@ async def get_sheet_data(
         records = []
         # If result is a pandas DataFrame, convert directly to list of dicts
         try:
-            import pandas as _pd
             if isinstance(result, _pd.DataFrame):
                 records = result.astype(str).to_dict(orient='records')
             else:
