@@ -22,7 +22,6 @@ class CSVHandler:
         ai_connector,
         run_id,
         engine,
-        user_id,
         filename,
         batched_processing=False,
         performance_optimization=False
