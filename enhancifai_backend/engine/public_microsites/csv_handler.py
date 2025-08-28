@@ -22,6 +22,7 @@ class CSVHandler:
         ai_connector,
         run_id,
         engine,
+        user_id,
         filename,
         batched_processing=False,
         performance_optimization=False
@@ -37,6 +38,7 @@ class CSVHandler:
         self.row_completion = {}
         self.run_id = run_id
         self.engine = engine
+        self.user_id = user_id
         self.errors = []
         self.overflow = False
         self.num_prompts_total = 0
@@ -61,10 +63,10 @@ class CSVHandler:
                         return False
                     return True
             except UnicodeDecodeError as e:
-                logging.error(f"Error with encoding {encoding}: {e}")
+                logging.error("Error with encoding %s: %s", encoding, e)
             except Exception as e:
                 errors.append(str(e))
-                logging.error(f"Error loading CSV: {e}")
+                logging.error("Error loading CSV: %s", e)
                 return '\n'.join(errors)
         logging.error("Failed to read CSV with all attempted encodings.")
         return False
@@ -116,9 +118,9 @@ class CSVHandler:
         total_tasks = total_records * len(prompts)
         runs_progress.add_run(self.run_id, total_tasks)
 
-        # Duplicate-check start
+        # Duplicate-check start (limit to the subset we actually process to reduce memory usage)
         seen_rows = set()
-        for row in self.data:
+        for row in self.data[:total_records]:
             row_tuple = tuple(sorted(row.items()))
             if row_tuple in seen_rows:
                 raise ValueError("Duplicate row found in CSV data.")
@@ -268,30 +270,17 @@ class CSVHandler:
             query=prompt_config['prompt'],
             run_id=self.run_id
         )
-        logging.debug(f"Batch data: {batch_data}")
+        # Avoid logging entire payloads to keep memory footprint small
+        try:
+            logging.debug("Batch returned %d items.", len(batch_data) if hasattr(batch_data, '__len__') else -1)
+        except Exception:
+            pass
+        # 'batch_data' should be a list of dicts, one per row in 'to_send'
 
-        # Defensive: ensure batch_data is a list of correct length
         output_heading = prompt_config['output_heading']
         results_for_chunk = []
         with self.lock:
             _last_item = {}
-            if not isinstance(batch_data, list) or len(batch_data) != len(to_send):
-                # If batch_data is not as expected, fill errors for each row
-                error_msg = f"AI batch response error: expected {len(to_send)} results, got {len(batch_data) if isinstance(batch_data, list) else type(batch_data)}."
-                logging.error(error_msg)
-                for i, actual_idx in enumerate(indexes):
-                    result = {
-                        "row_index": actual_idx,
-                        "prompt_number": prompt_config['prompt_number'],
-                        f"{output_heading}": error_msg
-                    }
-                    self.errors.append(error_msg)
-                    self._increment_row_completion(actual_idx)
-                    self.prompt_progress += 1
-                    runs_progress.update_progress(self.run_id, self.prompt_progress)
-                    results_for_chunk.append(result)
-                return results_for_chunk
-
             for i, item in enumerate(batch_data):
                 _last_item = item
                 actual_idx = indexes[i]
@@ -304,6 +293,7 @@ class CSVHandler:
                 # If engine used is different, mark overflow
                 if item.get("engine_used") != self.engine:
                     self.overflow = True
+
 
                 # Bump row completion
                 self._increment_row_completion(actual_idx)
@@ -322,7 +312,7 @@ class CSVHandler:
 
     def get_selected_columns(self, prompt_config, letter_to_column):
         selected_columns = prompt_config['columns']
-        if selected_columns == ['*']:
+        if selected_columns == '*':
             return list(self.data[0].keys())
         else:
             selected_columns_letters = selected_columns.split('+')
@@ -333,10 +323,20 @@ class CSVHandler:
             ]
 
     def update_rows_with_results(self, results):
+        # Group results by row_index to avoid repeated full scans (reduces memory churn)
+        grouped = {}
+        for res in results or []:
+            if not res:
+                continue
+            idx = res.get('row_index')
+            if idx is None:
+                continue
+            grouped.setdefault(idx, []).append(res)
+
         updated_data = []
         for idx, row in enumerate(self.data):
             new_row = dict(row)
-            row_results = [res for res in results if res and res.get('row_index') == idx]
+            row_results = grouped.get(idx, [])
             row_results_sorted = sorted(row_results, key=lambda x: int(x['prompt_number']))
 
             for result in row_results_sorted:
@@ -430,20 +430,4 @@ class CSVHandler:
         }
 
     def _insert_log(self, time_elapsed):
-        _name = "public_microsites"
-        return # TODO: implement for microsites
-        MicrositesRunsDbCore.insert_log(
-            run_id=self.run_id,
-            user_name=_name,
-            engine_model=self.engine,
-            log_timestamp=datetime.now(tz=timezone.utc),
-            num_rows_processed=self.processed,
-            time_elapsed=time_elapsed,
-            num_rows_in_file=len(self.data),
-            num_prompts=self.num_prompts_total,  # Or adjust if you track total prompts used
-            input_tokens=self.input_tokens,
-            output_tokens=self.output_tokens,
-            errors=json.dumps(self.errors),
-            filename=self.filename,
-            overflow=self.overflow
-        )
+        pass # TODO
