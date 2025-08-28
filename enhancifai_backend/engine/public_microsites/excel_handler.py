@@ -389,7 +389,8 @@ class ExcelHandler:
 
     def _insert_log(self, time_elapsed):
         _name = "public_microsites"
-        RunLogsDbCore.insert_log(
+        return # TODO: implement for microsites
+        MicrositesRunsDbCore.insert_log(
             run_id=self.run_id,
             user_name=_name,
             engine_model=self.engine,
