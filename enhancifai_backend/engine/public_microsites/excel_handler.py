@@ -258,6 +258,7 @@ class ExcelHandler:
             query=prompt_config['prompt'],
             run_id=self.run_id
         )
+        print(batch_data)
 
         output_heading = prompt_config['output_heading']
         results_for_chunk = []
@@ -342,17 +343,27 @@ class ExcelHandler:
 
     def _gather_results(self, futures, start_time):
         results = []
+        print("[DEBUG] Starting to gather results from futures...")
         for future in as_completed(futures):
+            print("[DEBUG] Awaiting future:", future)
             if self._is_run_cancelled():
+                print("[DEBUG] Run was cancelled during result gathering.")
                 return self._handle_cancel(start_time)
             try:
                 chunk_result = future.result()
+                print(f"[DEBUG] Got result from future: {chunk_result}")
                 if isinstance(chunk_result, list):
+                    print(f"[DEBUG] Extending results with a list of length {len(chunk_result)}")
                     results.extend(chunk_result)
                 elif chunk_result:
+                    print("[DEBUG] Appending single result to results.")
                     results.append(chunk_result)
+                else:
+                    print("[DEBUG] Future returned None or empty result.")
             except Exception as e:
+                print(f"[DEBUG] Exception in future: {e}")
                 self.errors.append(str(e))
+        print(f"[DEBUG] Finished gathering results. Total results: {len(results)}")
         return results
 
     def _filter_excel_row(self, row, selected_columns):
