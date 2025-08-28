@@ -206,10 +206,10 @@ class MicrositesRunsDbCore:
         current_time = time.time()
         sql = schemafy("""
             UPDATE enhancifai.microsite_function_runs
-            SET last_checkin = NOW()
+            SET check_in = %s
             WHERE id = %s;
         """)
-        return write_db.do('execute', sql=sql, data=(run_id,))
+        return write_db.do('execute', sql=sql, data=(current_time, run_id))
 
     @classmethod
     def cancel_run(cls, run_id):
