@@ -133,28 +133,32 @@ async def export_to_sheets(
     _: str = Depends(verify_secret_key)
 ):
     """
-    Export run data to a Google Sheets document.
+    Export run data to a Google Sheets document for a microsite session.
 
-    This endpoint exports the run data specified by `run_id` in the request body to a Google Sheets document.
-    
-    - **req_sheets**: The request body containing the `run_id` of the data to be exported.
-    - **user_id**: The ID of the authenticated user. This is fetched automatically by dependency injection (`token`).
+    This endpoint takes a run ID and exports the associated data to a new Google Sheets document using the authenticated user's Google account.
 
-    Returns a JSON response containing the status of the export operation
-        and the URL of the created Google Sheets document if successful.
+    Args:
+        req_sheets (ExportSheetsRequest): Request body containing the run_id to export.
+        session_id (str): Session identifier for the microsite user (injected).
+        _ (str): Secret key verification (injected).
 
-    - **200**: Successfully processed request.
-      - **content**: `{"status": "success", "url": "<Google Sheets URL>"}`
-      - **content**: `{"status": "failed", "status_code": 400, "error": "Unsupported file type"}`
-      - **content**: `{"status": "failed", "status_code": 403, "error": "User is not authenticated with Google"}`
-      - **content**: `{"status": "failed", "status_code": 403, "error": "Invalid Google credentials or access revoked"}`
-      - **content**: `{"status": "failed", "status_code": 500, "error": "Failed to create or update the Google Sheet"}`
-    - **401**: User not authenticated.
-      - **detail**: `{"detail": "User not authenticated"}`
-    - **404**: Run not found or file path not available.
-      - **detail**: `{"detail": "Run not found or file path not available"}`
-    - **500**: Internal server error.
-      - **detail**: Error message detailing what went wrong.
+    Returns:
+        JSONResponse: On success, returns status "success" and the URL of the created Google Sheet.
+        On failure, returns status "failed" with an error message and status code.
+
+    Responses:
+        200: Export successful or failed with details in the response body.
+            - {"status": "success", "url": "<Google Sheets URL>"}
+            - {"status": "failed", "status_code": 400, "error": "Unsupported file type"}
+            - {"status": "failed", "status_code": 403, "error": "User is not authenticated with Google"}
+            - {"status": "failed", "status_code": 403, "error": "Invalid Google credentials or access revoked"}
+            - {"status": "failed", "status_code": 500, "error": "Failed to create or update the Google Sheet"}
+        401: User not authenticated.
+            - {"detail": "User not authenticated"}
+        404: Run not found or file path not available.
+            - {"detail": "Run not found or file path not available"}
+        500: Internal server error.
+            - {"detail": "<error message>"}
     """
 
     file_path = MicrositesRunsDbCore.get_run_file_url(req_sheets.run_id)
