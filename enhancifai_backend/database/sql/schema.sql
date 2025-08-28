@@ -316,10 +316,6 @@ CREATE TABLE IF NOT EXISTS enhancifai.microsite_functions (
 ALTER TABLE enhancifai.microsite_functions
     ALTER COLUMN function_name TYPE VARCHAR(100);
 
-ALTER TABLE enhancifai.microsite_functions
-    ADD CONSTRAINT microsite_functions_function_name_unique UNIQUE (function_name);
-
--- Table to store microsite function runs (user_id is ip_address)
 CREATE TABLE IF NOT EXISTS enhancifai.microsite_function_runs (
     id SERIAL PRIMARY KEY,
     function_id INT REFERENCES enhancifai.microsite_functions(id),
