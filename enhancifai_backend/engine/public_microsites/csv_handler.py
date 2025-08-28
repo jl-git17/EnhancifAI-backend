@@ -269,12 +269,29 @@ class CSVHandler:
             run_id=self.run_id
         )
         logging.debug(f"Batch data: {batch_data}")
-        # 'batch_data' should be a list of dicts, one per row in 'to_send'
 
+        # Defensive: ensure batch_data is a list of correct length
         output_heading = prompt_config['output_heading']
         results_for_chunk = []
         with self.lock:
             _last_item = {}
+            if not isinstance(batch_data, list) or len(batch_data) != len(to_send):
+                # If batch_data is not as expected, fill errors for each row
+                error_msg = f"AI batch response error: expected {len(to_send)} results, got {len(batch_data) if isinstance(batch_data, list) else type(batch_data)}."
+                logging.error(error_msg)
+                for i, actual_idx in enumerate(indexes):
+                    result = {
+                        "row_index": actual_idx,
+                        "prompt_number": prompt_config['prompt_number'],
+                        f"{output_heading}": error_msg
+                    }
+                    self.errors.append(error_msg)
+                    self._increment_row_completion(actual_idx)
+                    self.prompt_progress += 1
+                    runs_progress.update_progress(self.run_id, self.prompt_progress)
+                    results_for_chunk.append(result)
+                return results_for_chunk
+
             for i, item in enumerate(batch_data):
                 _last_item = item
                 actual_idx = indexes[i]
@@ -287,7 +304,6 @@ class CSVHandler:
                 # If engine used is different, mark overflow
                 if item.get("engine_used") != self.engine:
                     self.overflow = True
-
 
                 # Bump row completion
                 self._increment_row_completion(actual_idx)

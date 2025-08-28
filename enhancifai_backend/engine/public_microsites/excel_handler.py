@@ -187,69 +187,86 @@ class ExcelHandler:
             "errors": self.errors
         }
 
-    def process_row(self, idx, row, prompt_config):
-        if self._is_run_cancelled():
-            return None
-        MicrositesRunsDbCore.set_run_checkin(self.run_id)
-
-        result = {
-            "row_index": idx,
-            "prompt_number": prompt_config['prompt_number']
-        }
-        output_heading = prompt_config['output_heading']
-
-        # Filter the row’s columns
-        columns_list = self.create_column_mapping()
-        selected_columns = self.get_selected_columns(prompt_config, columns_list)
-        filtered_row = self._filter_excel_row(row, selected_columns)
-
-        data = self.ai_connector.process_csv_row(
-            columns=columns_list,
-            rows=filtered_row,
-            query=prompt_config['prompt'],
-            run_id=self.run_id
-        )
-        if data['engine_used'] != self.engine:
-            self.overflow = True
-
-        result[f"{output_heading}"] = data.get("content", "")
-
-        with self.lock:
-            self.input_tokens += data.get('input_tokens', 0)
-            self.output_tokens += data.get('output_tokens', 0)
-            if idx in self.row_completion:
-                self.row_completion[idx] += 1
-            else:
-                self.row_completion[idx] = 1
-
-            self.prompt_progress += 1
-            runs_progress.update_progress(self.run_id, self.prompt_progress)
-
-        return result
-
     def process_chunk(self, start_idx, chunk_data, prompt_config):
         """
-        Similar logic as CSVHandler, but adapted for Excel data.
+        Send multiple rows (chunk_data) in one request to the AI.
+        'chunk_data' is a list of row dictionaries.
         """
         if self._is_run_cancelled():
             return []
 
-        # Create the column mapping and pick which columns are referenced by this prompt
-        columns_list = self.create_column_mapping()
-        selected_columns = self.get_selected_columns(prompt_config, columns_list)
+        # Choose the columns used by this prompt
+        selected_columns = self.get_selected_columns(prompt_config, self.create_column_mapping())
 
-        # Collect row subsets
+        # Build a list of filtered row dicts, parallel to 'chunk_data'
         to_send = []
         indexes = []
         for i, row in enumerate(chunk_data):
             actual_idx = start_idx + i
             if self._is_run_cancelled():
                 return []
-
-            # Filter row, converting datetimes if needed:
+            # Filter each row by the selected columns
             subset = self._filter_excel_row(row, selected_columns)
             to_send.append(subset)
             indexes.append(actual_idx)
+
+        # Now call 'process_csv_rows' on the AI connector **once** for the entire chunk
+        batch_data = self.ai_connector.process_csv_rows(
+            columns=self.create_column_mapping(),
+            rows=to_send,
+            query=prompt_config['prompt'],
+            run_id=self.run_id
+        )
+        logging.debug(f"Batch data: {batch_data}")
+
+        # Defensive: ensure batch_data is a list of correct length
+        output_heading = prompt_config['output_heading']
+        results_for_chunk = []
+        with self.lock:
+            _last_item = {}
+            if not isinstance(batch_data, list) or len(batch_data) != len(to_send):
+                # If batch_data is not as expected, fill errors for each row
+                error_msg = f"AI batch response error: expected {len(to_send)} results, got {len(batch_data) if isinstance(batch_data, list) else type(batch_data)}."
+                logging.error(error_msg)
+                for i, actual_idx in enumerate(indexes):
+                    result = {
+                        "row_index": actual_idx,
+                        "prompt_number": prompt_config['prompt_number'],
+                        f"{output_heading}": error_msg
+                    }
+                    self.errors.append(error_msg)
+                    self._increment_row_completion(actual_idx)
+                    self.prompt_progress += 1
+                    runs_progress.update_progress(self.run_id, self.prompt_progress)
+                    results_for_chunk.append(result)
+                return results_for_chunk
+
+            for i, item in enumerate(batch_data):
+                _last_item = item
+                actual_idx = indexes[i]
+                # Build a result dict for this row
+                result = {
+                    "row_index": actual_idx,
+                    "prompt_number": prompt_config['prompt_number'],
+                    f"{output_heading}": item.get("content", "")
+                }
+                # If engine used is different, mark overflow
+                if item.get("engine_used") != self.engine:
+                    self.overflow = True
+
+                # Bump row completion
+                self._increment_row_completion(actual_idx)
+
+                # Update progress once per row in the chunk
+                self.prompt_progress += 1
+                runs_progress.update_progress(self.run_id, self.prompt_progress)
+
+                results_for_chunk.append(result)
+
+            self.input_tokens += _last_item.get("input_tokens", 0)
+            self.output_tokens += _last_item.get("output_tokens", 0)
+
+        return results_for_chunk
 
         # One call to AI for all rows in this chunk
         batch_data = self.ai_connector.process_csv_rows(
