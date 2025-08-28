@@ -7,9 +7,7 @@ import time
 import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-from enhancifai_backend.database.handlers.run_logs import RunLogsDbCore
 from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
-from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.engine.runs_progress import runs_progress
 
 # Default concurrency
@@ -417,7 +415,8 @@ class CSVHandler:
 
     def _insert_log(self, time_elapsed):
         _name = "public_microsites"
-        RunLogsDbCore.insert_log(
+        return # TODO: implement for microsites
+        MicrositesRunsDbCore.insert_log(
             run_id=self.run_id,
             user_name=_name,
             engine_model=self.engine,

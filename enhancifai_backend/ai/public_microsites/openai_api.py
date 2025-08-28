@@ -110,46 +110,6 @@ def extract_and_parse_json(raw_data):
     except json.JSONDecodeError as jde:
         raise ValueError(f"JSON decoding failed: {jde.msg}\nContent: {json_str}") from jde
 
-
-class PromptImproverSettings:
-    def __init__(self, prompt: str=PI_DEFAULT_PROMPT, ai_engine: str=PI_DEFAULT_AI_ENGINE):
-        self._prompt = prompt
-        self._ai_engine = ai_engine
-        self._update_from_db()
-
-    def _update_from_db(self):
-        try:
-            from_db = PromptsDbCore.get_latest_prompt_by_user(ADMIN_USER_ID)
-            if from_db:
-                self._prompt = from_db['prompt']
-                self._ai_engine = from_db['ai_engine']
-        except Exception as e:
-            logging.error(e)
-
-    # Getter for prompt
-    @property
-    def prompt(self):
-        self._update_from_db()
-        return self._prompt
-
-    # Setter for prompt
-    @prompt.setter
-    def prompt(self, value: str):
-        self._prompt = value
-
-    # Getter for ai_engine
-    @property
-    def ai_engine(self):
-        self._update_from_db()
-        return self._ai_engine
-
-    # Setter for ai_engine
-    @ai_engine.setter
-    def ai_engine(self, value: str):
-        self._ai_engine = value
-
-pi_settings = PromptImproverSettings(prompt=PI_DEFAULT_PROMPT, ai_engine=PI_DEFAULT_AI_ENGINE)
-
 class OpenAIResponseFormat(BaseModel):
     response: str
 
@@ -167,7 +127,7 @@ class OpenAIConnector:
         #self.temperature = temperature
         #self.top_p = top_p
         # Initialize OpenAI client with API key
-        self.client = OpenAI(api_key=settings.openai_api_key)
+        self.client = OpenAI(api_key=settings.openai_api_key_microsites)
         self.rate_limit = False
     
     def process_csv_row(self, columns: list, rows: dict, query: str, run_id: int) -> dict:

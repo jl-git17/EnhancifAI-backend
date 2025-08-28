@@ -17,6 +17,7 @@ class Settings(BaseSettings):
 
     # AI and integration settings
     openai_api_key: str = Field(..., env="OPENAI_API_KEY")
+    openai_api_key_microsites: str = Field(..., env="OPENAI_API_KEY_MICROSITES")
     jwt_secret_key: str = Field(..., env="JWT_SECRET_KEY")
 
     # Admin settings
