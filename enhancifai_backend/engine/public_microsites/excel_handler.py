@@ -291,8 +291,7 @@ class ExcelHandler:
 
     def get_selected_columns(self, prompt_config, letter_to_column):
         selected_columns = prompt_config['columns']
-        print(selected_columns)
-        if selected_columns == '*':
+        if selected_columns == ['*'] or selected_columns == '*':
             return list(self.data[0].keys())
         else:
             selected_columns_letters = selected_columns.split('+')
