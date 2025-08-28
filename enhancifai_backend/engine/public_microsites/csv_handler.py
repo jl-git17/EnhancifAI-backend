@@ -8,7 +8,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
-from enhancifai_backend.engine.runs_progress import runs_progress
+from enhancifai_backend.engine.public_microsites.runs_progress import runs_progress
 
 # Default concurrency
 DEFAULT_MAX_THREADS = 2
