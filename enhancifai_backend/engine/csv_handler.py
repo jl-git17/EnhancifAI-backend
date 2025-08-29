@@ -125,7 +125,7 @@ class CSVHandler:
         for row in self.data[:total_records]:
             row_tuple = tuple(sorted(row.items()))
             if row_tuple in seen_rows:
-                raise ValueError("Duplicate row found in CSV data.")
+                logging.warning("Duplicate row found in CSV data. Row: %s", row)
             seen_rows.add(row_tuple)
         # Duplicate-check end
 
