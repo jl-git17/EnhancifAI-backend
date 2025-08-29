@@ -4,7 +4,7 @@ import secrets
 import ast
 from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, HTMLResponse
 from starlette.concurrency import run_in_threadpool
 from google_auth_oauthlib.flow import Flow
 
@@ -124,7 +124,70 @@ async def oauth2callback(request: Request):
 
     sheets_creds_memory.set_creds(session_id, creds)
 
-    return "Authentication successful. You can close this window."
+    html_content = """
+        <html>
+            <head>
+                <title>Authentication Successful</title>
+                <meta name='viewport' content='width=device-width, initial-scale=1'>
+                <style>
+                    :root {
+                        --color-secondary: #2970ff;
+                        --color-tertiary: #41465b;
+                        --color-quaternary: #f4f9ff;
+                        --color-quinary: #41465b;
+                        --color-senary: #adb4cd;
+                        --color-septenary: #606391;
+                    }
+                    body {
+                        background: var(--color-quaternary);
+                        color: var(--color-tertiary);
+                        font-family: 'Segoe UI', Arial, sans-serif;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        height: 100vh;
+                        margin: 0;
+                    }
+                    .card {
+                        background: #fff;
+                        border-radius: 12px;
+                        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+                        padding: 2rem 2.5rem;
+                        text-align: center;
+                        border: 1px solid var(--color-senary);
+                    }
+                    .checkmark {
+                        color: var(--color-secondary);
+                        font-size: 3rem;
+                        margin-bottom: 0.5rem;
+                    }
+                    .message {
+                        font-size: 1.2rem;
+                        margin-bottom: 0.5rem;
+                        color: var(--color-tertiary);
+                    }
+                    .fade {
+                        animation: fadeout 0.5s 0.7s forwards;
+                    }
+                    @keyframes fadeout { to { opacity: 0; } }
+                </style>
+                <script>
+                    setTimeout(function() {
+                        window.close();
+                    }, 1000);
+                </script>
+            </head>
+            <body>
+                <div class="card fade">
+                    <div class="checkmark">&#10003;</div>
+                    <div class="message">Authentication successful!</div>
+                    <div style="font-size:0.95rem;color:var(--color-septenary);">You may now close this window.</div>
+                </div>
+            </body>
+        </html>
+        """
+    return HTMLResponse(content=html_content)
 
 @router.post("/microsites/sheets/export", tags=["Microsites - Google Sheets"], operation_id="export_to_sheets_operation")
 async def export_to_sheets(
