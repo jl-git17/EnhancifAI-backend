@@ -175,7 +175,7 @@ async def oauth2callback(request: Request):
                 <script>
                     setTimeout(function() {
                         window.close();
-                    }, 1000);
+                    }, 2000);
                 </script>
             </head>
             <body>
