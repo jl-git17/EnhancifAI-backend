@@ -22,7 +22,7 @@ from enhancifai_backend.database.handlers.microsites import MicrositeFunctionsDb
 from enhancifai_backend.engine.public_microsites.runs_progress import runs_progress
 from enhancifai_backend.server.models.execution import RunProgressRequest
 from enhancifai_backend.server.public_microsites.hooks import handle_csv_file, handle_excel_file
-from enhancifai_backend.server.routes.files_routes import save_to_cache
+from enhancifai_backend.server.routes.public_microsites.file_routes import save_to_cache
 from enhancifai_backend.server.routes.public_microsites.common import verify_session_id
 from enhancifai_backend.server.utils import get_microsite_session_id, verify_secret_key
 
@@ -467,7 +467,7 @@ async def upload_direct_prompt(
         raise HTTPException(status_code=500, detail="Failed to create new run.") from e
 
     try:
-        save_to_cache(temp_data_file_path, "public", file_name)
+        save_to_cache(file_path=temp_data_file_path, session_id=session_id, filename=file_name)
         logging.debug("Saved data file to cache for run %s", run_id)
     except Exception as e:
         logging.exception("Error saving data file to cache")
