@@ -7,11 +7,11 @@ from fastapi import HTTPException
 import gspread
 import pandas as pd
 
-from enhancifai_backend.database.handlers.sheets import SheetsDbCore
+from enhancifai_backend.engine.public_microsites.sheets_creds_mem import sheets_creds_memory
 
 
 def authenticate_google_sheets_public_microsites(session_id):
-    creds = SheetsDbCore.get_user_google_credentials(session_id)
+    creds = sheets_creds_memory.get_creds(session_id)
     if not creds:
         logging.error("User %s does not have Google credentials", session_id)
         return HTTPException(status_code=403, detail="User is not authenticated with Google")

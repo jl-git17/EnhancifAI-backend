@@ -1,10 +1,9 @@
 
 import mimetypes
 import os
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import FileResponse, JSONResponse
 
-from enhancifai_backend.database.handlers.users import UsersDbCore
 from enhancifai_backend.server.routes.public_microsites.common import verify_session_id
 from enhancifai_backend.server.utils import (
     STATIC_FILES_DIRECTORY,

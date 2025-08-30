@@ -2,7 +2,8 @@ import time
 from collections import deque
 from threading import Lock
 
-from enhancifai_backend.database.handlers.runs import RunsDbCore
+from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
+
 
 GLOBAL_RATE_LIMIT_DELAY = 0.1
 
@@ -67,7 +68,7 @@ class RateLimitManager:
             self.token_logs[model].append((current_time, tokens_used))
 
     def _check_cancelled_run_id(self, run_id) -> bool:
-        return RunsDbCore.is_run_cancelled(run_id)
+        return MicrositesRunsDbCore.is_run_cancelled(run_id)
 
     def clean_cancelled_jobs(self):
         with self.queue_lock:

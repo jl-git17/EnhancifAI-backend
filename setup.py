@@ -39,7 +39,6 @@ setup(
         'oauth2client == 4.1.3',
         'google-generativeai',
         'aiofiles == 24.1.0',
-        'stripe == 11.3.0',
         'WeasyPrint',
         'requests',
         'httpx == 0.23.0',

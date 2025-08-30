@@ -1,18 +1,16 @@
 import json
-import os
 import re
 import time
 import logging
 from typing import Dict, List
 
-from fastapi import HTTPException
 from openai import OpenAI
 from pydantic import BaseModel
 
 from enhancifai_backend.config import settings
 from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
-from enhancifai_backend.database.handlers.admin import AISettingsDbCore, PromptsDbCore
-from enhancifai_backend.engine.rate_limit_manager import rate_limit_manager
+from enhancifai_backend.database.handlers.admin import AISettingsDbCore
+from enhancifai_backend.engine.public_microsites.rate_limit_manager import rate_limit_manager
 
 BUFFER_MULTIPLIER = 2
 
@@ -129,7 +127,7 @@ class OpenAIConnector:
         # Initialize OpenAI client with API key
         self.client = OpenAI(api_key=settings.openai_api_key_microsites)
         self.rate_limit = False
-    
+
     def process_csv_row(self, columns: list, rows: dict, query: str, run_id: int) -> dict:
         """
         Process a CSV row with specified columns and query using OpenAI API.
@@ -147,10 +145,10 @@ class OpenAIConnector:
 
         # Check rate limit manager
         self.engine = rate_limit_manager.can_make_api_call(model=self.engine,run_id=run_id)
-        logging.debug(f"Got engine from rlm: {self.engine}")
+        logging.debug("Got engine from rlm: %s", self.engine)
 
         ai_settings = AISettingsDbCore.get_ai_settings()
-        
+
 
         for attempt in range(max_attempts):
             try:
@@ -185,7 +183,7 @@ class OpenAIConnector:
                 )
 
                 data = completion.choices[0].message.parsed
-                logging.debug(f"ROW >> Raw data: {data}")
+                logging.debug("ROW >> Raw data: %s", data)
                 tokens_used = completion.usage.total_tokens
                 input_tokens = completion.usage.prompt_tokens
                 output_tokens = tokens_used - input_tokens
@@ -198,7 +196,7 @@ class OpenAIConnector:
                     raise RuntimeError("AI did not return valid JSON")
                 if not isinstance(response, str):
                     raise RuntimeError("AI did not return valid JSON string")
-                
+
                 #if 'SYS:NONE' in data:
                     #data = data.replace('SYS:NONE', '').strip()
                 # TODO: save token usage (IP address)
@@ -224,10 +222,10 @@ class OpenAIConnector:
                         delay = 5  # Default to 5 seconds if parsing fails
 
                     sleep_time = delay * BUFFER_MULTIPLIER  # Add a buffer time
-                    logging.debug(f"Rate limit exceeded. Waiting for {sleep_time} seconds before retrying...")
+                    logging.debug("Rate limit exceeded. Waiting for %s seconds before retrying...", sleep_time)
                     time.sleep(sleep_time)
                 else:
-                    logging.error(f"OpenAI API error on attempt {attempt + 1}: {e}")
+                    logging.error("OpenAI API error on attempt %s: %s", attempt + 1, e)
                     _err = e
                     if attempt < max_attempts - 1:
                         # Exponential backoff with a base delay of 1 second
@@ -280,7 +278,7 @@ class OpenAIConnector:
                     }
                 ]
 
-                logging.debug(f"MODEL: {self.engine}")
+                logging.debug("MODEL: %s", self.engine)
 
                 completion = self.client.beta.chat.completions.parse(
                     model=self.engine,
@@ -290,20 +288,20 @@ class OpenAIConnector:
                 )
 
                 data = completion.choices[0].message.parsed
-                logging.debug(f"Raw data: {data}")
+                logging.debug("Raw data: %s", data)
 
                 response = data.response
                 # Validate: must be a list of strings, not a single string
                 if response is None:
-                    logging.error(f"AI did not return valid JSON. data: {data}")
+                    logging.error("AI did not return valid JSON. data: %s", data)
                     raise RuntimeError("AI did not return valid JSON")
                 if not isinstance(response, list) or not all(isinstance(x, str) for x in response):
-                    logging.error(f"AI did not return a list of strings. Got: {response}")
+                    logging.error("AI did not return a list of strings. Got: %s", response)
                     raise RuntimeError("AI did not return a JSON array of strings")
                 if len(response) != len(rows):
                     logging.error(
-                        f"AI returned {len(response)} items, but expected {len(rows)}. "
-                        f"Response: {response}, Input rows: {rows}"
+                        "AI returned %d items, but expected %d. Response: %s, Input rows: %s",
+                        len(response), len(rows), response, rows
                     )
                     raise ValueError("AI did not return the same number of rows as input")
 
@@ -324,12 +322,12 @@ class OpenAIConnector:
                 return results
 
             except Exception as e:
-                logging.error(f"Attempt {attempt + 1} failed with error: {e}")
+                logging.error("Attempt %d failed with error: %s", attempt + 1, e)
                 if isinstance(e, ValueError):
                     _err = e
                     if attempt < max_attempts - 1:
                         backoff_time = 2 ** attempt
-                        logging.error(f"ValueError encountered. Retrying in {backoff_time} seconds...")
+                        logging.error("ValueError encountered. Retrying in %d seconds...", backoff_time)
                         time.sleep(backoff_time)
                 elif hasattr(e, 'status_code'):
                     if e.status_code == 429:
@@ -339,13 +337,13 @@ class OpenAIConnector:
                         else:
                             delay = 5
                         sleep_time = delay * BUFFER_MULTIPLIER
-                        logging.debug(f"Rate limit reached. Waiting {sleep_time} seconds before retrying...")
+                        logging.debug("Rate limit reached. Waiting %s seconds before retrying...", sleep_time)
                         time.sleep(sleep_time)
                 else:
                     _err = e
                     if attempt < max_attempts - 1:
                         backoff_time = 2 ** attempt
-                        logging.error(f"Error encountered. Retrying in {backoff_time} seconds...")
+                        logging.error("Error encountered. Retrying in %d seconds...", backoff_time)
                         time.sleep(backoff_time)
 
         if _err is None:
@@ -353,88 +351,3 @@ class OpenAIConnector:
         else:
             logging.error("Failed to get answer from OpenAI API after 3 attempts.")
             return [{'content': str(_err), 'tokens': 0, 'engine_used': self.engine}]
-
-
-    def improve_prompt(self, prompt: str, user_id: int):
-        _err = None
-        for attempt in range(3):
-            try:
-                messages = [
-                    {
-                        "role": "system",
-                        "content": (
-                            "- You are an expert OpenAI prompt engineer. You take a string input of the prompt, "
-                            "improve it and respond with the new and improved prompt. Do not add anything else.\n"
-                            "- Rules: " + pi_settings.prompt + " Respond with the new prompt in a codeblock."
-                        )
-                    },
-                    {
-                        "role": "assistant",
-                        "content": "Ready to assist with your prompts. Please provide your prompt to improve."
-                    }
-                ]
-
-                # User's query and payload are appended here
-                messages.append(
-                    {
-                        "role": "user",
-                        "content": f"```{prompt}```"
-                    }
-                )
-
-                completion = self.client.chat.completions.create(
-                    model=self.engine,
-                    messages=messages,
-                    temperature=1,
-                    #temperature=self.temperature,
-                    #top_p=self.top_p
-                )
-
-                data = completion.choices[0].message.content
-                tokens_used = completion.usage.total_tokens
-                input_tokens = completion.usage.prompt_tokens
-                output_tokens = tokens_used - input_tokens
-
-                new_prompt = data.replace("```", "").strip()
-                # TODO: save token usage (IP address)
-                return {
-                    "content": new_prompt,
-                    "input_tokens": input_tokens,
-                    "output_tokens": output_tokens,
-                    "engine_used": self.engine
-                }
-
-            except json.JSONDecodeError:
-                # Handle the case where the response is not a valid JSON string
-                raise HTTPException(status_code=500, detail="Failed to parse JSON from assistant response.")
-            except Exception as e:
-                logging.error(e)
-                if getattr(e, 'status_code', None) == 429: # pylint: disable:no-member
-                    try:
-                        # Use the compiled pattern to search the string
-                        message = getattr(e, 'body', {}).get('message', '')
-                        match = RATE_LIMIT_PATTERN.search(message) # pylint: disable:no-member
-                        # Extract the number of seconds
-                        if match:
-                            delay = float(match.group(1))
-                        else:
-                            delay = 5
-                    except (ValueError, IndexError):
-                        delay = 5  # Default to 5 seconds if parsing fails
-
-                    sleep_time = delay * BUFFER_MULTIPLIER  # Add a buffer time
-                    logging.debug(f"Rate limit exceeded. Waiting for {sleep_time} seconds before retrying...")
-                    time.sleep(sleep_time)
-                else:
-                    logging.error(f"OpenAI API error on attempt {attempt + 1}: {e}")
-                    _err = e
-                    if attempt < 2:
-                        # Exponential backoff with a base delay of 1 second
-                        time.sleep(1 * (2 ** attempt))
-
-        if _err is None:
-            raise RuntimeError("Failed to get answer from OpenAI API after 3 attempts.")
-        else:
-            logging.error("Failed to get answer from OpenAI API after 3 attempts.")
-            logging.error(_err)
-            raise HTTPException(status_code=500, detail="Failed to get answer from OpenAI API after 3 attempts.")

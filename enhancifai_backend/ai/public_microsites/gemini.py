@@ -2,7 +2,7 @@ import json
 import google.generativeai as genai
 
 from enhancifai_backend.config import settings
-from enhancifai_backend.database.handlers.runs import RunsDbCore
+from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
 
 GOOGLE_AI_STUDIO_API_KEY = settings.google_ai_studio_api_key
 
@@ -52,7 +52,7 @@ class GeminiConnector:
         Raises:
             RuntimeError: If the run is cancelled.
         """
-        if RunsDbCore.is_run_cancelled(run_id):
+        if MicrositesRunsDbCore.is_run_cancelled(run_id):
             raise RuntimeError("Job cancelled.")
         chat = self.model.start_chat(history=[])
         payload = {

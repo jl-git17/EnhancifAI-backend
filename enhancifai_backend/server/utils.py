@@ -8,7 +8,6 @@ from fastapi import HTTPException, Header, status
 import jwt
 
 from enhancifai_backend.config import settings
-from enhancifai_backend.database.handlers.users import UsersDbCore
 
 SECRET_KEY = settings.api_key
 JWT_SECRET = settings.jwt_secret_key
@@ -134,32 +133,6 @@ def decode_jwt(token: str) -> dict:
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Your session has expired. Please login again.")
 
-
-def get_current_user_id(token: str = Header(None, alias="token")) -> Optional[int]:
-    """
-    Get the current user ID from the token.
-
-    Args:
-        token (str): The token to extract the user ID from.
-
-    Raises:
-        HTTPException: If the token is missing or invalid.
-
-    Returns:
-        Optional[int]: The user ID.
-    """
-    if not token:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Your session has expired. Please login again.")
-
-    jwt_data = decode_jwt(token)
-    user_email = jwt_data.get("email")
-
-    if not user_email:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Your session has expired. Please login again.")
-
-    user_details = UsersDbCore.get_user_by_email(user_email)
-    return user_details.get("user_id")
-
 def get_microsite_session_id(token: str = Header(None, alias="x-microsite-session-id")) -> Optional[str]:
     """
     Get the microsite session ID from the request headers.
@@ -173,37 +146,6 @@ def get_microsite_session_id(token: str = Header(None, alias="x-microsite-sessio
     if not token:
         return None
     return token
-
-def get_current_user_id_unverified(token: str = Header(None, alias="token")) -> Optional[int]:
-    """
-    Get the current user ID from the token without verification.
-
-    Args:
-        token (str): The token to extract the user ID from.
-
-    Raises:
-        HTTPException: If the token is missing or invalid.
-
-    Returns:
-        Optional[int]: The user ID.
-    """
-    if not token:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="No token. Your session has expired. Please login again."
-        )
-
-    jwt_data = decode_jwt(token)
-    user_email = jwt_data.get("email")
-
-    if not user_email:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid token. Your session has expired. Please login again."
-        )
-
-    user_details = UsersDbCore.get_user_by_email_unverified(user_email)
-    return user_details.get("user_id")
 
 def clean_user_data(data: dict) -> dict:
     """
