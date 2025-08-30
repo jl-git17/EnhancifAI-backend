@@ -13,6 +13,7 @@ from enhancifai_backend.server.serve import run_server
 
 # Configure logging to stdout with a specific format
 production = settings.production
+print("Logging initialized: production =", production)
 logging.basicConfig(
     level=logging.ERROR if production else logging.DEBUG,
     handlers=[logging.StreamHandler(sys.stdout)]  # Ensure logs go to stdout
