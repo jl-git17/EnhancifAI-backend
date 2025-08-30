@@ -38,6 +38,7 @@ def prepare_database(db: DbSession) -> None:
         logging.error("Environment variable 'DB_SCHEMA' not set.")
         sys.exit(1)
 
+    db.do('execute', f"DROP SCHEMA IF EXISTS {schema_name} CASCADE;")
     db.do('execute', f"CREATE SCHEMA IF NOT EXISTS {schema_name};")
     for sql_file in ['schema.sql', 'migration.sql']:
         try:
