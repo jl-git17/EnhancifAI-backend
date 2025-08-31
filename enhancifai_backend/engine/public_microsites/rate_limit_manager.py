@@ -56,7 +56,7 @@ class RateLimitManager:
                 self.token_logs[model].popleft()
 
             current_tokens = sum(token for _, token in self.token_logs[model])
-            limit_tokens = self.limits[model]['token_limit'] * 0.8
+            limit_tokens = self.limits[model]['token_limit']
             if current_tokens <= limit_tokens:
                 return True
             else:
