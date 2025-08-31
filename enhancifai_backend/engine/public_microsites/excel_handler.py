@@ -70,8 +70,8 @@ class ExcelHandler:
         if not self.data:
             return PERFORMANCE_OPTIMIZATION_CHUNK_SIZE
 
-        MIN_CHUNK = 5
-        MAX_CHUNK = 20
+        MIN_CHUNK = 10
+        MAX_CHUNK = 30
         TARGET_CHUNK_BYTES = 1024 * 3  # 3 KB
 
         num_rows = len(self.data)
