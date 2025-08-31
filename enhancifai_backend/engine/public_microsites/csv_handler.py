@@ -12,7 +12,7 @@ from enhancifai_backend.engine.public_microsites.runs_progress import runs_progr
 
 # Default concurrency
 DEFAULT_MAX_THREADS = 2
-PERFORMANCE_OPTIMIZATION_CHUNK_SIZE = 10
+PERFORMANCE_OPTIMIZATION_CHUNK_SIZE = 30
 
 class CSVHandler:
     def __init__(
@@ -158,7 +158,7 @@ class CSVHandler:
                             futures[future] = idx
             else:
                 # Dynamically compute chunk size
-                chunk_size = self._compute_dynamic_chunk_size(max_records)
+                chunk_size = PERFORMANCE_OPTIMIZATION_CHUNK_SIZE
                 logging.debug(f"Using chunk size: {chunk_size} for performance optimization")
                 for prompt_config in prompts:
                     for start_idx in range(0, total_records, chunk_size):
