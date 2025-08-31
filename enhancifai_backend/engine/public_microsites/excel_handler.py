@@ -12,7 +12,7 @@ from enhancifai_backend.database.handlers.microsites import MicrositesRunsDbCore
 from enhancifai_backend.engine.public_microsites.runs_progress import runs_progress
 
 DEFAULT_MAX_THREADS = 2
-PERFORMANCE_OPTIMIZATION_CHUNK_SIZE = 10
+PERFORMANCE_OPTIMIZATION_CHUNK_SIZE = 20
 
 class ExcelHandler:
     def __init__(
