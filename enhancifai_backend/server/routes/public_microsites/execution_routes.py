@@ -299,6 +299,7 @@ async def upload_direct_prompt(
             detail="Either a data file or JSON data must be provided."
         )
     logging.debug("Data file provided: %s", "Yes" if data_file else "No")
+    logging.debug("JSON data provided: %s >> %s", "Yes" if json_data else "No", json_data)
 
     try:
         function_params_dict: Dict[str, Any] = json.loads(function_params)
