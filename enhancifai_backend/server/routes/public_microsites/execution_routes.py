@@ -246,7 +246,7 @@ async def upload_direct_prompt(
     function_name: str = Form(...),
     function_params: str = Form('{}'),
     data_file: UploadFile = File(None),
-    json_data: str = Body(None),
+    json_data: str = Form(None),
     _: str = Depends(verify_secret_key),
     session_id: str = Depends(get_microsite_session_id)
 ):
@@ -272,8 +272,8 @@ async def upload_direct_prompt(
         This will be converted to the same DataFrame/Excel layout as the list-of-objects form.
 
     Notes:
-    - `json_data` should be sent as a JSON-encoded string in the request body (the endpoint receives it as a string
-        and internally calls `json.loads`).
+    - `json_data` should be sent as a JSON-encoded string in multipart/form-data (FormData) under the field name
+        `json_data` (the endpoint receives it as a string and internally calls `json.loads`).
     - The code uses `pandas.DataFrame(json_data)` to convert the payload to a DataFrame, so any structure accepted by
         pandas DataFrame constructors (commonly a list of dicts or dict-of-lists) will work.
     - When using `json_data`, the endpoint creates a temporary `.xlsx` file (stored under `/tmp`) which is used for
