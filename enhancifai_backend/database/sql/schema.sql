@@ -13,10 +13,22 @@ ON CONFLICT (active) DO NOTHING;
 CREATE TABLE IF NOT EXISTS enhancifai.microsite_functions (
     id SERIAL PRIMARY KEY,
     function_name VARCHAR(100) UNIQUE, -- e.g FixProductTitles
-    prompts JSONB -- JSON ARRAY OF {"prompt": "<prompt_text>", "columns": ["<column1>", "<column2>"], "output_heading": "<output_heading>"}
+    prompts JSONB, -- JSON ARRAY OF {"prompt": "<prompt_text>", "columns": ["<column1>", "<column2>"], "output_heading": "<output_heading>"}
+    styles VARCHAR[] -- e.g ["fun", "casual"]
 );
 ALTER TABLE enhancifai.microsite_functions
     ALTER COLUMN function_name TYPE VARCHAR(100);
+
+CREATE TABLE IF NOT EXISTS enhancifai.microsite_global_settings (
+    id SERIAL PRIMARY KEY,
+    setting_key VARCHAR(100),
+    setting_value VARCHAR(255),
+    UNIQUE (setting_key)
+);
+INSERT INTO enhancifai.microsite_global_settings (setting_key, setting_value)
+VALUES
+    ('languages', '["English","Spanish","French","Italian","Mandarin","Portuguese","Hebrew","Arabic"]')
+ON CONFLICT (setting_key) DO NOTHING;
 
 CREATE TABLE IF NOT EXISTS enhancifai.microsite_function_runs (
     id SERIAL PRIMARY KEY,

@@ -5,6 +5,7 @@ from typing import Any, Dict, Optional, List
 from fastapi import APIRouter, Depends, Request, HTTPException
 
 from enhancifai_backend.server.utils import verify_secret_key
+from enhancifai_backend.database.handlers.microsites import MicrositeGlobalSettingsDbCore, MicrositeFunctionsDbCore
 
 router = APIRouter()
 
@@ -131,10 +132,55 @@ SUPPORTED_LANGUAGES: List[str] = [
 async def get_supported_languages():
     """
     Return the list of supported languages for the frontend.
-    This is intentionally read-only and public (no secret dependency) so
-    the frontend can fetch it directly.
+    Attempts to read from enhancifai.microsite_global_settings (key "languages").
+    Falls back to a predefined list if not configured.
     """
+    try:
+        settings_map = MicrositeGlobalSettingsDbCore.get_all_settings()
+        langs = settings_map.get("languages")
+        if isinstance(langs, list) and langs:
+            return {"languages": langs}
+    except Exception:
+        # Fall back silently
+        pass
     return {"languages": SUPPORTED_LANGUAGES}
+
+
+@router.get("/microsites/common/styles", tags=["Microsites - Common"])
+async def get_styles(function_name: str):
+    """
+    Return the list of available styles for a given function_name.
+    Reads from enhancifai.microsite_functions.styles. Public, no auth required.
+    """
+    try:
+        fn = MicrositeFunctionsDbCore.get_function_by_name(function_name)
+        if not fn:
+            return {"styles": []}
+        styles = fn.get("styles")
+        # Normalize into a list
+        if styles is None:
+            styles_list = []
+        elif isinstance(styles, list):
+            styles_list = styles
+        elif isinstance(styles, str):
+            # Try to parse a JSON string; fallback to comma-split
+            try:
+                import json as _json
+                parsed = _json.loads(styles)
+                styles_list = parsed if isinstance(parsed, list) else [styles]
+            except Exception:
+                # Also handle possible Postgres array literal like {a,b}
+                if styles.startswith('{') and styles.endswith('}'):
+                    inner = styles[1:-1]
+                    styles_list = [s.strip().strip('"') for s in inner.split(',') if s.strip()]
+                else:
+                    styles_list = [s.strip() for s in styles.split(',') if s.strip()]
+        else:
+            styles_list = []
+        return {"styles": styles_list}
+    except Exception:
+        # On any unexpected error, return empty list (public endpoint resilience)
+        return {"styles": []}
 
 
 @router.get("/microsites/common/session_id", tags=["Microsites - Common"])

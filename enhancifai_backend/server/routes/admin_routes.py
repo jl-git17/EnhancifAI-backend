@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 
 from enhancifai_backend.config import settings
-from enhancifai_backend.database.handlers.microsites import MicrositeFunctionsDbCore
+from enhancifai_backend.database.handlers.microsites import MicrositeFunctionsDbCore, MicrositeGlobalSettingsDbCore
 from enhancifai_backend.server.utils import STATIC_PAGES_DIRECTORY
 
 
@@ -52,6 +52,15 @@ async def get_microsite_functions(credentials: HTTPBasicCredentials = Depends(se
                     fn["prompts"] = json.loads(fn["prompts"])
                 except Exception:
                     fn["prompts"] = []
+            # Normalize styles to list
+            styles = fn.get("styles")
+            if isinstance(styles, str):
+                try:
+                    fn["styles"] = json.loads(styles)
+                except Exception:
+                    fn["styles"] = [styles]
+            elif styles is None:
+                fn["styles"] = []
         return functions
     else:
         raise HTTPException(
@@ -71,6 +80,14 @@ async def get_microsite_function(function_id: int, credentials: HTTPBasicCredent
                 fn["prompts"] = json.loads(fn["prompts"])
             except Exception:
                 fn["prompts"] = []
+        styles = fn.get("styles")
+        if isinstance(styles, str):
+            try:
+                fn["styles"] = json.loads(styles)
+            except Exception:
+                fn["styles"] = [styles]
+        elif styles is None:
+            fn["styles"] = []
         return fn
     else:
         raise HTTPException(
@@ -84,12 +101,13 @@ async def create_microsite_function(payload: dict = Body(...), credentials: HTTP
     if credentials.username == USERNAME and credentials.password == PASSWORD:
         function_name = payload.get("function_name")
         prompts = payload.get("prompts")
+        styles = payload.get("styles", [])
         if not function_name or not prompts:
             raise HTTPException(status_code=400, detail="Function name and prompts are required.")
         # Store prompts as JSON string
         prompts_json = json.dumps(prompts)
         try:
-            new_id = MicrositeFunctionsDbCore.create_function(function_name, prompts_json)
+            new_id = MicrositeFunctionsDbCore.create_function(function_name, prompts_json, styles=styles)
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
         return {"id": new_id}
@@ -105,11 +123,12 @@ async def update_microsite_function(function_id: int, payload: dict = Body(...),
     if credentials.username == USERNAME and credentials.password == PASSWORD:
         function_name = payload.get("function_name")
         prompts = payload.get("prompts")
+        styles = payload.get("styles", None)
         if not function_name or not prompts:
             raise HTTPException(status_code=400, detail="Function name and prompts are required.")
         prompts_json = json.dumps(prompts)
         try:
-            updated = MicrositeFunctionsDbCore.update_function(function_id, function_name=function_name, prompt=prompts_json)
+            updated = MicrositeFunctionsDbCore.update_function(function_id, function_name=function_name, prompts=prompts_json, styles=styles)
         except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
         return updated
@@ -138,6 +157,35 @@ async def delete_microsite_function(function_id: int, credentials: HTTPBasicCred
 async def admin_public_microsites(credentials: HTTPBasicCredentials = Depends(security)):
     if credentials.username == USERNAME and credentials.password == PASSWORD:
         return FileResponse(os.path.join(STATIC_PAGES_DIRECTORY, "public_microsites.html"))
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+
+# --- Microsite Global Settings ---
+@router.get("/admin/public-microsites/global-settings", tags=["Admin"])
+async def get_microsite_global_settings(credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        return MicrositeGlobalSettingsDbCore.get_all_settings()
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Basic"},
+        )
+
+
+@router.put("/admin/public-microsites/global-settings", tags=["Admin"])
+async def upsert_microsite_global_settings(payload: dict = Body(...), credentials: HTTPBasicCredentials = Depends(security)):
+    if credentials.username == USERNAME and credentials.password == PASSWORD:
+        try:
+            MicrositeGlobalSettingsDbCore.upsert_settings(payload or {})
+            return {"status": "ok"}
+        except Exception as e:
+            raise HTTPException(status_code=400, detail=str(e))
     else:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

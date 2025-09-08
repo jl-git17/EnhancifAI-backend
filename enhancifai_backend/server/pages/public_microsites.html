@@ -157,6 +157,7 @@
                                     <th style="width: 60px;">ID</th>
                                     <th style="min-width: 180px;">Function Name</th>
                                     <th style="min-width: 320px;">Prompts</th>
+                                    <th style="min-width: 180px;">Styles</th>
                                     <th style="width: 120px;">Actions</th>
                                 </tr>
                             </thead>
@@ -179,13 +180,21 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
               </div>
               <div class="modal-body pt-2">
-                <form id="function-form" autocomplete="off">
+                                <form id="function-form" autocomplete="off">
                   <input type="hidden" id="function-id">
                   <div class="mb-3">
                     <label for="function-name" class="form-label">Function Name <span class="text-danger">*</span></label>
                     <input type="text" class="form-control rounded-3" id="function-name" maxlength="100" required placeholder="e.g. FixProductTitles" autofocus>
                     <div class="form-text">Choose a unique, descriptive name. Example: <code>FixProductTitles</code></div>
                   </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Styles
+                                                <span class="help-tip" tabindex="0"><i class="bi bi-info-circle"></i></span>
+                                                <span class="help-popover">Optional list of writing styles users can pick from (e.g. fun, formal, casual).</span>
+                                        </label>
+                                        <input type="text" class="form-control rounded-3" id="function-styles" placeholder="Comma-separated: fun, formal, casual">
+                                        <div class="form-text">Leave empty for no preset styles.</div>
+                                    </div>
                   <div class="mb-3">
                     <label class="form-label">Prompts <span class="text-danger">*</span>
                         <span class="help-tip" tabindex="0"><i class="bi bi-info-circle"></i></span>
@@ -209,6 +218,30 @@
               </div>
             </div>
           </div>
+        </div>
+
+        <!-- Global Settings Card -->
+        <div class="row justify-content-center mt-4">
+            <div class="col-lg-10">
+                <div class="card border-0 shadow-sm rounded-4 p-4 mb-4" style="background:rgba(255,255,255,0.97);">
+                    <div class="mb-3">
+                        <h2 class="fs-4 text-primary-emphasis fw-bold mb-1">Global Settings</h2>
+                        <div class="text-secondary mb-2 fs-6">Manage shared settings for public microsites.</div>
+                    </div>
+                    <form id="global-settings-form" class="mt-2">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-12 col-md-8">
+                                <label for="global-languages" class="form-label">Languages</label>
+                                <input type="text" class="form-control" id="global-languages" placeholder='Comma-separated or JSON array e.g. ["English","Spanish"]'>
+                                <div class="form-text">Values will be stored as a JSON array.</div>
+                            </div>
+                            <div class="col-12 col-md-4 text-end">
+                                <button type="submit" class="btn btn-primary rounded-pill px-4">Save Settings</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
@@ -236,6 +269,14 @@
                 </div>`
             ).join('');
         }
+        function renderStylesCell(styles) {
+            if (!styles) return '<span class="text-muted">None</span>';
+            if (typeof styles === 'string') {
+                try { styles = JSON.parse(styles); } catch { styles = styles.split(',').map(s=>s.trim()).filter(Boolean); }
+            }
+            if (!Array.isArray(styles) || styles.length === 0) return '<span class="text-muted">None</span>';
+            return styles.map(s=>`<span class="badge bg-light text-dark border me-1">${s}</span>`).join('');
+        }
         function fetchFunctions() {
             $.get('/admin/public-microsites/functions', function(data) {
                 const tbody = $('#functions-table tbody');
@@ -248,6 +289,7 @@
                             <td>${fn.id}</td>
                             <td><span class="fw-semibold">${fn.function_name}</span></td>
                             <td>${renderPromptsCell(fn.prompts)}</td>
+                            <td>${renderStylesCell(fn.styles)}</td>
                             <td>
                                 <button class="btn btn-sm btn-secondary edit-btn" data-id="${fn.id}" title="Edit"><i class="bi bi-pencil"></i></button>
                                 <button class="btn btn-sm btn-danger delete-btn" data-id="${fn.id}" title="Delete"><i class="bi bi-trash"></i></button>
@@ -328,6 +370,7 @@ function renderPromptsPreview(promptsArr) {
             $('#add-function-btn').click(function() {
                 $('#function-id').val('');
                 $('#function-name').val('');
+                $('#function-styles').val('');
                 promptsArr = [];
                 setPromptsToUI(promptsArr);
                 $('#functionModal').modal('show');
@@ -337,6 +380,15 @@ function renderPromptsPreview(promptsArr) {
                 $.get(`/admin/public-microsites/functions/${id}`, function(fn) {
                     $('#function-id').val(fn.id);
                     $('#function-name').val(fn.function_name);
+                    let styles = fn.styles;
+                    if (Array.isArray(styles)) {
+                        $('#function-styles').val(styles.join(', '));
+                    } else if (typeof styles === 'string') {
+                        try { $('#function-styles').val(JSON.parse(styles).join(', ')); }
+                        catch { $('#function-styles').val(styles); }
+                    } else {
+                        $('#function-styles').val('');
+                    }
                     let arr = fn.prompts;
                     if (typeof arr === 'string') {
                         try { arr = JSON.parse(arr); } catch { arr = []; }
@@ -405,6 +457,8 @@ function renderPromptsPreview(promptsArr) {
                 const id = $('#function-id').val();
                 const name = $('#function-name').val().trim();
                 const prompts = getPromptsFromUI();
+                const stylesInput = $('#function-styles').val().trim();
+                const styles = stylesInput ? stylesInput.split(',').map(s=>s.trim()).filter(Boolean) : [];
                 if (!name) {
                     showAlert('Function name is required.', 'danger');
                     return;
@@ -419,7 +473,7 @@ function renderPromptsPreview(promptsArr) {
                     url: url,
                     type: method,
                     contentType: 'application/json',
-                    data: JSON.stringify({ function_name: name, prompts: prompts }),
+                    data: JSON.stringify({ function_name: name, prompts: prompts, styles: styles }),
                     success: function() {
                         $('#functionModal').modal('hide');
                         showAlert('Function saved successfully.');
@@ -427,6 +481,50 @@ function renderPromptsPreview(promptsArr) {
                     },
                     error: function(xhr) {
                         showAlert(xhr.responseJSON?.detail || 'Failed to save function.', 'danger');
+                    }
+                });
+            });
+
+            // Global settings load
+            function loadGlobalSettings() {
+                $.get('/admin/public-microsites/global-settings', function(data) {
+                    const langs = data.languages;
+                    if (Array.isArray(langs)) {
+                        $('#global-languages').val(langs.join(', '));
+                    } else if (typeof langs === 'string') {
+                        try { $('#global-languages').val(JSON.parse(langs).join(', ')); }
+                        catch { $('#global-languages').val(langs); }
+                    }
+                });
+            }
+            loadGlobalSettings();
+
+            $('#global-settings-form').on('submit', function(e) {
+                e.preventDefault();
+                let langs = $('#global-languages').val().trim();
+                let payload = {};
+                if (langs) {
+                    // Try to parse JSON array, else split by comma
+                    try {
+                        const parsed = JSON.parse(langs);
+                        if (Array.isArray(parsed)) payload.languages = parsed;
+                    } catch {
+                        payload.languages = langs.split(',').map(s=>s.trim()).filter(Boolean);
+                    }
+                } else {
+                    payload.languages = [];
+                }
+                $.ajax({
+                    url: '/admin/public-microsites/global-settings',
+                    type: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify(payload),
+                    success: function() {
+                        showAlert('Global settings saved.');
+                        loadGlobalSettings();
+                    },
+                    error: function(xhr) {
+                        showAlert(xhr.responseJSON?.detail || 'Failed to save settings.', 'danger');
                     }
                 });
             });

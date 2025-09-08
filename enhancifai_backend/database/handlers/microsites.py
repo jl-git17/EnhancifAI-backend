@@ -42,26 +42,28 @@ class MicrositeFunctionsDbCore:
         return read_db.do('select_one', sql=sql, data=(function_name,))
 
     @classmethod
-    def create_function(cls, function_name, prompts):
+    def create_function(cls, function_name, prompts, styles=None):
         """
         Create a new microsite function.
         prompts: should be a JSON array of prompt objects, each supporting keys: prompt, columns, output_heading, and optional param_name.
         """
+        # Ensure styles is a list or None
+        styles = styles if styles is not None else []
         sql = schemafy("""
-            INSERT INTO enhancifai.microsite_functions (function_name, prompts)
-            VALUES (%s, %s)
+            INSERT INTO enhancifai.microsite_functions (function_name, prompts, styles)
+            VALUES (%s, %s, %s)
             RETURNING id;
         """)
-        return write_db.do('execute', sql=sql, data=(function_name, prompts))
+        return write_db.do('execute', sql=sql, data=(function_name, prompts, styles))
 
     @classmethod
-    def update_function(cls, function_id, function_name=None, prompt=None, output_heading=None):
+    def update_function(cls, function_id, function_name=None, prompts=None, styles=None):
         """
         Update fields of a microsite function by id.
-        prompt: should be a JSON array of prompt objects, each supporting keys: prompt, columns, output_heading, and optional param_name.
+        prompts: should be a JSON array of prompt objects, each supporting keys: prompt, columns, output_heading, and optional param_name.
         """
         # Ensure at least one field to update
-        if function_name is None and prompt is None and output_heading is None:
+        if function_name is None and prompts is None and styles is None:
             raise ValueError("No fields provided for update.")
         # Prevent duplicate function names
         if function_name is not None:
@@ -73,12 +75,12 @@ class MicrositeFunctionsDbCore:
         if function_name is not None:
             set_clauses.append("function_name = %s")
             values.append(function_name)
-        if prompt is not None:
+        if prompts is not None:
             set_clauses.append("prompts = %s")
-            values.append(prompt)
-        if output_heading is not None:
-            set_clauses.append("output_heading = %s")
-            values.append(output_heading)
+            values.append(prompts)
+        if styles is not None:
+            set_clauses.append("styles = %s")
+            values.append(styles)
         if not set_clauses:
             # Should not happen due to initial check
             raise ValueError("No valid fields to update.")
@@ -113,6 +115,76 @@ class MicrositeFunctionsDbCore:
             WHERE function_name = %s;
         """)
         return read_db.do('select_one', sql=sql, data=(function_name,))
+
+
+class MicrositeGlobalSettingsDbCore:
+    """
+    Provides CRUD-like helpers for enhancifai.microsite_global_settings (key/value store).
+    """
+
+    @classmethod
+    def get_all_settings(cls):
+        sql = schemafy("""
+            SELECT setting_key, setting_value
+            FROM enhancifai.microsite_global_settings
+            ORDER BY setting_key;
+        """)
+        rows = read_db.do('select', sql=sql)
+        settings_map = {}
+        for r in rows:
+            key = r.get('setting_key')
+            val = r.get('setting_value')
+            # Try to parse JSON-looking strings
+            if isinstance(val, str) and ((val.startswith('[') and val.endswith(']')) or (val.startswith('{') and val.endswith('}'))):
+                try:
+                    import json as _json
+                    val = _json.loads(val)
+                except Exception:
+                    pass
+            settings_map[key] = val
+        return settings_map
+
+    @classmethod
+    def get_setting(cls, key: str):
+        sql = schemafy("""
+            SELECT setting_key, setting_value
+            FROM enhancifai.microsite_global_settings
+            WHERE setting_key = %s;
+        """)
+        row = read_db.do('select_one', sql=sql, data=(key,))
+        if not row:
+            return None
+        val = row.get('setting_value')
+        if isinstance(val, str) and ((val.startswith('[') and val.endswith(']')) or (val.startswith('{') and val.endswith('}'))):
+            try:
+                import json as _json
+                val = _json.loads(val)
+            except Exception:
+                pass
+        return {row.get('setting_key'): val}
+
+    @classmethod
+    def upsert_settings(cls, settings_dict):
+        """
+        Upsert multiple settings provided as a dict {key: value}.
+        Values will be stored as strings; lists/dicts are JSON-serialized.
+        """
+        import json as _json
+        sql = schemafy("""
+            INSERT INTO enhancifai.microsite_global_settings (setting_key, setting_value)
+            VALUES (%s, %s)
+            ON CONFLICT (setting_key)
+            DO UPDATE SET setting_value = EXCLUDED.setting_value;
+        """)
+        for key, val in settings_dict.items():
+            if isinstance(val, (dict, list)):
+                val_str = _json.dumps(val)
+            elif val is None:
+                val_str = None
+            else:
+                val_str = str(val)
+            write_db.do('execute', sql=sql, data=(key, val_str))
+        return True
 
 
 class MicrositesRunsDbCore:
