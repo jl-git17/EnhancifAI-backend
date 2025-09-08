@@ -18,6 +18,8 @@ CREATE TABLE IF NOT EXISTS enhancifai.microsite_functions (
 );
 ALTER TABLE enhancifai.microsite_functions
     ALTER COLUMN function_name TYPE VARCHAR(100);
+ALTER TABLE enhancifai.microsite_functions
+    ADD COLUMN IF NOT EXISTS styles VARCHAR[] DEFAULT ARRAY[]::VARCHAR[];
 
 CREATE TABLE IF NOT EXISTS enhancifai.microsite_global_settings (
     id SERIAL PRIMARY KEY,
