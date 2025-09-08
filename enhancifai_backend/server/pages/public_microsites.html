@@ -769,6 +769,12 @@ function renderPromptsPreview(promptsArr) {
             if (!ok) { event.preventDefault(); }
         }
     });
+    // Ensure textareas auto-size after modal becomes visible
+    functionModalEl.addEventListener('shown.bs.modal', function(){
+        setTimeout(function(){
+            $('#prompts-list .prompt-text').each(function(){ updateTextareaMetrics(this); });
+        }, 0);
+    });
             // Form submit
             $('#function-form').submit(function(e) {
                 e.preventDefault();
