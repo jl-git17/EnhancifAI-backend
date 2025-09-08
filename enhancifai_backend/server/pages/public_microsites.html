@@ -801,10 +801,11 @@ function renderPromptsPreview(promptsArr) {
                     contentType: 'application/json',
                     data: JSON.stringify({ function_name: name, prompts: prompts, styles: styles }),
                     success: function() {
+                        // Clear dirty state BEFORE closing to avoid discard confirmation
+                        setDirty(false);
                         $('#functionModal').modal('hide');
                         showAlert('Function saved successfully.');
                         fetchFunctions();
-                        setDirty(false);
                     },
                     error: function(xhr) {
                         showAlert(xhr.responseJSON?.detail || 'Failed to save function.', 'danger');
