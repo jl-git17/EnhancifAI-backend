@@ -78,6 +78,9 @@
         .modal-content {
             border-radius: 16px;
         }
+        .modal-dialog.modal-xl {
+            max-width: 1100px;
+        }
         .modal-title {
             font-weight: 600;
         }
@@ -188,6 +191,28 @@
             font-size: 0.875rem;
             display: none;
         }
+
+        /* Modal prompt editor improvements */
+        .prompt-list {
+            max-height: 55vh;
+            overflow: auto;
+        }
+        .prompt-item.card {
+            border: 1px solid #e9ecef;
+            background: #fff;
+        }
+        .prompt-textarea {
+            min-height: 120px;
+            max-height: 40vh;
+            resize: vertical;
+            line-height: 1.4;
+        }
+        .prompt-meta-label {
+            font-size: 0.85rem;
+            color: #6c757d;
+        }
+        .prompt-actions .btn { width: 32px; height: 32px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+        .char-counter { font-size: 0.8rem; color: #6c757d; }
     </style>
 </head>
 <body>
@@ -256,16 +281,16 @@
                 </div>
             </div>
         </div>
-        <!-- Modal for Add/Edit Function -->
+                <!-- Modal for Add/Edit Function -->
                 <div class="modal fade" id="functionModal" tabindex="-1" aria-labelledby="functionModalLabel" aria-hidden="true">
-          <div class="modal-dialog modal-lg">
+                    <div class="modal-dialog modal-xl modal-dialog-scrollable">
             <div class="modal-content border-0 shadow rounded-4">
               <div class="modal-header border-0 pb-0">
                                 <h5 class="modal-title fw-bold" id="functionModalLabel">Add Microsite Function</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
               </div>
               <div class="modal-body pt-2">
-                                                                <form id="function-form" autocomplete="off">
+                                <form id="function-form" autocomplete="off">
                   <input type="hidden" id="function-id">
                   <div class="mb-3">
                     <label for="function-name" class="form-label">Function Name <span class="text-danger">*</span></label>
@@ -276,10 +301,13 @@
                                     <div class="mb-3">
                                         <label class="form-label">Styles
                                                 <span class="help-tip" tabindex="0"><i class="bi bi-info-circle"></i></span>
-                                                <span class="help-popover">Optional list of writing styles users can pick from (e.g. fun, formal, casual).</span>
+                                                <span class="help-popover">Optional list of writing styles users can pick from (e.g. fun, formal, casual). Use Enter to add, Backspace to remove.</span>
                                         </label>
-                                        <input type="text" class="form-control rounded-3" id="function-styles" placeholder="Comma-separated: fun, formal, casual">
-                                        <div class="form-text">Leave empty for no preset styles.</div>
+                                        <div class="chips-input" id="function-styles-chips">
+                                                <input id="function-styles-input" type="text" list="styles-list" placeholder="Type a style and press Enter...">
+                                                <datalist id="styles-list"></datalist>
+                                        </div>
+                                        <div class="chips-hint small">Examples: formal, casual, friendly, persuasive, concise.</div>
                                     </div>
                   <div class="mb-3">
                     <label class="form-label">Prompts <span class="text-danger">*</span>
@@ -466,39 +494,56 @@
             }).always(()=>$('#loading-state').hide());
         }
         // --- Modal prompt editor logic ---
-    function renderPromptsList(promptsArr) {
-    const list = $('#prompts-list');
-    list.empty();
-    if (!Array.isArray(promptsArr) || promptsArr.length === 0) {
-        list.append('<div class="text-muted">No prompts added yet.</div>');
-        return;
-    }
-    promptsArr.forEach((p, idx) => {
-        list.append(`
-            <div class="prompt-item row g-2 align-items-center mb-2" data-idx="${idx}">
-                <div class="col-12 col-md-4">
-                    <input type="text" class="form-control form-control-sm mb-1 prompt-text rounded-2" placeholder="Prompt text" value="${p.prompt ? p.prompt.replace(/"/g,'&quot;') : ''}" required aria-label="Prompt text">
-                </div>
-                <div class="col-10 col-md-3">
-                    <input type="text" class="form-control form-control-sm prompt-cols rounded-2" placeholder="Columns (comma separated)" value="${Array.isArray(p.columns) ? p.columns.join(', ') : ''}" required aria-label="Columns">
-                </div>
-                <div class="col-4 col-md-3">
-                    <input type="text" class="form-control form-control-sm prompt-heading rounded-2" placeholder="Output Heading" value="${p.output_heading ? p.output_heading.replace(/"/g,'&quot;') : ''}" required aria-label="Output Heading">
-                </div>
-                <div class="col-6 col-md-2">
-                    <input type="text" class="form-control form-control-sm prompt-param-name rounded-2" placeholder="Param Name (optional)" value="${p.param_name ? p.param_name.replace(/"/g,'&quot;') : ''}" aria-label="Param Name">
-                    <div class="form-text">Show only if param is true</div>
-                </div>
-                <div class="col-2 col-md-1 prompt-actions text-end d-flex flex-column gap-1 align-items-end">
-                    <button type="button" class="btn btn-outline-danger btn-sm rounded-circle remove-prompt-btn mb-1" title="Remove"><i class="bi bi-x"></i></button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-circle move-up-btn" title="Move Up" ${idx === 0 ? 'disabled' : ''}><i class="bi bi-arrow-up"></i></button>
-                    <button type="button" class="btn btn-outline-secondary btn-sm rounded-circle move-down-btn" title="Move Down" ${idx === promptsArr.length-1 ? 'disabled' : ''}><i class="bi bi-arrow-down"></i></button>
-            <button type="button" class="btn btn-outline-primary btn-sm rounded-circle duplicate-prompt-btn" title="Duplicate"><i class="bi bi-files"></i></button>
-                </div>
-            </div>
-        `);
-    });
-}
+        function renderPromptsList(promptsArr) {
+                const list = $('#prompts-list');
+                list.empty();
+                if (!Array.isArray(promptsArr) || promptsArr.length === 0) {
+                        list.append('<div class="text-muted">No prompts added yet.</div>');
+                        return;
+                }
+                promptsArr.forEach((p, idx) => {
+                        const promptSafe = p.prompt ? p.prompt.replace(/"/g,'&quot;') : '';
+                        const headingSafe = p.output_heading ? p.output_heading.replace(/"/g,'&quot;') : '';
+                        const paramSafe = p.param_name ? p.param_name.replace(/"/g,'&quot;') : '';
+                        list.append(`
+                                <div class="prompt-item card mb-2" data-idx="${idx}">
+                                    <div class="card-body p-3">
+                                        <div class="row g-3 align-items-start">
+                                            <div class="col-12 col-lg-6">
+                                                <label class="prompt-meta-label">Prompt</label>
+                                                <textarea class="form-control prompt-text prompt-textarea" placeholder="Write the full prompt..." aria-label="Prompt text">${promptSafe}</textarea>
+                                                <div class="d-flex justify-content-between mt-1">
+                                                    <small class="text-muted">Use variables like {column} as needed.</small>
+                                                    <small class="char-counter">0 chars</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-12 col-sm-6 col-lg-3">
+                                                <label class="prompt-meta-label">Columns</label>
+                                                <input type="text" class="form-control prompt-cols" placeholder="title, description" value="${Array.isArray(p.columns) ? p.columns.join(', ') : ''}" aria-label="Columns">
+                                            </div>
+                                            <div class="col-12 col-sm-6 col-lg-3">
+                                                <label class="prompt-meta-label">Output Heading</label>
+                                                <input type="text" class="form-control prompt-heading" placeholder="e.g. Fixed Title" value="${headingSafe}" aria-label="Output Heading">
+                                            </div>
+                                            <div class="col-12 col-md-6 col-lg-4">
+                                                <label class="prompt-meta-label">Param Name (optional)</label>
+                                                <input type="text" class="form-control prompt-param-name" placeholder="e.g. temperature" value="${paramSafe}" aria-label="Param Name">
+                                                <div class="form-text">Shown only when param is enabled on the microsite.</div>
+                                            </div>
+                                            <div class="col-12 col-md-6 col-lg-2 ms-auto d-flex gap-1 justify-content-end align-items-start prompt-actions">
+                                                <button type="button" class="btn btn-outline-secondary move-up-btn" title="Move Up" ${idx === 0 ? 'disabled' : ''}><i class="bi bi-arrow-up"></i></button>
+                                                <button type="button" class="btn btn-outline-secondary move-down-btn" title="Move Down" ${idx === promptsArr.length-1 ? 'disabled' : ''}><i class="bi bi-arrow-down"></i></button>
+                                                <button type="button" class="btn btn-outline-primary duplicate-prompt-btn" title="Duplicate"><i class="bi bi-files"></i></button>
+                                                <button type="button" class="btn btn-outline-danger remove-prompt-btn" title="Remove"><i class="bi bi-trash"></i></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                        `);
+                });
+                // after render, update counters and auto-size
+                list.find('.prompt-text').each(function(){ updateTextareaMetrics(this); });
+        }
         function getPromptsFromUI() {
             const arr = [];
             $('#prompts-list .prompt-item').each(function() {
@@ -523,6 +568,19 @@ function renderPromptsPreview(promptsArr) {
     }
     preview.html('<ol class="mb-0">' + promptsArr.map(p => `<li><b>${p.prompt || ''}</b> <span class="text-secondary">[Columns: ${(p.columns||[]).join(', ')}]</span>${p.output_heading ? ` <span class=\"text-info\">[Output Heading: ${p.output_heading}]</span>` : ''}</li>`).join('') + '</ol>');
 }
+
+        // Auto-size textarea and counters
+        function autoSizeTextarea(el){
+            el.style.height = 'auto';
+            el.style.height = Math.min(el.scrollHeight, window.innerHeight * 0.4) + 'px';
+        }
+        function updateTextareaMetrics(el){
+            autoSizeTextarea(el);
+            const $wrapper = $(el).closest('.card-body');
+            const counter = $wrapper.find('.char-counter');
+            if (counter.length) counter.text(`${el.value.length} chars`);
+        }
+        $(document).on('input', '.prompt-text', function(){ updateTextareaMetrics(this); });
         $(document).ready(function() {
             // Common languages for suggestions
             const COMMON_LANGUAGES = [
@@ -551,10 +609,48 @@ function renderPromptsPreview(promptsArr) {
                 $('#save-function-btn').prop('disabled', !ok);
                 return ok;
             }
+            // Preload common styles suggestions
+            const COMMON_STYLES = ['formal','casual','friendly','professional','concise','persuasive','playful','technical','neutral','empathetic'];
+            COMMON_STYLES.forEach(s=>$('#styles-list').append(`<option value="${s}"></option>`));
+
+            // Styles chips behavior in modal
+            let modalStylesArr = [];
+            function renderStyleChips(){
+                const container = $('#function-styles-chips');
+                container.find('.chip').remove();
+                modalStylesArr.forEach((style, idx) => {
+                    const chip = $(`<span class="chip" data-idx="${idx}">${style}<button type="button" class="remove" aria-label="Remove ${style}"><i class="bi bi-x"></i></button></span>`);
+                    chip.insertBefore($('#function-styles-input'));
+                });
+            }
+            function addStyle(val){
+                const v = (val||'').trim();
+                if (!v) return;
+                if (modalStylesArr.some(x=>x.toLowerCase()===v.toLowerCase())) return;
+                modalStylesArr.push(v);
+                modalStylesArr.sort((a,b)=>a.localeCompare(b));
+                renderStyleChips();
+                setDirty(true); validateModal();
+            }
+            $('#function-styles-chips').on('click', function(){ $('#function-styles-input').focus(); });
+            $('#function-styles-input').on('keydown', function(e){
+                if (e.key === 'Enter' || e.key === ',') {
+                    e.preventDefault();
+                    addStyle($(this).val());
+                    $(this).val('');
+                } else if (e.key === 'Backspace' && !$(this).val()) {
+                    modalStylesArr.pop();
+                    renderStyleChips();
+                }
+            });
+            $('#function-styles-input').on('change', function(){ addStyle($(this).val()); $(this).val(''); });
+            $('#function-styles-chips').on('click', '.chip .remove', function(){ const idx = $(this).closest('.chip').data('idx'); modalStylesArr.splice(idx,1); renderStyleChips(); setDirty(true); validateModal(); });
+
             $('#add-function-btn').click(function() {
                 $('#function-id').val('');
                 $('#function-name').val('');
-                $('#function-styles').val('');
+                modalStylesArr = [];
+                renderStyleChips();
                 promptsArr = [];
                 setPromptsToUI(promptsArr);
                 $('#functionModalLabel').text('Add Microsite Function');
@@ -568,14 +664,12 @@ function renderPromptsPreview(promptsArr) {
                     $('#function-id').val(fn.id);
                     $('#function-name').val(fn.function_name);
                     let styles = fn.styles;
-                    if (Array.isArray(styles)) {
-                        $('#function-styles').val(styles.join(', '));
-                    } else if (typeof styles === 'string') {
-                        try { $('#function-styles').val(JSON.parse(styles).join(', ')); }
-                        catch { $('#function-styles').val(styles); }
-                    } else {
-                        $('#function-styles').val('');
-                    }
+                    if (Array.isArray(styles)) { modalStylesArr = [...styles]; }
+                    else if (typeof styles === 'string') {
+                        try { modalStylesArr = JSON.parse(styles); }
+                        catch { modalStylesArr = styles.split(',').map(s=>s.trim()).filter(Boolean); }
+                    } else { modalStylesArr = []; }
+                    renderStyleChips();
                     let arr = fn.prompts;
                     if (typeof arr === 'string') {
                         try { arr = JSON.parse(arr); } catch { arr = []; }
@@ -645,11 +739,15 @@ function renderPromptsPreview(promptsArr) {
         setDirty(true); validateModal();
     });
     // Update prompt/columns on input
-    $('#prompts-list').on('input', '.prompt-text, .prompt-cols, .prompt-heading', function() {
+    $('#prompts-list').on('input', '.prompt-text, .prompt-cols, .prompt-heading, .prompt-param-name', function() {
         $('#prompts-list .prompt-item').each(function(i) {
             promptsArr[i].prompt = $(this).find('.prompt-text').val();
             promptsArr[i].columns = $(this).find('.prompt-cols').val().split(',').map(s => s.trim()).filter(Boolean);
             promptsArr[i].output_heading = $(this).find('.prompt-heading').val();
+            promptsArr[i].param_name = $(this).find('.prompt-param-name').val();
+            // update counters
+            const ta = $(this).find('.prompt-text')[0];
+            if (ta) updateTextareaMetrics(ta);
         });
         renderPromptsPreview(promptsArr);
         setDirty(true); validateModal();
@@ -662,7 +760,7 @@ function renderPromptsPreview(promptsArr) {
         }
     });
     // Track name/styles changes
-    $('#function-name, #function-styles').on('input', function(){ setDirty(true); validateModal(); });
+    $('#function-name').on('input', function(){ setDirty(true); validateModal(); });
     // Warn on closing with unsaved changes
     const functionModalEl = document.getElementById('functionModal');
     functionModalEl.addEventListener('hide.bs.modal', function (event) {
@@ -677,8 +775,7 @@ function renderPromptsPreview(promptsArr) {
                 const id = $('#function-id').val();
                 const name = $('#function-name').val().trim();
                 const prompts = getPromptsFromUI();
-                const stylesInput = $('#function-styles').val().trim();
-                const styles = stylesInput ? stylesInput.split(',').map(s=>s.trim()).filter(Boolean) : [];
+                const styles = modalStylesArr;
                 if (!name) {
                     showAlert('Function name is required.', 'danger');
                     return;
