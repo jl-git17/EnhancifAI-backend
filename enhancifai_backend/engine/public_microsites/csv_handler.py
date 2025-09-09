@@ -44,6 +44,8 @@ class CSVHandler:
         self.output_tokens = 0
         self.batched_processing = batched_processing
         self.performance_optimization = performance_optimization
+        # Preserve original rows to guarantee that results['new_data'] includes all original columns
+        self.original_data = []
 
     def _is_run_cancelled(self):
         return MicrositesRunsDbCore.is_run_cancelled(self.run_id)
@@ -59,6 +61,8 @@ class CSVHandler:
                     if not self.data:
                         logging.debug("CSV is empty.")
                         return False
+                    # Snapshot original rows (unmodified) for later merging
+                    self.original_data = [row.copy() for row in self.data]
                     return True
             except UnicodeDecodeError as e:
                 logging.error("Error with encoding %s: %s", encoding, e)
@@ -331,12 +335,13 @@ class CSVHandler:
                 continue
             grouped.setdefault(idx, []).append(res)
 
+        # Always start from the preserved original rows to ensure original columns remain
+        base_rows = self.original_data or self.data
         updated_data = []
-        for idx, row in enumerate(self.data):
+        for idx, row in enumerate(base_rows):
             new_row = dict(row)
             row_results = grouped.get(idx, [])
             row_results_sorted = sorted(row_results, key=lambda x: int(x['prompt_number']))
-
             for result in row_results_sorted:
                 for key, value in result.items():
                     if key not in ('row_index', 'prompt_number'):

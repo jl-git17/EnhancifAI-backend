@@ -44,6 +44,8 @@ class ExcelHandler:
         self.num_prompts_total = 0
         self.input_tokens = 0
         self.output_tokens = 0
+        # Preserve original rows to guarantee that results['new_data'] includes all original columns
+        self.original_data = []
 
     def _is_run_cancelled(self):
         return MicrositesRunsDbCore.is_run_cancelled(self.run_id)
@@ -54,6 +56,8 @@ class ExcelHandler:
             if not self.data:
                 logging.debug("Excel file is empty.")
                 return False
+            # Snapshot original rows (unmodified) for later merging
+            self.original_data = [dict(row) for row in self.data]
             return True
         except Exception as e:
             logging.error("Error loading Excel file: %s", e)
@@ -328,8 +332,10 @@ class ExcelHandler:
                 continue
             grouped.setdefault(idx, []).append(res)
 
+        # Always start from the preserved original rows to ensure original columns remain
+        base_rows = self.original_data or self.data
         updated_data = []
-        for idx, row in enumerate(self.data):
+        for idx, row in enumerate(base_rows):
             new_row = dict(row)
             row_results = grouped.get(idx, [])
             row_results_sorted = sorted(row_results, key=lambda x: int(x['prompt_number']))
