@@ -38,6 +38,10 @@ class EngineType(str, Enum):
 
 router = APIRouter()
 
+MICROSITE_HEADER_DEFAULTS = {
+    "fix-product-titles": "Product Title",
+    "feedback-responder": "Feedback"
+}
 
 
 def read_prompt_file(prompt_file_path: str):
