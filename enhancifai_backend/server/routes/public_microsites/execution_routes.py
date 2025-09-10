@@ -179,6 +179,40 @@ def json_to_excel(json_data, output_path):
     df = pd.DataFrame(json_data)
     df.to_excel(output_path, index=False)
 
+def ensure_default_header(file_path: str, suffix: str, function_name: str):
+    """
+    Ensures the file has the correct header based on MICROSITE_HEADER_DEFAULTS[function_name].
+    - If the file has more than one column, raise an error requiring [[header]].
+    - If the file has a single column and no matching header, set the default header and rewrite the file.
+    """
+    default_header = MICROSITE_HEADER_DEFAULTS.get(function_name)
+
+    # Read with header=0 (pandas will treat the first row as header)
+    if suffix == '.csv':
+        df = pd.read_csv(file_path, header=0)
+    else:
+        df = pd.read_excel(file_path, header=0)
+
+    num_cols = df.shape[1]
+    if num_cols > 1:
+        # Ambiguous without explicit [[header]] in prompts
+        raise HTTPException(status_code=400, detail="Multiple columns detected. User must add [[header]].")
+
+    # Single column case: optionally normalize header
+    if num_cols == 1 and default_header:
+        current_header = list(df.columns)[0]
+        if current_header != default_header:
+            # Re-read without header so we don't lose the first row
+            if suffix == '.csv':
+                df_no_header = pd.read_csv(file_path, header=None)
+            else:
+                df_no_header = pd.read_excel(file_path, header=None)
+            df_no_header.columns = [default_header]
+            if suffix == '.csv':
+                df_no_header.to_csv(file_path, index=False)
+            else:
+                df_no_header.to_excel(file_path, index=False)
+
 
 @router.post("/microsites/execution/progress", tags=["Microsites - Execution"])
 async def check_run_progress(
@@ -399,6 +433,17 @@ async def upload_direct_prompt(
             status_code=400,
             detail="Either a data file or JSON data must be provided."
         )
+
+    # Ensure/normalize headers based on function_name and enforce [[header]] for multi-column files
+    try:
+        ensure_default_header(temp_data_file_path, data_file_suffix, function_name)
+    except HTTPException:
+        cleanup_temp_files(None, temp_data_file_path)
+        raise
+    except Exception as e:
+        logging.exception("Error ensuring/normalizing header for data file")
+        cleanup_temp_files(None, temp_data_file_path)
+        raise HTTPException(status_code=500, detail="Failed to validate or set header.") from e
 
     max_prompts = GLOBAL_MAX_PROMPTS
 
