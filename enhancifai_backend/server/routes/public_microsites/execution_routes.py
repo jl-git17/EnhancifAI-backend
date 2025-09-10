@@ -8,11 +8,10 @@ import os
 from enum import Enum
 from tempfile import NamedTemporaryFile
 from threading import Thread
-from time import time
 from typing import Any, Dict
 
 # Third-party
-from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, Request, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile, status
 from fastapi.responses import JSONResponse
 import pandas as pd
 
@@ -42,6 +41,22 @@ MICROSITE_HEADER_DEFAULTS = {
     "fix-product-titles": "Product Title",
     "feedback-responder": "Feedback"
 }
+
+
+def index_to_col_label(index: int) -> str:
+    """Convert a zero-based index to Excel-like column label: 0->A, 25->Z, 26->AA, ..."""
+    if index < 0:
+        raise ValueError("Index must be non-negative")
+    label = ''
+    n = index
+    while True:
+        n, rem = divmod(n, 26)
+        label = chr(65 + rem) + label
+        if n == 0:
+            break
+        # Adjust because Excel columns are 1-based in base-26 representation
+        n -= 1
+    return label
 
 
 def read_prompt_file(prompt_file_path: str):
@@ -111,7 +126,7 @@ def extract_columns_from_file(file_path):
         raise ValueError("Unsupported file format")
 
     # Extract columns and format them as JSON objects
-    columns = {chr(65 + i): col for i, col in enumerate(df.columns)}
+    columns = {index_to_col_label(i): col for i, col in enumerate(df.columns)}
     extracted_columns = [columns]
     return extracted_columns
 
@@ -181,37 +196,60 @@ def json_to_excel(json_data, output_path):
 
 def ensure_default_header(file_path: str, suffix: str, function_name: str):
     """
-    Ensures the file has the correct header based on MICROSITE_HEADER_DEFAULTS[function_name].
-    - If the file has more than one column, raise an error requiring [[header]].
-    - If the file has a single column and no matching header, set the default header and rewrite the file.
+    Normalize/ensure headers for uploaded files.
+    - If a file appears to have no headings, assign column names A, B, C, ...
+    - Do NOT error for multi-column files.
+    - For single-column files with function-specific defaults, rename the column to the
+      function's default header (e.g., "Product Title") if it differs.
     """
     default_header = MICROSITE_HEADER_DEFAULTS.get(function_name)
+    
+    def _write_df(df_out: pd.DataFrame):
+        if suffix == '.csv':
+            df_out.to_csv(file_path, index=False)
+        else:
+            df_out.to_excel(file_path, index=False)
 
-    # Read with header=0 (pandas will treat the first row as header)
+    # Read two ways to detect headers
     if suffix == '.csv':
-        df = pd.read_csv(file_path, header=0)
+        df_header = pd.read_csv(file_path, header=0)
+        df_no_header = pd.read_csv(file_path, header=None)
     else:
-        df = pd.read_excel(file_path, header=0)
+        df_header = pd.read_excel(file_path, header=0)
+        df_no_header = pd.read_excel(file_path, header=None)
 
-    num_cols = df.shape[1]
-    if num_cols > 1:
-        # Ambiguous without explicit [[header]] in prompts
-        raise HTTPException(status_code=400, detail="Multiple columns detected. User must add [[header]].")
+    num_cols = df_header.shape[1]
 
-    # Single column case: optionally normalize header
-    if num_cols == 1 and default_header:
-        current_header = list(df.columns)[0]
+    # Heuristics to detect missing headers:
+    # - Any column is NaN or starts with 'Unnamed:'
+    # - Column labels are not strings for a majority
+    cols = list(df_header.columns)
+    def _is_missing_headers(columns) -> bool:
+        try:
+            unnamed = any((isinstance(c, str) and c.strip().lower().startswith('unnamed')) for c in columns)
+            has_nan = any(pd.isna(c) for c in columns)
+            non_str_count = sum(1 for c in columns if not isinstance(c, str))
+            return unnamed or has_nan or (non_str_count > len(columns) / 2)
+        except Exception:
+            return True
+
+    missing_headers = _is_missing_headers(cols)
+
+    if missing_headers:
+        # Assign A, B, C, ... regardless of number of columns
+        letters = [index_to_col_label(i) for i in range(num_cols)]
+        df_no_header.columns = letters
+        _write_df(df_no_header)
+        # Refresh df_header with new names for downstream logic
+        df_header = df_no_header.copy()
+
+    # Single column case: optionally normalize to function default header
+    if df_header.shape[1] == 1 and default_header:
+        current_header = str(list(df_header.columns)[0])
         if current_header != default_header:
-            # Re-read without header so we don't lose the first row
-            if suffix == '.csv':
-                df_no_header = pd.read_csv(file_path, header=None)
-            else:
-                df_no_header = pd.read_excel(file_path, header=None)
-            df_no_header.columns = [default_header]
-            if suffix == '.csv':
-                df_no_header.to_csv(file_path, index=False)
-            else:
-                df_no_header.to_excel(file_path, index=False)
+            df_one = df_no_header.copy()
+            df_one.columns = [default_header]
+            _write_df(df_one)
 
 
 @router.post("/microsites/execution/progress", tags=["Microsites - Execution"])
@@ -434,7 +472,7 @@ async def upload_direct_prompt(
             detail="Either a data file or JSON data must be provided."
         )
 
-    # Ensure/normalize headers based on function_name and enforce [[header]] for multi-column files
+    # Ensure/normalize headers: if no headings, assign A,B,C,...; for single-column, apply function default header
     try:
         ensure_default_header(temp_data_file_path, data_file_suffix, function_name)
     except HTTPException:
