@@ -6,6 +6,8 @@ import csv
 import logging
 from enum import Enum
 import os
+import random
+import re
 from tempfile import NamedTemporaryFile
 from threading import Thread
 import time
@@ -13,6 +15,7 @@ import uuid
 from fastapi import APIRouter, Body, Depends, File, Form, HTTPException, UploadFile, status
 from fastapi.responses import FileResponse, JSONResponse
 import openpyxl
+from openai import OpenAI
 import pandas as pd
 
 from enhancifai_backend.config import settings
@@ -858,3 +861,290 @@ async def ai_prompt_improver(
         return JSONResponse(status_code=e.status_code, content={"detail": e.detail})
     except Exception as e:
         return JSONResponse(status_code=500, content={"detail": "An unexpected error occurred", "error": str(e)})
+
+
+# ─────────────────────────────────────────────────────────────
+# AI Data Maturity — helpers
+# ─────────────────────────────────────────────────────────────
+
+AI_DATA_MATURITY_MAX_FILE_BYTES = 50 * 1024 * 1024  # 50 MB
+
+_ADMS_RATE_LIMIT_RE = re.compile(r'Please try again in ([\d\.]+)s')
+
+_ADMS_SYSTEM_PROMPT = (
+    "You are a senior data governance consultant producing "
+    "an executive summary of a dataset's readiness for "
+    "AI analytics tools such as Databricks Genie, "
+    "Microsoft Copilot, or similar natural language "
+    "query systems."
+)
+
+_ADMS_INSTRUCTIONS = (
+    "Return a JSON object with exactly these fields:\n"
+    "{\n"
+    '  "overall_maturity_score": 0-100,\n'
+    '  "maturity_level": "Initial|Developing|Defined|Managed|Optimized",\n'
+    '  "executive_summary": "2-3 sentences for a VP or CDO",\n'
+    '  "top_risks": ["risk1", "risk2", "risk3"],\n'
+    '  "quick_wins": ["action1", "action2"],\n'
+    '  "ai_context_block": "ready-to-use paragraph addressing the AI directly about this dataset. '
+    'Assembled from context_notes. Specific not generic.",\n'
+    '  "estimated_fix_effort": "low|medium|high"\n'
+    "}\n\n"
+    "Maturity score:\n"
+    "80-100 = Optimized\n"
+    "60-79 = Managed\n"
+    "40-59 = Defined\n"
+    "20-39 = Developing\n"
+    "0-19 = Initial\n\n"
+    "Return only valid JSON. No markdown, no explanation."
+)
+
+
+def _detect_column_type(non_null_series) -> str:
+    """Infer the semantic type of a pandas Series with nulls already removed."""
+    if len(non_null_series) == 0:
+        return "empty"
+    dtype = non_null_series.dtype
+    if pd.api.types.is_bool_dtype(dtype):
+        return "boolean"
+    if pd.api.types.is_numeric_dtype(dtype):
+        return "numeric"
+    if pd.api.types.is_datetime64_any_dtype(dtype):
+        return "date"
+    # Object dtype — inspect values
+    str_lower = non_null_series.astype(str).str.lower().str.strip()
+    if str_lower.isin({'true', 'false', 'yes', 'no', '1', '0', 'y', 'n'}).all():
+        return "boolean"
+    numeric_parsed = pd.to_numeric(non_null_series, errors='coerce')
+    if numeric_parsed.notna().all():
+        return "numeric"
+    try:
+        date_parsed = pd.to_datetime(non_null_series, errors='coerce')
+        date_ratio = date_parsed.notna().sum() / len(non_null_series)
+    except Exception:
+        date_ratio = 0.0
+    if date_ratio == 1.0:
+        return "date"
+    numeric_ratio = numeric_parsed.notna().sum() / len(non_null_series)
+    if numeric_ratio > 0.5 or date_ratio > 0.5:
+        return "mixed"
+    return "text"
+
+
+def _stratified_sample(non_null_series, n_per_band: int = 50) -> list:
+    """Return up to 150 deduplicated string values sampled across 3 equal bands."""
+    values = [str(v) for v in non_null_series]
+    total = len(values)
+    if total == 0:
+        return []
+    if total <= n_per_band * 3:
+        seen: set = set()
+        result = []
+        for v in values:
+            if v not in seen:
+                seen.add(v)
+                result.append(v)
+        return result
+    band_size = total // 3
+    bands = [
+        values[:band_size],
+        values[band_size: 2 * band_size],
+        values[2 * band_size:],
+    ]
+    sampled = []
+    for band in bands:
+        sampled.extend(random.sample(band, min(n_per_band, len(band))))
+    seen = set()
+    result = []
+    for v in sampled:
+        if v not in seen:
+            seen.add(v)
+            result.append(v)
+    return result
+
+
+# ─────────────────────────────────────────────────────────────
+# AI Data Maturity — endpoints
+# ─────────────────────────────────────────────────────────────
+
+@router.post("/execution/ai-data-maturity/prepare", tags=["Execution"])
+async def prepare_ai_data_maturity(
+    data_file: UploadFile = File(...),
+    file_context: str = Form(""),
+    _: str = Depends(verify_secret_key),
+    user_id: int = Depends(get_current_user_id)
+):
+    _FILE_TYPE_MAP = {
+        'text/csv': '.csv',
+        'application/vnd.ms-excel': '.xls',
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': '.xlsx',
+    }
+    suffix = _FILE_TYPE_MAP.get(data_file.content_type)
+    if not suffix:
+        fn = data_file.filename or ''
+        for ext in ('.csv', '.xlsx', '.xls'):
+            if fn.lower().endswith(ext):
+                suffix = ext
+                break
+    if not suffix:
+        raise HTTPException(
+            status_code=400,
+            detail="Invalid file type. Only CSV (.csv) and Excel (.xls, .xlsx) files are supported."
+        )
+
+    try:
+        contents = await data_file.read()
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to read uploaded file: {e}")
+
+    if not contents:
+        raise HTTPException(status_code=400, detail="Uploaded file is empty.")
+    if len(contents) > AI_DATA_MATURITY_MAX_FILE_BYTES:
+        raise HTTPException(status_code=400, detail="File too large. Maximum allowed file size is 50 MB.")
+
+    tmp_path = None
+    try:
+        with NamedTemporaryFile(delete=False, dir='/tmp', suffix=suffix) as tmp:
+            tmp_path = tmp.name
+            tmp.write(contents)
+            tmp.flush()
+
+        if suffix == '.csv':
+            df = pd.read_csv(tmp_path)
+        else:
+            df = pd.read_excel(tmp_path)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error("prepare_ai_data_maturity: error reading file: %s", e)
+        raise HTTPException(status_code=500, detail=f"Failed to process file: {e}")
+    finally:
+        if tmp_path and os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+    if df.empty:
+        raise HTTPException(status_code=400, detail="File contains no data rows.")
+
+    total_rows = len(df)
+    columns_stats = []
+
+    for col in df.columns:
+        series = df[col]
+        if series.dtype == object:
+            null_mask = series.isna() | (series.astype(str).str.strip() == '')
+        else:
+            null_mask = series.isna()
+
+        null_count = int(null_mask.sum())
+        non_null = series[~null_mask]
+        null_pct = round(null_count / total_rows * 100, 1) if total_rows > 0 else 0.0
+        unique_count = int(non_null.nunique())
+        is_likely_key = bool(unique_count / total_rows > 0.95) if total_rows > 0 else False
+
+        detected_type = _detect_column_type(non_null)
+
+        min_value = None
+        max_value = None
+        if detected_type == 'numeric' and len(non_null) > 0:
+            numeric_s = pd.to_numeric(non_null, errors='coerce').dropna()
+            if len(numeric_s) > 0:
+                min_value = str(numeric_s.min())
+                max_value = str(numeric_s.max())
+        elif detected_type == 'date' and len(non_null) > 0:
+            try:
+                date_s = pd.to_datetime(non_null, errors='coerce').dropna()
+                if len(date_s) > 0:
+                    min_value = str(date_s.min())
+                    max_value = str(date_s.max())
+            except Exception:
+                pass
+
+        sample_values = _stratified_sample(non_null, n_per_band=50)
+
+        columns_stats.append({
+            "column_name": col,
+            "detected_type": detected_type,
+            "total_rows": total_rows,
+            "null_count": null_count,
+            "null_pct": null_pct,
+            "unique_count": unique_count,
+            "min_value": min_value,
+            "max_value": max_value,
+            "is_likely_key": is_likely_key,
+            "sample_values": sample_values,
+        })
+
+    return JSONResponse(status_code=200, content={
+        "file_name": data_file.filename,
+        "total_rows": total_rows,
+        "column_count": len(df.columns),
+        "file_context": file_context,
+        "columns": columns_stats,
+    })
+
+
+@router.post("/execution/ai-data-maturity/synthesize", tags=["Execution"])
+async def synthesize_ai_data_maturity(
+    column_results: str = Form(...),
+    file_name: str = Form(...),
+    file_context: str = Form(""),
+    _: str = Depends(verify_secret_key),
+    user_id: int = Depends(get_current_user_id)
+):
+    try:
+        column_results_list = json.loads(column_results)
+    except json.JSONDecodeError as e:
+        raise HTTPException(status_code=400, detail=f"Invalid column_results JSON: {e}")
+    if not isinstance(column_results_list, list):
+        raise HTTPException(status_code=400, detail="column_results must be a JSON array.")
+
+    user_message = (
+        json.dumps({
+            "file_name": file_name,
+            "file_context": file_context,
+            "column_count": len(column_results_list),
+            "column_summaries": column_results_list,
+        })
+        + "\n\n"
+        + _ADMS_INSTRUCTIONS
+    )
+
+    client = OpenAI(api_key=settings.openai_api_key)
+    max_attempts = 3
+    _err = None
+
+    for attempt in range(max_attempts):
+        try:
+            completion = client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": _ADMS_SYSTEM_PROMPT},
+                    {"role": "user", "content": user_message},
+                ],
+                response_format={"type": "json_object"},
+                temperature=0.3,
+            )
+            result = json.loads(completion.choices[0].message.content or "{}")
+            return JSONResponse(status_code=200, content=result)
+
+        except json.JSONDecodeError as e:
+            logging.error("synthesize_ai_data_maturity: JSON parse error attempt %d: %s", attempt + 1, e)
+            _err = e
+            if attempt < max_attempts - 1:
+                time.sleep(2 ** attempt)
+        except Exception as e:
+            logging.error("synthesize_ai_data_maturity: error attempt %d: %s", attempt + 1, e)
+            if getattr(e, 'status_code', None) == 429:
+                match = _ADMS_RATE_LIMIT_RE.search(getattr(e, 'body', {}).get('message', '') or '')
+                delay = float(match.group(1)) * 2 if match else 10
+                time.sleep(delay)
+            else:
+                _err = e
+                if attempt < max_attempts - 1:
+                    time.sleep(2 ** attempt)
+
+    raise HTTPException(
+        status_code=500,
+        detail=f"Failed to synthesize data maturity after {max_attempts} attempts: {_err}"
+    )
