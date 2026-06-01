@@ -179,15 +179,8 @@ def json_to_excel(json_data, output_path):
     df.to_excel(output_path, index=False)
 
 @router.post("/execution/progress", tags=["Execution"])
-async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verify_secret_key),
-                             user_id: int = Depends(get_current_user_id)):
+async def check_run_progress(req_run: RunProgressRequest, _: str = Depends(verify_secret_key)):
     """Check the progress of a given Run ID."""
-    ai_consent = UsersDbCore.check_ai_consent(user_id)
-    if ai_consent is False:
-        raise HTTPException(
-            status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
-            detail="User has not consented for AI usage."
-        )
     retries = 3  # Number of retries
     for attempt in range(retries):
         try:
@@ -425,31 +418,17 @@ async def upload_direct_prompt(
     batched_processing: bool = Form(False),
     performance_optimization: bool = Form(False),
     _: str = Depends(verify_secret_key),
-    user_id: int = Depends(get_current_user_id)
 ):
     """
     Upload a CSV/Excel file or provide JSON data, with prompts payload.
     """
     logging.debug("Entered upload_direct_prompt endpoint")
-    logging.debug("User ID: %s", user_id)
     logging.debug("Prompts: %s", prompts)
     logging.debug("Data file provided: %s", "Yes" if data_file else "No")
     logging.debug("JSON data provided: %s", "Yes" if json_data else "No")
     logging.debug("Max records flag: %s", max_records)
 
-    ai_consent = UsersDbCore.check_ai_consent(user_id)
-    logging.debug("AI consent for user %s: %s", user_id, ai_consent)
-    if not ai_consent:
-        logging.warning("User %s has not consented for AI usage.", user_id)
-        raise HTTPException(
-            status_code=status.HTTP_451_UNAVAILABLE_FOR_LEGAL_REASONS,
-            detail="User has not consented for AI usage."
-        )
-
-    is_subscribed = StripeDbCore.is_user_subscribed(user_id)
-    is_cancelled_active = StripeDbCore.is_user_subscribed_cancelled(user_id)
-    uncapped = is_subscribed or is_cancelled_active
-    logging.debug(f"User {user_id} is uncapped: {uncapped}")
+    uncapped = True
     if max_records:
         max_recs = TEST_MAX_RECORDS
     else:
@@ -605,7 +584,7 @@ async def upload_direct_prompt(
     logging.debug("Run type: %s, Source filename: %s", run_type, source_filename)
 
     try:
-        run_id = RunsDbCore.new_run(user_id, run_type, source_filename)
+        run_id = RunsDbCore.new_run(0, run_type, source_filename)
         if not run_id:
             raise HTTPException(status_code=500, detail="Failed to created new run.")
         logging.info("Created new run with ID: %s", run_id)
@@ -617,7 +596,7 @@ async def upload_direct_prompt(
         raise HTTPException(status_code=500, detail="Failed to create new run.") from e
 
     try:
-        save_to_cache(temp_data_file_path, user_id, file_name)
+        save_to_cache(temp_data_file_path, 0, file_name)
         logging.debug("Saved data file to cache for run %s", run_id)
     except Exception as e:
         logging.exception("Error saving data file to cache")
@@ -634,7 +613,7 @@ async def upload_direct_prompt(
                 temp_data_file_path,
                 read_prompts,
                 max_recs,
-                user_id,
+                0,
                 file_name
             ),
             kwargs={
@@ -973,7 +952,6 @@ async def prepare_ai_data_maturity(
     data_file: UploadFile = File(...),
     file_context: str = Form(""),
     _: str = Depends(verify_secret_key),
-    user_id: int = Depends(get_current_user_id)
 ):
     _FILE_TYPE_MAP = {
         'text/csv': '.csv',
@@ -1090,7 +1068,6 @@ async def synthesize_ai_data_maturity(
     file_name: str = Form(...),
     file_context: str = Form(""),
     _: str = Depends(verify_secret_key),
-    user_id: int = Depends(get_current_user_id)
 ):
     try:
         column_results_list = json.loads(column_results)
