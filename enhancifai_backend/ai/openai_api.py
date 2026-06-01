@@ -325,9 +325,9 @@ class OpenAIConnector:
                     logging.error(f"AI did not return a list of strings. Got: {response}")
                     raise RuntimeError("AI did not return a JSON array of strings")
                 if len(response) != len(rows):
-                    logging.error(
-                        f"AI returned {len(response)} items, but expected {len(rows)}. "
-                        f"Response: {response}, Input rows: {rows}"
+                    logging.warning(
+                        f"Row count mismatch on attempt {attempt+1}: "
+                        f"got {len(response)}, expected {len(rows)}. Retrying..."
                     )
                     raise RuntimeError("AI did not return the same number of rows as input")
 
@@ -373,7 +373,14 @@ class OpenAIConnector:
             raise RuntimeError("Failed to get answer from OpenAI API after 3 attempts.")
         else:
             logging.error("Failed to get answer from OpenAI API after 3 attempts.")
-            return [{'content': str(_err), 'tokens': 0, 'engine_used': self.engine}]
+            return [
+                {
+                    'content': 'Incomplete data',
+                    'tokens': 0,
+                    'engine_used': self.engine
+                }
+                for _ in rows
+            ]
 
 
     def improve_prompt(self, prompt: str, user_id: int):

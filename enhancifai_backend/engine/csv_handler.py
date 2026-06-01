@@ -127,7 +127,7 @@ class CSVHandler:
                             futures[future] = idx
             else:
                 # NEW approach: send multiple rows in one AI call if performance_optimization
-                chunk_size = 10
+                chunk_size = 5
                 for prompt_config in prompts:
                     for start_idx in range(0, total_records, chunk_size):
                         if self._is_run_cancelled():
@@ -239,8 +239,18 @@ class CSVHandler:
             logging.debug("Batch returned %d items.", len(batch_data) if hasattr(batch_data, '__len__') else -1)
         except Exception:
             pass
-        # 'batch_data' should be a list of dicts, one per row in 'to_send'
 
+        # Adaptive chunk halving: if every result is 'Incomplete data' and the chunk has
+        # more than one row, split in half and retry each half independently.
+        # This recurses down to single-row chunks; a row only keeps 'Incomplete data'
+        # if it still fails when sent alone (after the 3 attempts inside process_csv_rows).
+        if len(chunk_data) > 1 and all(item.get('content') == 'Incomplete data' for item in batch_data):
+            mid = len(chunk_data) // 2
+            first_results = self.process_chunk(start_idx, chunk_data[:mid], prompt_config, columns_list)
+            second_results = self.process_chunk(start_idx + mid, chunk_data[mid:], prompt_config, columns_list)
+            return first_results + second_results
+
+        # 'batch_data' should be a list of dicts, one per row in 'to_send'
         output_heading = prompt_config['output_heading']
         results_for_chunk = []
         with self.lock:
@@ -257,7 +267,6 @@ class CSVHandler:
                 # If engine used is different, mark overflow
                 if item.get("engine_used") != self.engine:
                     self.overflow = True
-
 
                 # Bump row completion
                 self._increment_row_completion(actual_idx)
