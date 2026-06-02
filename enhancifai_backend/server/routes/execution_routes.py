@@ -583,25 +583,16 @@ async def upload_direct_prompt(
     source_filename = sheet_name if sheet_name else os.path.splitext(file_name)[0]
     logging.debug("Run type: %s, Source filename: %s", run_type, source_filename)
 
-    try:
-        run_id = RunsDbCore.new_run(0, run_type, source_filename)
-        if not run_id:
-            raise HTTPException(status_code=500, detail="Failed to created new run.")
-        logging.info("Created new run with ID: %s", run_id)
-        runs_progress.add_run(run_id, None)
-        logging.debug("Added run %s to runs_progress", run_id)
-    except Exception as e:
-        logging.exception("Error creating new run")
-        cleanup_temp_files(None, temp_data_file_path)
-        raise HTTPException(status_code=500, detail="Failed to create new run.") from e
+    run_id = random.randint(10**8, 10**9 - 1)
+    logging.info("Generated in-memory run ID: %s", run_id)
+    runs_progress.add_run(run_id, None)
+    logging.debug("Added run %s to runs_progress", run_id)
 
     try:
         save_to_cache(temp_data_file_path, 0, file_name)
         logging.debug("Saved data file to cache for run %s", run_id)
     except Exception as e:
-        logging.exception("Error saving data file to cache")
-        cleanup_temp_files(None, temp_data_file_path)
-        raise HTTPException(status_code=500, detail="Failed to save data file to cache.") from e
+        logging.warning("save_to_cache skipped (non-fatal): %s", e)
 
     # Start asynchronous run in a separate thread, passing batched_processing
     try:
